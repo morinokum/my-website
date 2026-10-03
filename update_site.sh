@@ -1,9 +1,23 @@
 #!/bin/bash
 
-# 1. ゲームを入れるためのフォルダを作成
+echo "🔍 PC内からゲーム（AI-GAME-PORTFOLIO）を探索中..."
+
+# 1. 一度 games フォルダの中をリセット（kabe.htmlを保護しつつ、または毎回集め直す）
 mkdir -p games
 
-# 2. index.html の「上半分（デザイン部分）」を作成
+# 2. 目印のあるファイルだけを安全に games フォルダに集める
+grep -rl "AI-GAME-PORTFOLIO" ~ --include="*.html" 2>/dev/null | while read file; do
+  # 自分の my-website フォルダ内にあるものはコピー元として除外（無限ループ防止）
+  case "$file" in
+    */my-website/*) continue ;;
+  esac
+  
+  filename=$(basename "$file")
+  echo "✨ 発見して収集: $filename"
+  cp "$file" games/
+done
+
+# 3. index.html のデザイン部分を生成
 cat << 'HTMLEOF' > index.html
 <!DOCTYPE html>
 <html lang="ja">
@@ -30,18 +44,18 @@ cat << 'HTMLEOF' > index.html
 <body>
   <header>
     <h1>AI Game Portfolio</h1>
-    <p>gamesフォルダから自動生成されたギャラリー</p>
+    <p>AIと共に制作したゲーム・プロトタイプの展示室</p>
   </header>
   <div class="container">
     <div class="grid">
 HTMLEOF
 
-# 3. gamesフォルダの中にあるHTMLを探して、自動でカード（枠）を追加する
+# 4. games フォルダ内のHTMLを自動で読み込んでカードを追加
 for file in games/*.html; do
   [ -e "$file" ] || continue
   filename=$(basename "$file")
   
-  # HTMLの中から <title> タグを抽出（なければファイル名をタイトルにする）
+  # タイトルタグの抽出
   gametitle=$(grep -io '<title>.*</title>' "$file" | sed -e 's/<title>//i' -e 's/<\/title>//i' | head -n 1)
   gametitle=${gametitle:-${filename%.*}}
   
@@ -49,13 +63,13 @@ for file in games/*.html; do
       <div class="card">
         <h3>${gametitle}</h3>
         <span class="tag">Web Game</span>
-        <p>ファイル名: ${filename}</p>
+        <p>ファイル: ${filename}</p>
         <a href="games/${filename}" class="button">Play Game</a>
       </div>
 HTMLEOF
 done
 
-# 4. index.html の「下半分」を閉じる
+# 5. HTMLのフッター部分を閉じる
 cat << 'HTMLEOF' >> index.html
     </div>
   </div>
@@ -63,8 +77,8 @@ cat << 'HTMLEOF' >> index.html
 </html>
 HTMLEOF
 
-# 5. GitHubへ自動送信
+# 6. Gitで自動コミット＆プッシュ
 git add .
-git commit -m "フォルダの内容からポートフォリオを自動更新"
+git commit -m "ゲームを自動収集してポートフォリオを更新"
 git push origin main
-echo "✨ サイトの自動更新と公開が完了しました！"
+echo "🎉 サイトの自動収集・ビルド・公開がすべて完了しました！"

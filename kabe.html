@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cyber Maze: God Hand</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0b0c10;
+            overflow: hidden;
+            font-family: 'Orbitron', sans-serif;
+            touch-action: none;
+            color: #fff;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            background-color: #0b0c10;
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+        }
+
+        /* --- UI Header --- */
+        #ui-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px 20px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+            z-index: 5;
+            background: linear-gradient(to bottom, rgba(11, 12, 16, 0.9), transparent);
+        }
+
+        .header-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        #level-display {
+            font-size: 1.2rem;
+            color: #45a29e;
+            font-weight: 700;
+            text-shadow: 0 0 8px #45a29e;
+        }
+
+        #score-display {
+            font-size: 1rem;
+            color: #f2a900;
+            text-shadow: 0 0 8px #f2a900;
+        }
+
+        /* --- Mana UI --- */
+        #mana-container {
+            width: 160px;
+            height: 18px;
+            background: rgba(11, 12, 16, 0.8);
+            border: 2px solid #9b59b6;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 0 10px rgba(155, 89, 182, 0.5);
+        }
+        
+        #mana-bar {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #8e44ad, #9b59b6);
+        }
+
+        #mana-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.8rem;
+            color: #fff;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-shadow: 1px 1px 2px #000;
+        }
+
+        /* --- Overlays --- */
+        #message-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(11, 12, 16, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            pointer-events: auto;
+            backdrop-filter: blur(5px);
+        }
+
+        #message-overlay h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+
+        .title-neon {
+            color: #66fcf1;
+            text-shadow: 0 0 10px #66fcf1, 0 0 20px #66fcf1, 0 0 40px #45a29e;
+        }
+
+        #message-overlay p {
+            text-align: center;
+            max-width: 80%;
+            margin-bottom: 30px;
+            line-height: 1.8;
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 1.1rem;
+            color: #c5c6c7;
+        }
+
+        .btn-action {
+            padding: 15px 50px;
+            font-size: 1.2rem;
+            font-family: 'Orbitron', sans-serif;
+            background: transparent;
+            color: #66fcf1;
+            border: 2px solid #66fcf1;
+            border-radius: 4px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(102, 252, 241, 0.4) inset, 0 0 15px rgba(102, 252, 241, 0.4);
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+        }
+
+        .btn-action:hover, .btn-action:active {
+            background: #66fcf1;
+            color: #0b0c10;
+            box-shadow: 0 0 25px rgba(102, 252, 241, 0.8);
+            transform: scale(0.95);
+        }
+
+        #stage-select-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+            width: 80%;
+            max-width: 400px;
+        }
+
+        .btn-stage {
+            padding: 15px 20px;
+            font-size: 1.1rem;
+            font-family: 'Orbitron', sans-serif;
+            background: rgba(11, 12, 16, 0.8);
+            color: #c5c6c7;
+            border: 1px solid #45a29e;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        .btn-stage:hover {
+            background: rgba(69, 162, 158, 0.2);
+            border-color: #66fcf1;
+            color: #ffffff;
+            box-shadow: 0 0 15px rgba(102, 252, 241, 0.4) inset;
+        }
+
+        #action-button-container {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+        }
+        
+        .highlight-cyan { color: #66fcf1; font-weight: bold; }
+        .highlight-red { color: #ff4655; font-weight: bold; }
+        .highlight-yellow { color: #f2a900; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="ui-header" style="display: none;">
+            <div class="header-item">
+                <div id="level-display">STAGE 1</div>
+                <div id="score-display">SCORE: 0</div>
+            </div>
+            <div class="header-item" style="align-items: flex-end; justify-content: center;">
+                <div id="mana-container">
+                    <div id="mana-bar"></div>
+                    <div id="mana-text">MANA</div>
+                </div>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="message-overlay">
+            <h1 id="overlay-title" class="title-neon">CYBER MAZE<br>GOD HAND</h1>
+            <p id="overlay-desc">
+                味方(青)は<span class="highlight-cyan">右手の法則（右壁沿い）</span>で自動進行します。<br>
+                タップで壁を生成/破壊し、ルートを導いてください。<br>
+                操作には自動回復する<span style="color:#9b59b6; font-weight:bold;">マナ</span>を消費します。<br>
+                （STAGE 1は敵が出ない練習用ステージです）
+            </p>
+            <div id="stage-select-container"></div>
+            <div id="action-button-container">
+                <button class="btn-action" id="btn-start">SYSTEM START</button>
+                <button class="btn-action" id="btn-menu">STAGE SELECT</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // UI DOM
+        const uiHeader = document.getElementById('ui-header');
+        const levelDisplay = document.getElementById('level-display');
+        const scoreDisplay = document.getElementById('score-display');
+        const manaBar = document.getElementById('mana-bar');
+        const messageOverlay = document.getElementById('message-overlay');
+        const overlayTitle = document.getElementById('overlay-title');
+        const overlayDesc = document.getElementById('overlay-desc');
+        const btnStart = document.getElementById('btn-start');
+        const btnMenu = document.getElementById('btn-menu');
+        const stageSelectContainer = document.getElementById('stage-select-container');
+        const actionButtonContainer = document.getElementById('action-button-container');
+
+        // Game Constants
+        const TILE_SIZE = 55;
+        const MAP_FLOOR = 0;
+        const MAP_WALL_BREAKABLE = 1;
+        const MAP_WALL_HARD = 2;
+        const MAP_GOAL = 3;
+        
+        let gameState = 'START'; // START, PLAYING, GAME_OVER, CLEARED, ALL_CLEARED
+        let lastTime = 0;
+        let camera = { x: 0, y: 0 };
+        
+        // Player Stats
+        let currentLevelIndex = 0;
+        let totalScore = 0;
+        
+        // Mana System
+        const MAX_MANA = 100;
+        let currentMana = MAX_MANA;
+        const MANA_REGEN_RATE = 20; // 1秒あたりの自動回復量
+        const COST_BUILD = 25; // 壁生成コスト
+        const COST_BREAK = 10; // 壁破壊コスト
+
+        // Vector Math Utilities
+        const Vec2 = {
+            add: (a, b) => ({ x: a.x + b.x, y: a.y + b.y }),
+            sub: (a, b) => ({ x: a.x - b.x, y: a.y - b.y }),
+            mag: (v) => Math.sqrt(v.x * v.x + v.y * v.y),
+            norm: (v) => {
+                let m = Vec2.mag(v);
+                return m === 0 ? { x: 0, y: 0 } : { x: v.x / m, y: v.y / m };
+            },
+            dist: (a, b) => Vec2.mag(Vec2.sub(a, b))
+        };
+
+        // Levels Array
+        // 0: Floor, 1: Breakable, 2: Hard Wall, 3: Goal
+        const levelsData = [
+            {
+                // Level 1: Basics (No enemies)
+                title: "STAGE 1 : TUTORIAL",
+                map: [
+                    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+                    [2,0,0,1,0,0,1,2,0,0,1,0,0,3,2],
+                    [2,0,2,2,2,0,2,2,0,2,2,2,0,2,2],
+                    [2,0,1,0,0,0,1,0,0,0,0,0,0,1,2],
+                    [2,0,2,2,2,0,2,2,2,2,2,2,0,2,2],
+                    [2,0,0,0,1,0,0,0,1,0,0,0,0,1,2],
+                    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
+                ],
+                spawn: { x: 1, y: 1 },
+                enemies: []
+            },
+            {
+                // Level 2: Maze & More enemies
+                title: "STAGE 2 : LABYRINTH",
+                map: [
+                    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+                    [2,0,0,1,0,0,0,1,0,0,0,2,3,0,2,2],
+                    [2,0,2,2,2,2,2,2,2,2,0,2,2,0,2,2],
+                    [2,0,1,0,0,0,0,0,0,2,0,1,0,0,2,2],
+                    [2,2,2,2,0,2,2,2,0,2,2,2,2,0,2,2],
+                    [2,0,0,1,0,2,0,0,0,0,0,1,0,0,2,2],
+                    [2,0,2,2,2,2,0,2,2,2,2,2,2,2,2,2],
+                    [2,0,0,0,0,0,0,1,0,0,0,0,0,0,2,2],
+                    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
+                ],
+                spawn: { x: 1, y: 1 },
+                enemies: [
+                    { tx: 6, ty: 3, type: 'wanderer' },
+                    { tx: 10, ty: 7, type: 'wanderer' },
+                    { tx: 3, ty: 7, type: 'wanderer' }
+                ]
+            },
+            {
+                // Level 3: Introducing Ghosts
+                title: "STAGE 3 : PHANTOM PROTOCOL",
+                map: [
+                    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+                    [2,0,0,0,1,0,0,2,0,0,1,0,0,0,3,2,2],
+                    [2,0,2,2,2,2,0,2,0,2,2,2,2,2,0,2,2],
+                    [2,0,2,0,0,1,0,2,0,1,0,0,0,2,0,2,2],
+                    [2,0,2,0,2,2,2,2,2,2,2,2,0,2,0,2,2],
+                    [2,0,1,0,0,0,0,0,0,0,0,1,0,1,0,2,2],
+                    [2,2,2,2,2,2,0,2,2,2,0,2,2,2,2,2,2],
+                    [2,0,0,0,0,0,0,2,0,0,0,0,0,0,0,2,2],
+                    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
+                ],
+                spawn: { x: 1, y: 1 },
+                enemies: [
+                    { tx: 8, ty: 7, type: 'wanderer' },
+                    { tx: 14, ty: 7, type: 'ghost' }, // 壁抜け・追尾
+                    { tx: 4, ty: 5, type: 'wanderer' }
+                ]
+            }
+        ];
+
+        let activeMap = [];
+        let mapWidth, mapHeight;
+
+        class Player {
+            constructor(tx, ty) {
+                this.pos = { x: tx * TILE_SIZE + TILE_SIZE/2, y: ty * TILE_SIZE + TILE_SIZE/2 };
+                this.radius = 12;
+                this.speedNormal = 110; // 少し速度を下げて難易度を緩和
+                this.color = '#66fcf1'; // Neon Cyan
+                this.facing = { x: 0, y: -1 };
+                this.isDead = false;
+                
+                // 迷路探索 (右手法)
+                this.currentDir = 1; // 0:Up, 1:Right, 2:Down, 3:Left
+                this.directions = [
+                    {x: 0, y: -1}, {x: 1, y: 0}, {x: 0, y: 1}, {x: -1, y: 0}
+                ];
+                this.targetPos = null;
+                this.trail = [];
+            }
+
+            update(dt) {
+                if (this.isDead) return;
+
+                // 残像エフェクト用
+                if (Math.random() < 0.3) {
+                    this.trail.push({x: this.pos.x, y: this.pos.y, life: 1.0});
+                }
+                for(let i=this.trail.length-1; i>=0; i--) {
+                    this.trail[i].life -= dt * 3;
+                    if(this.trail[i].life <= 0) this.trail.splice(i, 1);
+                }
+
+                let tx = Math.floor(this.pos.x / TILE_SIZE);
+                let ty = Math.floor(this.pos.y / TILE_SIZE);
+
+                if (!this.targetPos) {
+                    let rightDir = (this.currentDir + 1) % 4;
+                    let forwardDir = this.currentDir;
+                    let leftDir = (this.currentDir + 3) % 4;
+                    let backDir = (this.currentDir + 2) % 4;
+
+                    let checkAndSet = (dirIndex) => {
+                        let d = this.directions[dirIndex];
+                        let nx = tx + d.x;
+                        let ny = ty + d.y;
+                        if (!this.isWall(nx, ny)) {
+                            this.currentDir = dirIndex;
+                            this.targetPos = { x: nx * TILE_SIZE + TILE_SIZE/2, y: ny * TILE_SIZE + TILE_SIZE/2 };
+                            return true;
+                        }
+                        return false;
+                    };
+
+                    // 右 -> 前 -> 左 -> 後ろ
+                    if (checkAndSet(rightDir)) {}
+                    else if (checkAndSet(forwardDir)) {}
+                    else if (checkAndSet(leftDir)) {}
+                    else if (checkAndSet(backDir)) {}
+                }
+
+                if (this.targetPos) {
+                    // 神の手で目の前に壁が作られた場合のキャンセル処理
+                    let ttx = Math.floor(this.targetPos.x / TILE_SIZE);
+                    let tty = Math.floor(this.targetPos.y / TILE_SIZE);
+                    if (this.isWall(ttx, tty)) {
+                        this.targetPos = null;
+                        this.currentDir = (this.currentDir + 2) % 4; 
+                        return;
+                    }
+
+                    let dir = Vec2.norm(Vec2.sub(this.targetPos, this.pos));
+                    this.facing = dir;
+                    
+                    let dist = Vec2.dist(this.targetPos, this.pos);
+                    let moveAmt = this.speedNormal * dt;
+                    
+                    if (dist <= moveAmt) {
+                        this.pos.x = this.targetPos.x;
+                        this.pos.y = this.targetPos.y;
+                        this.targetPos = null; 
+                    } else {
+                        this.pos.x += dir.x * moveAmt;
+                        this.pos.y += dir.y * moveAmt;
+                    }
+                }
+
+                // アイテムとゴールの判定
+                this.checkTileEvents(tx, ty);
+            }
+
+            isWall(tx, ty) {
+                if (ty >= 0 && ty < activeMap.length && tx >= 0 && tx < activeMap[0].length) {
+                    return activeMap[ty][tx] === MAP_WALL_BREAKABLE || activeMap[ty][tx] === MAP_WALL_HARD;
+                }
+                return true; 
+            }
+
+            checkTileEvents(tx, ty) {
+                if (ty >= 0 && ty < activeMap.length && tx >= 0 && tx < activeMap[0].length) {
+                    if (activeMap[ty][tx] === MAP_GOAL) {
+                        handleLevelClear();
+                    }
+                }
+            }
+
+            draw(ctx) {
+                if (this.isDead) return;
+
+                // 軌跡の描画
+                ctx.save();
+                this.trail.forEach(tr => {
+                    ctx.globalAlpha = tr.life * 0.5;
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(tr.x, tr.y, this.radius * tr.life, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.restore();
+
+                // 本体
+                ctx.save();
+                ctx.translate(this.pos.x, this.pos.y);
+                ctx.rotate(Math.atan2(this.facing.y, this.facing.x));
+                
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = this.color;
+                
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 向きインジケーター (三角)
+                ctx.fillStyle = '#fff';
+                ctx.shadowBlur = 0;
+                ctx.beginPath();
+                ctx.moveTo(this.radius + 2, 0);
+                ctx.lineTo(2, -5);
+                ctx.lineTo(2, 5);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        class Enemy {
+            constructor(tx, ty, type) {
+                this.pos = { x: tx * TILE_SIZE + TILE_SIZE/2, y: ty * TILE_SIZE + TILE_SIZE/2 };
+                this.radius = 12;
+                this.type = type; // 'wanderer' or 'ghost'
+                this.speed = type === 'ghost' ? 45 : 90;
+                this.color = type === 'ghost' ? '#c83349' : '#ff4655';
+                
+                let angle = Math.random() * Math.PI * 2;
+                this.facing = { x: Math.cos(angle), y: Math.sin(angle) };
+            }
+
+            update(dt) {
+                if(player.isDead) return;
+
+                if (this.type === 'wanderer') {
+                    // 直進して壁に当たったら反射
+                    let moveX = this.facing.x * this.speed * dt;
+                    let moveY = this.facing.y * this.speed * dt;
+
+                    let hitWallX = this.checkMapCollision(this.pos.x + moveX, this.pos.y);
+                    let hitWallY = this.checkMapCollision(this.pos.x, this.pos.y + moveY);
+
+                    if (hitWallX) this.facing.x *= -1;
+                    if (hitWallY) this.facing.y *= -1;
+                    
+                    if(hitWallX || hitWallY) {
+                         // 少しランダム性を入れる
+                         let angle = Math.atan2(this.facing.y, this.facing.x) + (Math.random()-0.5) * 0.5;
+                         this.facing = { x: Math.cos(angle), y: Math.sin(angle) };
+                    } else {
+                        this.pos.x += moveX;
+                        this.pos.y += moveY;
+                    }
+                } else if (this.type === 'ghost') {
+                    // 壁を無視してプレイヤーに向かってゆっくり進む
+                    let dir = Vec2.norm(Vec2.sub(player.pos, this.pos));
+                    this.pos.x += dir.x * this.speed * dt;
+                    this.pos.y += dir.y * this.speed * dt;
+                }
+
+                // プレイヤーとの衝突
+                if (Vec2.dist(this.pos, player.pos) < this.radius + player.radius) {
+                    player.isDead = true;
+                    handleGameOver();
+                }
+            }
+
+            checkMapCollision(newX, newY) {
+                let tx = Math.floor(newX / TILE_SIZE);
+                let ty = Math.floor(newY / TILE_SIZE);
+                if (ty >= 0 && ty < activeMap.length && tx >= 0 && tx < activeMap[0].length) {
+                    return activeMap[ty][tx] === MAP_WALL_BREAKABLE || activeMap[ty][tx] === MAP_WALL_HARD;
+                }
+                return true;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                
+                if(this.type === 'ghost') {
+                    ctx.globalAlpha = 0.7; // 半透明
+                }
+
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI*2);
+                ctx.fill();
+
+                // 模様
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.shadowBlur = 0;
+                ctx.beginPath();
+                let time = performance.now() / 150;
+                ctx.moveTo(this.pos.x - 5, this.pos.y + Math.sin(time)*5);
+                ctx.lineTo(this.pos.x + 5, this.pos.y - Math.sin(time)*5);
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.pos = { x, y };
+                let angle = Math.random() * Math.PI * 2;
+                let speed = Math.random() * 80 + 20;
+                this.vel = { x: Math.cos(angle)*speed, y: Math.sin(angle)*speed };
+                this.life = 1.0;
+                this.color = color;
+                this.size = Math.random() * 3 + 1;
+            }
+            update(dt) {
+                this.pos.x += this.vel.x * dt;
+                this.pos.y += this.vel.y * dt;
+                this.life -= dt * 1.5;
+            }
+            draw(ctx) {
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillRect(this.pos.x, this.pos.y, this.size, this.size);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        class FloatingText {
+            constructor(text, x, y, color) {
+                this.text = text;
+                this.pos = { x, y };
+                this.life = 1.2;
+                this.color = color;
+            }
+            update(dt) {
+                this.pos.y -= 40 * dt;
+                this.life -= dt;
+            }
+            draw(ctx) {
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.font = "bold 14px 'Orbitron', sans-serif";
+                ctx.textAlign = "center";
+                ctx.shadowBlur = 5;
+                ctx.shadowColor = '#000';
+                ctx.fillText(this.text, this.pos.x, this.pos.y);
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        let player;
+        let enemies = [];
+        let particles = [];
+        let texts = [];
+
+        function initStageSelect() {
+            stageSelectContainer.innerHTML = '';
+            levelsData.forEach((level, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-stage';
+                btn.innerText = level.title;
+                btn.addEventListener('click', () => {
+                    currentLevelIndex = index;
+                    totalScore = 0; // ステージセレクトから始めた場合はスコアをリセット
+                    loadLevel(currentLevelIndex);
+                });
+                stageSelectContainer.appendChild(btn);
+            });
+        }
+
+        function createParticles(x, y, color, count=15) {
+            for(let i=0; i<count; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function showMessage(title, desc, btnText, titleColor, showStageSelect = false) {
+            overlayTitle.innerHTML = title;
+            overlayTitle.style.color = titleColor;
+            overlayTitle.style.textShadow = `0 0 10px ${titleColor}, 0 0 20px ${titleColor}`;
+            overlayDesc.innerHTML = desc;
+            
+            if (showStageSelect) {
+                stageSelectContainer.style.display = 'flex';
+                actionButtonContainer.style.display = 'none';
+            } else {
+                stageSelectContainer.style.display = 'none';
+                actionButtonContainer.style.display = 'flex';
+                btnStart.innerText = btnText;
+                
+                // 全クリア時は次ステージがないためSTARTボタンを隠す
+                if(gameState === 'ALL_CLEARED') {
+                    btnStart.style.display = 'none';
+                } else {
+                    btnStart.style.display = 'block';
+                }
+            }
+
+            messageOverlay.style.display = 'flex';
+            uiHeader.style.display = 'none';
+        }
+
+        // 初回ロード時の初期化
+        initStageSelect();
+        showMessage("CYBER MAZE<br>GOD HAND", `
+            味方(青)は<span class="highlight-cyan">右手の法則（右壁沿い）</span>で自動進行します。<br>
+            タップで壁を生成/破壊し、ルートを導いてください。<br>
+            操作には自動回復する<span style="color:#9b59b6; font-weight:bold;">マナ</span>を消費します。<br>
+            （STAGE 1は敵が出ない練習用ステージです）
+        `, "", "#66fcf1", true);
+
+        btnStart.addEventListener('click', () => {
+            if(gameState === 'GAME_OVER') {
+                totalScore = 0; // リトライ時はスコアリセット
+                loadLevel(currentLevelIndex);
+            } else if (gameState === 'CLEARED') {
+                currentLevelIndex++;
+                loadLevel(currentLevelIndex);
+            }
+        });
+
+        btnMenu.addEventListener('click', () => {
+            gameState = 'START';
+            showMessage("SELECT STAGE", "プレイするステージを選択してください。", "", "#66fcf1", true);
+        });
+
+        function loadLevel(index) {
+            let levelDef = levelsData[index];
+            activeMap = levelDef.map.map(row => [...row]);
+            mapWidth = activeMap[0].length * TILE_SIZE;
+            mapHeight = activeMap.length * TILE_SIZE;
+
+            player = new Player(levelDef.spawn.x, levelDef.spawn.y);
+            
+            enemies = [];
+            levelDef.enemies.forEach(ed => {
+                enemies.push(new Enemy(ed.tx, ed.ty, ed.type));
+            });
+
+            particles = [];
+            texts = [];
+            camera = { x: 0, y: 0 };
+            currentMana = MAX_MANA;
+            
+            updateUI();
+
+            messageOverlay.style.display = 'none';
+            uiHeader.style.display = 'flex';
+            levelDisplay.innerText = levelDef.title;
+            
+            gameState = 'PLAYING';
+            lastTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function handleLevelClear() {
+            gameState = 'CLEARED';
+            let clearBonus = 1000;
+            totalScore += clearBonus;
+            
+            if (currentLevelIndex + 1 < levelsData.length) {
+                showMessage("STAGE CLEARED", `ルート構築完了。<br>ボーナススコア: +${clearBonus}`, "NEXT STAGE", "#45a29e", false);
+            } else {
+                gameState = 'ALL_CLEARED';
+                showMessage("SYSTEM RESTORED", `全ステージクリア！<br>最終スコア: ${totalScore}`, "", "#f2a900", false);
+            }
+        }
+
+        function handleGameOver() {
+            gameState = 'GAME_OVER';
+            createParticles(player.pos.x, player.pos.y, '#66fcf1', 50);
+            showMessage("SYSTEM FAILURE", "味方が敵性プログラムに破壊されました。", "RETRY STAGE", "#ff4655", false);
+        }
+
+        function updateUI() {
+            scoreDisplay.innerText = `SCORE: ${totalScore}`;
+            let manaPct = Math.max(0, Math.min(100, (currentMana / MAX_MANA) * 100));
+            manaBar.style.width = `${manaPct}%`;
+        }
+
+        const handleInteraction = (e) => {
+            if(gameState !== 'PLAYING') return;
+            
+            let clientX, clientY;
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            
+            let rect = canvas.getBoundingClientRect();
+            let clickX = clientX - rect.left;
+            let clickY = clientY - rect.top;
+            
+            let worldX = clickX + camera.x;
+            let worldY = clickY + camera.y;
+            
+            let tx = Math.floor(worldX / TILE_SIZE);
+            let ty = Math.floor(worldY / TILE_SIZE);
+            
+            // 盤面内かチェック
+            if (ty >= 0 && ty < activeMap.length && tx >= 0 && tx < activeMap[0].length) {
+                let tileType = activeMap[ty][tx];
+                
+                // ゴールや絶対壁は操作不可
+                if (tileType === MAP_GOAL || tileType === MAP_WALL_HARD) return;
+
+                let tileCenterX = tx * TILE_SIZE + TILE_SIZE/2;
+                let tileCenterY = ty * TILE_SIZE + TILE_SIZE/2;
+
+                if (tileType === MAP_WALL_BREAKABLE) {
+                    // 破壊
+                    if (currentMana >= COST_BREAK) {
+                        currentMana -= COST_BREAK;
+                        activeMap[ty][tx] = MAP_FLOOR; 
+                        createParticles(tileCenterX, tileCenterY, '#45a29e', 20);
+                        texts.push(new FloatingText("BREAK", worldX, worldY, '#66fcf1'));
+                        totalScore += 10;
+                        updateUI();
+                    } else {
+                        texts.push(new FloatingText("NO MANA", worldX, worldY, '#9b59b6'));
+                    }
+                } else if (tileType === MAP_FLOOR) {
+                    // 生成 (プレイヤーと敵に重ならないかチェック)
+                    if (currentMana >= COST_BUILD) {
+                        let canBuild = true;
+                        let checkDist = TILE_SIZE/2 + 10;
+                        
+                        if (Vec2.dist({x: tileCenterX, y: tileCenterY}, player.pos) < checkDist) canBuild = false;
+                        for (let enemy of enemies) {
+                            if (Vec2.dist({x: tileCenterX, y: tileCenterY}, enemy.pos) < checkDist) canBuild = false;
+                        }
+
+                        if (canBuild) {
+                            currentMana -= COST_BUILD;
+                            activeMap[ty][tx] = MAP_WALL_BREAKABLE;
+                            createParticles(tileCenterX, tileCenterY, '#1f2833', 20);
+                            texts.push(new FloatingText("BUILD", worldX, worldY, '#45a29e'));
+                            totalScore += 10;
+                            updateUI();
+                        } else {
+                            texts.push(new FloatingText("BLOCKED", worldX, worldY, '#ff4655'));
+                        }
+                    } else {
+                        texts.push(new FloatingText("NO MANA", worldX, worldY, '#9b59b6'));
+                    }
+                }
+            }
+        };
+
+        canvas.addEventListener('mousedown', handleInteraction);
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInteraction(e); }, {passive: false});
+
+        function gameLoop(time) {
+            if (gameState !== 'PLAYING') return;
+
+            let dt = (time - lastTime) / 1000;
+            if (dt > 0.1) dt = 0.1; // dt上限
+            lastTime = time;
+
+            // 更新処理
+            player.update(dt);
+            enemies.forEach(e => e.update(dt));
+
+            // マナの自動回復
+            if (currentMana < MAX_MANA) {
+                currentMana += MANA_REGEN_RATE * dt;
+                if (currentMana > MAX_MANA) currentMana = MAX_MANA;
+                updateUI();
+            }
+
+            particles.forEach(p => p.update(dt));
+            particles = particles.filter(p => p.life > 0);
+            texts.forEach(t => t.update(dt));
+            texts = texts.filter(t => t.life > 0);
+
+            // カメラの追従 (スムーズ)
+            let targetCamX = player.pos.x - canvas.width / 2;
+            let targetCamY = player.pos.y - canvas.height / 2;
+            
+            // カメラをマップ範囲内に制限
+            targetCamX = Math.max(0, Math.min(targetCamX, mapWidth - canvas.width));
+            targetCamY = Math.max(0, Math.min(targetCamY, mapHeight - canvas.height));
+            
+            camera.x += (targetCamX - camera.x) * 5 * dt;
+            camera.y += (targetCamY - camera.y) * 5 * dt;
+
+            draw();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function drawMap() {
+            for (let y = 0; y < activeMap.length; y++) {
+                for (let x = 0; x < activeMap[0].length; x++) {
+                    let px = x * TILE_SIZE;
+                    let py = y * TILE_SIZE;
+                    let tile = activeMap[y][x];
+                    
+                    if (tile === MAP_WALL_BREAKABLE) { 
+                        // 壊せる壁 (サイバー感のある枠線)
+                        ctx.fillStyle = '#1f2833';
+                        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                        ctx.strokeStyle = '#45a29e';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                        
+                        // クロス模様
+                        ctx.strokeStyle = 'rgba(69, 162, 158, 0.2)';
+                        ctx.beginPath();
+                        ctx.moveTo(px, py);
+                        ctx.lineTo(px + TILE_SIZE, py + TILE_SIZE);
+                        ctx.moveTo(px + TILE_SIZE, py);
+                        ctx.lineTo(px, py + TILE_SIZE);
+                        ctx.stroke();
+
+                    } else if (tile === MAP_WALL_HARD) {
+                        // 壊せない壁 (暗く重い感じ)
+                        ctx.fillStyle = '#0b0c10';
+                        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                        ctx.strokeStyle = '#1f2833';
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+
+                    } else if (tile === MAP_GOAL) { 
+                        // ゴール
+                        ctx.fillStyle = 'rgba(102, 252, 241, 0.1)';
+                        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                        
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = '#66fcf1';
+                        ctx.strokeStyle = '#66fcf1';
+                        ctx.lineWidth = 2;
+                        
+                        let pulse = Math.sin(performance.now() / 200) * 5;
+                        ctx.strokeRect(px + 10 - pulse/2, py + 10 - pulse/2, TILE_SIZE - 20 + pulse, TILE_SIZE - 20 + pulse);
+                        ctx.shadowBlur = 0; // リセット
+
+                    } else { 
+                        // 床 (うっすらとしたグリッド)
+                        ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+                    }
+                }
+            }
+        }
+
+        function draw() {
+            // 背景クリア
+            ctx.fillStyle = '#0b0c10';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(-Math.floor(camera.x), -Math.floor(camera.y));
+
+            drawMap();
+            
+            // エンティティ描画
+            enemies.forEach(e => e.draw(ctx));
+            player.draw(ctx);
+
+            // エフェクト描画
+            particles.forEach(p => p.draw(ctx));
+            texts.forEach(t => t.draw(ctx));
+
+            ctx.restore();
+        }
+
+    </script>
+</body>
+</html>

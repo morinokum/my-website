@@ -1,3 +1,10 @@
+#!/bin/bash
+
+# 1. ゲームを入れるためのフォルダを作成
+mkdir -p games
+
+# 2. index.html の「上半分（デザイン部分）」を作成
+cat << 'HTMLEOF' > index.html
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -27,13 +34,37 @@
   </header>
   <div class="container">
     <div class="grid">
+HTMLEOF
+
+# 3. gamesフォルダの中にあるHTMLを探して、自動でカード（枠）を追加する
+for file in games/*.html; do
+  [ -e "$file" ] || continue
+  filename=$(basename "$file")
+  
+  # HTMLの中から <title> タグを抽出（なければファイル名をタイトルにする）
+  gametitle=$(grep -io '<title>.*</title>' "$file" | sed -e 's/<title>//i' -e 's/<\/title>//i' | head -n 1)
+  gametitle=${gametitle:-${filename%.*}}
+  
+  cat << HTMLEOF >> index.html
       <div class="card">
-        <h3>Cyber Maze: God Hand</h3>
+        <h3>${gametitle}</h3>
         <span class="tag">Web Game</span>
-        <p>ファイル名: kabe.html</p>
-        <a href="games/kabe.html" class="button">Play Game</a>
+        <p>ファイル名: ${filename}</p>
+        <a href="games/${filename}" class="button">Play Game</a>
       </div>
+HTMLEOF
+done
+
+# 4. index.html の「下半分」を閉じる
+cat << 'HTMLEOF' >> index.html
     </div>
   </div>
 </body>
 </html>
+HTMLEOF
+
+# 5. GitHubへ自動送信
+git add .
+git commit -m "フォルダの内容からポートフォリオを自動更新"
+git push origin main
+echo "✨ サイトの自動更新と公開が完了しました！"

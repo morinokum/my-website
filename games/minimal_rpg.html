@@ -14,11 +14,11 @@
     textarea { width: 100%; height: 120px; background: #000; color: #00ff66; border: 1px solid #00ff66; padding: 10px; font-family: monospace; font-size: 1em; resize: none; box-sizing: border-box; margin-bottom: 15px; }
     button { background: #00ff66; color: #000; border: none; padding: 12px 20px; font-weight: bold; cursor: pointer; font-family: monospace; font-size: 1em; width: 100%; }
     button:hover { background: #00cc52; }
-    .status-bar { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; font-size: 0.9em; color: #aaa; }
+    .status-bar { display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; font-size: 0.85em; color: #aaa; flex-wrap: wrap; gap: 5px; }
     .status-bar span { color: #00ff66; font-weight: bold; }
-    .story-box { background: #1a1a1a; border: 1px dashed #444; padding: 15px; margin-bottom: 20px; min-height: 80px; max-height: 120px; overflow-y: auto; line-height: 1.6; color: #ddd; word-break: break-all; }
-    .enemy-box { background: #2a0a0a; border: 1px solid #ff3333; color: #ff6666; padding: 15px; text-align: center; margin-bottom: 20px; font-size: 1.2em; font-weight: bold; word-break: break-all; }
-    .log-box { background: #000; border: 1px solid #333; padding: 10px; height: 100px; overflow-y: auto; font-size: 0.85em; color: #888; margin-bottom: 15px; }
+    .story-box { background: #1a1a1a; border: 1px dashed #444; padding: 15px; margin-bottom: 15px; min-height: 70px; max-height: 100px; overflow-y: auto; line-height: 1.6; color: #ddd; word-break: break-all; }
+    .enemy-box { background: #2a0a0a; border: 1px solid #ff3333; color: #ff6666; padding: 15px; text-align: center; margin-bottom: 15px; font-size: 1.2em; font-weight: bold; word-break: break-all; }
+    .log-box { background: #000; border: 1px solid #333; padding: 10px; height: 110px; overflow-y: auto; font-size: 0.85em; color: #888; margin-bottom: 15px; }
     .btn-group { display: flex; gap: 10px; }
   </style>
 </head>
@@ -28,8 +28,8 @@
 
     <!-- ステージ1：ストーリー入力 -->
     <div id="screen-input" class="screen active">
-      <p>ここに好きなストーリー（小説、日記、テキスト）を入力してください。<br>その文章があなたの「敵」になり、最後まで倒すとゲームクリアです。</p>
-      <textarea id="story-input" placeholder="例：むかしむかし、あるところに、おじいさんとおばあさんがいました。おじいさんは山へ芝刈りに、おばあさんは川へ洗濯に行きました。そこへ突如として魔王が現れ、世界は闇に包まれた……"></textarea>
+      <p>好きなストーリーを入力してください。<br>文字コードの重みによって敵の強さが変わり、あなたに反撃してきます！</p>
+      <textarea id="story-input" placeholder="例：むかしむかし、あるところに……"></textarea>
       <button id="start-btn">冒険をはじめる</button>
     </div>
 
@@ -37,14 +37,15 @@
     <div id="screen-battle" class="screen">
       <div class="status-bar">
         <div>Lv: <span id="stat-lv">1</span></div>
-        <div>EXP: <span id="stat-exp">0</span> / <span id="stat-next">10</span></div>
+        <div>HP: <span id="stat-hp">20</span>/<span id="stat-maxhp">20</span></div>
+        <div>EXP: <span id="stat-exp">0</span>/<span id="stat-next">10</span></div>
         <div>進捗: <span id="stat-progress">0</span>%</div>
       </div>
 
-      <div style="font-size: 0.8em; color: #888; margin-bottom: 5px;">【いま読んでいる（戦っている）ストーリー】</div>
+      <div style="font-size: 0.8em; color: #888; margin-bottom: 3px;">【いま読んでいるストーリー】</div>
       <div id="current-story" class="story-box"></div>
 
-      <div style="font-size: 0.8em; color: #888; margin-bottom: 5px;">【現在の文字の敵】</div>
+      <div style="font-size: 0.8em; color: #888; margin-bottom: 3px;">【現在の文字の敵】</div>
       <div id="enemy-text" class="enemy-box"></div>
 
       <div id="battle-log" class="log-box"></div>
@@ -54,24 +55,33 @@
       </div>
     </div>
 
-    <!-- ステージ3：クリア画面 -->
+    <!-- ステージ3：ゲームオーバー -->
+    <div id="screen-gameover" class="screen" style="text-align: center;">
+      <h2 style="color: #ff3333;">💀 倒れてしまった……</h2>
+      <p>ストーリーの文字の重みに耐えきれず、力尽きてしまいました。</p>
+      <button id="retry-btn">もう一度挑戦する</button>
+    </div>
+
+    <!-- ステージ4：クリア画面 -->
     <div id="screen-clear" class="screen" style="text-align: center;">
       <h2 style="color: #00ff66;">🎉 物語クリア！</h2>
-      <p>すべてのストーリーの文字を討伐し、物語を完走しました！</p>
-      <button id="reset-btn">もう一度別のストーリーで遊ぶ</button>
+      <p>すべてのストーリーの文字を討伐し、エンディングに到達しました！</p>
+      <button id="reset-btn">別のストーリーで遊ぶ</button>
     </div>
   </div>
 
   <script>
-    let rawStory = "";
     let chunks = [];
     let currentIndex = 0;
     let lv = 1;
+    let hp = 20;
+    let maxHp = 20;
     let exp = 0;
     let nextExp = 10;
     let currentEnemy = "";
     let enemyHp = 0;
     let enemyMaxHp = 0;
+    let enemyAtk = 1;
 
     function startGame() {
       const inputEl = document.getElementById("story-input");
@@ -82,20 +92,20 @@
         return;
       }
       
-      rawStory = text;
       chunks = [];
-      // 2文字ずつ分割して敵にする
+      // 2文字ずつ分割
       for (let i = 0; i < text.length; i += 2) {
         chunks.push(text.substr(i, 2));
       }
       
       currentIndex = 0;
       lv = 1;
+      maxHp = 20;
+      hp = maxHp;
       exp = 0;
       nextExp = 10;
       
-      document.getElementById("screen-input").classList.remove("active");
-      document.getElementById("screen-battle").classList.add("active");
+      changeScreen('screen-battle');
       document.getElementById("battle-log").innerHTML = "";
       
       loadNextEnemy();
@@ -104,55 +114,91 @@
 
     function loadNextEnemy() {
       if (currentIndex >= chunks.length) {
-        document.getElementById("screen-battle").classList.remove("active");
-        document.getElementById("screen-clear").classList.add("active");
+        changeScreen('screen-clear');
         return;
       }
+      
       currentEnemy = chunks[currentIndex];
-      enemyMaxHp = currentEnemy.length * 5;
+      
+      // ★文字コード（charCodeAt）を活かした動的ステータス算出ロジック
+      let charCodeSum = 0;
+      for (let i = 0; i < currentEnemy.length; i++) {
+        charCodeSum += currentEnemy.charCodeAt(i);
+      }
+      
+      // 文字コードの大きさに応じて敵のHPと攻撃力を変動させる（漢字などは強く、ひらがなは優しめ）
+      let weight = (charCodeSum % 50) + 10; 
+      enemyMaxHp = currentEnemy.length * Math.floor(weight / 3);
+      if (enemyMaxHp < 5) enemyMaxHp = 5;
       enemyHp = enemyMaxHp;
       
+      enemyAtk = Math.max(1, Math.floor(charCodeSum / 300) + Math.floor(currentIndex / 5));
+
       let readText = chunks.slice(0, currentIndex).join("");
-      document.getElementById("current-story").innerText = readText || "(まだ物語の始まり)";
-      document.getElementById("enemy-text").innerText = `「${currentEnemy}」 (HP: ${enemyHp}/${enemyMaxHp})`;
+      document.getElementById("current-story").innerText = readText || "(物語の始まり)";
+      document.getElementById("enemy-text").innerText = `「${currentEnemy}」 (HP: ${enemyHp}/${enemyMaxHp} / 攻撃力: ${enemyAtk})`;
       
-      logMessage(`新たな文字の敵「${currentEnemy}」が現れた！`);
+      logMessage(`新たな文字の敵「${currentEnemy}」が現れた！（強さ: ${enemyMaxHp}）`);
       updateStatus();
     }
 
     function attackEnemy() {
-      let damage = lv * 2;
+      // プレイヤーの攻撃
+      let damage = lv * 3;
       enemyHp -= damage;
       if (enemyHp < 0) enemyHp = 0;
 
-      logMessage(`あなたの攻撃！ ${currentEnemy} に ${damage} のダメージ！（残りHP: ${enemyHp}）`);
-      document.getElementById("enemy-text").innerText = `「${currentEnemy}」 (HP: ${enemyHp}/${enemyMaxHp})`;
+      logMessage(`あなたの攻撃！ ${currentEnemy} に ${damage} のダメージ！（敵残りHP: ${enemyHp}）`);
+      document.getElementById("enemy-text").innerText = `「${currentEnemy}」 (HP: ${enemyHp}/${enemyMaxHp} / 攻撃力: ${enemyAtk})`;
 
       if (enemyHp <= 0) {
-        let gainedExp = currentEnemy.length * 5;
+        // 敵撃破！
+        let gainedExp = currentEnemy.length * 8;
         exp += gainedExp;
         logMessage(`▶ 「${currentEnemy}」を撃破！ EXP +${gainedExp}`);
         
+        // レベルアップ判定
         if (exp >= nextExp) {
           lv++;
           exp -= nextExp;
           nextExp = Math.floor(nextExp * 1.5);
-          logMessage(`✨ レベルが上がった！ 現在 Lv.${lv}`);
+          maxHp += 10;
+          hp = maxHp; // レベルアップでHP完全回復！
+          logMessage(`✨ レベルアップ！ Lv.${lv} になった！ HPが完全回復した！`);
         }
 
         currentIndex++;
         loadNextEnemy();
+      } else {
+        // 敵からの反撃
+        hp -= enemyAtk;
+        if (hp < 0) hp = 0;
+        logMessage(`💥 敵の反撃！ ${currentEnemy} から ${enemyAtk} のダメージを受けた！（あなたのHP: ${hp}/${maxHp})`);
+
+        if (hp <= 0) {
+          logMessage(`💀 力尽きてしまった……`);
+          changeScreen('screen-gameover');
+          updateStatus();
+          return;
+        }
       }
       updateStatus();
     }
 
     function updateStatus() {
       document.getElementById("stat-lv").innerText = lv;
+      document.getElementById("stat-hp").innerText = hp;
+      document.getElementById("stat-maxhp").innerText = maxHp;
       document.getElementById("stat-exp").innerText = exp;
       document.getElementById("stat-next").innerText = nextExp;
       
       let progress = Math.floor((currentIndex / chunks.length) * 100);
       document.getElementById("stat-progress").innerText = progress;
+    }
+
+    function changeScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
     }
 
     function logMessage(msg) {
@@ -163,23 +209,21 @@
       }
     }
 
-    function resetGame() {
-      document.getElementById("screen-clear").classList.remove("active");
-      document.getElementById("screen-input").classList.add("active");
-      const inputEl = document.getElementById("story-input");
-      if (inputEl) inputEl.value = "";
-    }
-
-    // ボタンのイベントリスナー（確実に反応するように設定）
+    // イベントリスナー登録
     window.addEventListener("DOMContentLoaded", () => {
-      const startBtn = document.getElementById("start-btn");
-      if (startBtn) startBtn.addEventListener("click", startGame);
+      const setupBtn = (id, handler) => {
+        const btn = document.getElementById(id);
+        if (btn) btn.addEventListener("click", handler);
+      };
 
-      const attackBtn = document.getElementById("attack-btn");
-      if (attackBtn) attackBtn.addEventListener("click", attackEnemy);
-
-      const resetBtn = document.getElementById("reset-btn");
-      if (resetBtn) resetBtn.addEventListener("click", resetGame);
+      setupBtn("start-btn", startGame);
+      setupBtn("attack-btn", attackEnemy);
+      setupBtn("retry-btn", () => changeScreen('screen-input'));
+      setupBtn("reset-btn", () => {
+        changeScreen('screen-input');
+        const inputEl = document.getElementById("story-input");
+        if (inputEl) inputEl.value = "";
+      });
     });
   </script>
 </body>

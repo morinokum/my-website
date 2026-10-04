@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <!-- AI-GAME-PORTFOLIO -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>蒸気機関：プレッシャー・ライン</title>
+  <style>
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      background-color: #121216;
+      color: #e0e0e0;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    .game-container {
+      width: 100%;
+      max-width: 650px;
+      background: #1a1a24;
+      border: 2px solid #ff7b00;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 0 25px rgba(255,123,0,0.3);
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 1.4em;
+      text-align: center;
+      color: #ffaa44;
+      border-bottom: 1px dashed #ff7b00;
+      padding-bottom: 10px;
+    }
+    .info-panel {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+      font-size: 0.9em;
+      background: #111116;
+      padding: 10px;
+      border-radius: 4px;
+      border: 1px solid #333;
+    }
+    .info-panel span {
+      color: #ffaa44;
+      font-weight: bold;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-bottom: 15px;
+      background: #111116;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #444;
+    }
+    .cell {
+      aspect-ratio: 1;
+      background: #22222d;
+      border: 2px solid #3b3b4f;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.8em;
+      text-align: center;
+      user-select: none;
+      transition: all 0.1s;
+    }
+    .cell:hover {
+      border-color: #ffaa44;
+    }
+    .cell.boiler {
+      background: #3d1a00;
+      border-color: #ff7b00;
+      cursor: default;
+    }
+    .cell.factory {
+      background: #1a2a3d;
+      border-color: #00aaff;
+      cursor: default;
+    }
+    .cell.pipe-active {
+      background: #2a2010;
+      border-color: #ffaa44;
+    }
+    .cell.factory-active {
+      background: #003d26;
+      border-color: #00ff66;
+    }
+    .log-box {
+      background: #0b0b0e;
+      border: 1px solid #333;
+      padding: 10px;
+      height: 90px;
+      overflow-y: auto;
+      font-size: 0.8em;
+      color: #aaa;
+      margin-bottom: 15px;
+      border-radius: 4px;
+    }
+    .btn-group {
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      background: #ff7b00;
+      color: #000;
+      border: none;
+      padding: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      font-family: monospace;
+      font-size: 1em;
+      flex: 1;
+      border-radius: 4px;
+    }
+    button:hover {
+      background: #ff9933;
+    }
+    .rules {
+      font-size: 0.75em;
+      color: #888;
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <h1>🔥 蒸気機関：プレッシャー・ライン</h1>
+    
+    <div class="info-panel">
+      <div>ステージ: <span id="st-level">1</span> / 5</div>
+      <div>必要合計蒸気: <span id="st-target">100</span></div>
+      <div>供給中蒸気: <span id="st-total" style="color:#00ff66;">0</span></div>
+    </div>
+
+    <div class="grid" id="game-grid"></div>
+
+    <div id="battle-log" class="log-box"></div>
+
+    <div class="btn-group">
+      <button id="check-btn">工場を稼働する！</button>
+      <button id="reset-btn" style="background:#444; color:#fff;">盤面リセット</button>
+    </div>
+
+    <div class="rules">
+      <b>ルール:</b> ボイラー（🔥）から配管（🔲）を回して工場（🏭）へ繋ごう。<br>
+      <b>減衰ルール:</b> ボイラーから工場までの距離（マス数）が遠いほど蒸気の力が減ります（1マス進むごとにパワー減）。<br>
+      遠すぎて力が足りない場合は、別のボイラーからのパイプを合流させるか、近いボイラーから繋ぎ直そう！
+    </div>
+  </div>
+
+  <script>
+    // 5x5 のグリッド構造（B: ボイラー, F: 工場, P: パイプ・空白）
+    // タイプ: 'boiler' (power), 'factory' (target), 'empty' (pipe), 'wall'
+    let currentLevel = 1;
+    let gridData = [];
+
+    const levels = [
+      {
+        target: 80,
+        map: [
+          ['boiler', 'empty', 'empty', 'empty', 'factory'],
+          ['empty',  'empty', 'empty', 'empty', 'empty'],
+          ['empty',  'empty', 'boiler', 'empty', 'empty'],
+          ['empty',  'empty', 'empty', 'empty', 'empty'],
+          ['empty',  'empty', 'empty', 'empty', 'empty']
+        ],
+        boilers: [{r:0, c:0, power: 100}, {r:2, c:2, power: 80}]
+      },
+      {
+        target: 120,
+        map: [
+          ['boiler', 'empty', 'empty', 'empty', 'boiler'],
+          ['empty',  'empty', 'empty', 'empty', 'empty'],
+          ['empty',  'empty', 'factory', 'empty', 'empty'],
+          ['empty',  'empty', 'empty', 'empty', 'empty'],
+          ['empty',  'empty', 'empty', 'empty', 'empty']
+        ],
+        boilers: [{r:0, c:0, power: 100}, {r:0, c:4, power: 100}]
+      },
+      {
+        target: 150,
+        map: [
+          ['boiler', 'empty', 'empty', 'empty', 'boiler'],
+          ['empty',  'empty', 'empty', 'empty', 'empty'],
+          ['boiler', 'empty', 'factory', 'empty', 'empty'],
+          ['empty',  'empty', 'empty', 'empty', 'empty'],
+          ['empty',  'empty', 'empty', 'empty', 'empty']
+        ],
+        boilers: [{r:0, c:0, power: 90}, {r:0, c:4, power: 90}, {r:2, c:0, power: 90}]
+      }
+    ];
+
+    function initLevel(lvl) {
+      currentLevel = lvl > levels.length ? levels.length : lvl;
+      const data = levels[currentLevel - 1];
+      
+      document.getElementById("st-level").innerText = currentLevel;
+      document.getElementById("st-target").innerText = data.target;
+
+      // ディープコピー
+      gridData = JSON.parse(JSON.stringify(data));
+      
+      // パイプの状態（接続されているかなど）初期化
+      for(let r=0; r<5; r++) {
+        for(let c=0; c<5; c++) {
+          if(gridData.map[r][c] === 'empty') {
+            gridData.map[r][c] = { type: 'empty', active: false };
+          } else if(gridData.map[r][c] === 'boiler') {
+            // ボイラー設定
+            let bInfo = gridData.boilers.find(b => b.r === r && b.c === c);
+            gridData.map[r][c] = { type: 'boiler', power: bInfo ? bInfo.power : 100, active: false };
+          } else if(gridData.map[r][c] === 'factory') {
+            gridData.map[r][c] = { type: 'factory', received: 0 };
+          }
+        }
+      }
+
+      renderGrid();
+      logMessage(`ステージ ${currentLevel} 開始！ボイラーから工場へ配管を繋いで蒸気を送ろう。`);
+    }
+
+    function renderGrid() {
+      const gridEl = document.getElementById("game-grid");
+      gridEl.innerHTML = "";
+
+      for(let r=0; r<5; r++) {
+        for(let c=0; c<5; c++) {
+          const cellData = gridData.map[r][c];
+          const div = document.createElement("div");
+          div.className = "cell";
+          div.dataset.r = r;
+          div.dataset.c = c;
+
+          if(cellData.type === 'boiler') {
+            div.classList.add('boiler');
+            div.innerHTML = `🔥<br><span style="font-size:0.7em">${cellData.power}P</span>`;
+          } else if(cellData.type === 'factory') {
+            div.classList.add('factory');
+            let total = calculateSteamSupply();
+            let target = levels[currentLevel - 1].target;
+            if(total >= target) div.classList.add('factory-active');
+            div.innerHTML = `🏭<br><span style="font-size:0.7em">${total}/${target}</span>`;
+          } else if(cellData.type === 'empty') {
+            if(cellData.active) {
+              div.classList.add('pipe-active');
+              div.innerHTML = `💨`;
+            } else {
+              div.innerHTML = `·`;
+            }
+            div.onclick = () => togglePipe(r, c);
+          }
+          gridEl.appendChild(div);
+        }
+      }
+      updateTotalSteamDisplay();
+    }
+
+    function togglePipe(r, c) {
+      let cell = gridData.map[r][c];
+      if(cell.type === 'empty') {
+        cell.active = !cell.active;
+        renderGrid();
+      }
+    }
+
+    // 距離に応じた減衰計算（BFSなどでボイラーから工場への最短経路を探索し、蒸気を流す）
+    function calculateSteamSupply() {
+      let totalSteam = 0;
+      let targetPos = null;
+      let boilers = [];
+
+      for(let r=0; r<5; r++) {
+        for(let c=0; c<5; c++) {
+          let cell = gridData.map[r][c];
+          if(cell.type === 'factory') targetPos = {r, c};
+          if(cell.type === 'boiler') boilers.push({r, c, power: cell.power});
+          if(cell.type === 'empty') cell.activeCheck = false;
+        }
+      }
+
+      if(!targetPos) return 0;
+
+      // 各ボイラーからBFSで工場までの最短距離を求め、減衰後の数値を加算
+      boilers.forEach(boiler => {
+        let queue = [{r: boiler.r, c: boiler.c, dist: 0}];
+        let visited = Array.from({length: 5}, () => Array(5).false);
+        visited[boiler.r][boiler.c] = true;
+        let foundDist = -1;
+
+        while(queue.length > 0) {
+          let curr = queue.shift();
+
+          if(curr.r === targetPos.r && curr.c === targetPos.c) {
+            foundDist = curr.dist;
+            break;
+          }
+
+          let neighbors = [
+            {r: curr.r-1, c: curr.c}, {r: curr.r+1, c: curr.c},
+            {r: curr.r, c: curr.c-1}, {r: curr.r, c: curr.c+1}
+          ];
+
+          neighbors.forEach(n => {
+            if(n.r >= 0 && n.r < 5 && n.c >= 0 && n.c < 5 && !visited[n.r][n.c]) {
+              let nCell = gridData.map[n.r][n.c];
+              // ボイラー、工場、または activeなパイプのみ通れる
+              let canPass = (nCell.type === 'factory') || (nCell.type === 'boiler') || (nCell.type === 'empty' && nCell.active);
+              if(canPass) {
+                visited[n.r][n.c] = true;
+                queue.push({r: n.r, c: n.c, dist: curr.dist + 1});
+              }
+            }
+          });
+        }
+
+        // 1マス進むごとに 15 ずつ圧力が減衰するルール（最低 0）
+        if(foundDist !== -1) {
+          let attenuation = foundDist * 15;
+          let delivered = Math.max(0, boiler.power - attenuation);
+          totalSteam += delivered;
+        }
+      });
+
+      return totalSteam;
+    }
+
+    function updateTotalSteamDisplay() {
+      let total = calculateSteamSupply();
+      document.getElementById("st-total").innerText = total;
+    }
+
+    function checkFactory() {
+      let total = calculateSteamSupply();
+      let target = levels[currentLevel - 1].target;
+
+      if(total >= target) {
+        logMessage(`🎉 工場稼働成功！十分な蒸気（${total}P）が供給されました！`);
+        if(currentLevel < levels.length) {
+          setTimeout(() => {
+            currentLevel++;
+            initLevel(currentLevel);
+          }, 1500);
+        } else {
+          alert("全ステージクリアおめでとうございます！すべての工場が稼働しました！");
+        }
+      } else {
+        logMessage(`❌ 蒸気不足です！（現在: ${total}P / 必要: ${target}P）。パイプを繋ぎ直すか、複数のボイラーから引っ張ろう！`);
+      }
+      renderGrid();
+    }
+
+    function logMessage(msg) {
+      const logBox = document.getElementById("battle-log");
+      if (logBox) {
+        logBox.innerHTML += `<div>> ${msg}</div>`;
+        logBox.scrollTop = logBox.scrollHeight;
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      initLevel(1);
+
+      document.getElementById("check-btn").addEventListener("click", checkFactory);
+      document.getElementById("reset-btn").addEventListener("click", () => initLevel(currentLevel));
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <!-- AI-GAME-PORTFOLIO -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>蒸気機関：プレッシャー・ライン</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #1a1a24;
+      color: #e0e0e0;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+      user-select: none;
+    }
+    .game-container {
+      width: 100%;
+      max-width: 500px;
+      background: #232330;
+      border: 2px solid #ff7b00;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 0 30px rgba(255,123,0,0.2);
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 1.5em;
+      text-align: center;
+      color: #ffaa44;
+      border-bottom: 2px dashed #ff7b00;
+      padding-bottom: 10px;
+    }
+    
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      background: #111116;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid #444;
+      margin-bottom: 15px;
+      font-size: 0.9em;
+      font-weight: bold;
+    }
+    .hud div {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .hud span {
+      font-size: 1.3em;
+      color: #ffaa44;
+      margin-top: 4px;
+    }
+    #hud-power { color: #00ff66; }
+    
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+      background: #000;
+      padding: 4px;
+      border-radius: 6px;
+      border: 2px solid #333;
+      margin-bottom: 15px;
+      touch-action: none; /* スマホでのスクロール防止 */
+    }
+    .cell {
+      aspect-ratio: 1;
+      background: #2a2a35;
+      border-radius: 4px;
+      position: relative;
+      cursor: crosshair;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5em;
+    }
+    .cell.empty:hover {
+      background: #3a3a48;
+    }
+    
+    .cell.boiler {
+      background: #4a1a00;
+      box-shadow: inset 0 0 10px #ff3300;
+      cursor: default;
+    }
+    .cell.factory {
+      background: #002a4a;
+      box-shadow: inset 0 0 10px #0066ff;
+      cursor: default;
+      transition: all 0.3s;
+    }
+    .cell.factory.powered {
+      background: #004a2a;
+      box-shadow: inset 0 0 15px #00ff66, 0 0 10px #00ff66;
+    }
+    .cell.rock {
+      background: #111;
+      color: #444;
+      cursor: not-allowed;
+    }
+
+    /* パイプのビジュアル（CSS疑似要素で十字を表現） */
+    .pipe-core {
+      position: absolute; top: 35%; left: 35%; width: 30%; height: 30%;
+      background: #555; border-radius: 4px; z-index: 2; transition: 0.2s;
+      pointer-events: none;
+    }
+    .pipe-arm {
+      position: absolute; background: #555; z-index: 1; transition: 0.2s;
+      pointer-events: none;
+    }
+    .arm-top { top: 0; left: 35%; width: 30%; height: 35%; }
+    .arm-bottom { bottom: 0; left: 35%; width: 30%; height: 35%; }
+    .arm-left { top: 35%; left: 0; width: 35%; height: 30%; }
+    .arm-right { top: 35%; right: 0; width: 35%; height: 30%; }
+
+    /* 蒸気が通っているアクティブなパイプ */
+    .cell.active-pipe .pipe-core, .cell.active-pipe .pipe-arm {
+      background: #ff7b00;
+      box-shadow: 0 0 8px #ff7b00;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      flex: 1;
+      padding: 12px;
+      background: #444;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 1em;
+      transition: 0.2s;
+    }
+    button:hover { background: #555; }
+    button.primary { background: #007acc; }
+    button.primary:hover { background: #0088dd; }
+    
+    .rules {
+      font-size: 0.8em;
+      color: #999;
+      margin-top: 15px;
+      line-height: 1.5;
+    }
+    
+    #overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 10; opacity: 0; pointer-events: none; transition: 0.3s;
+    }
+    #overlay.show { opacity: 1; pointer-events: auto; }
+    #overlay h2 { color: #00ff66; font-size: 2.5em; margin-bottom: 20px; }
+    #overlay button { width: 200px; padding: 15px; background: #ff7b00; font-size: 1.2em; }
+  </style>
+</head>
+<body>
+
+  <div class="game-container">
+    <h1>🔥 蒸気機関：プレッシャー・ライン</h1>
+    
+    <div class="hud">
+      <div>STAGE <span id="ui-level">1</span></div>
+      <div>パイプ残量 <span id="ui-pipes">0</span></div>
+      <div>目標パワー <span id="ui-target" style="color:#00aaff;">0</span></div>
+      <div>供給パワー <span id="ui-power">0</span></div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <div class="controls">
+      <button id="btn-reset">盤面リセット</button>
+    </div>
+
+    <div class="rules">
+      <b>【ルール】</b><br>
+      ・空きマスを<b>ドラッグ</b>してパイプ（🔲）を引き、ボイラー（🔥）から工場（🏭）へ繋ぎましょう。<br>
+      ・パイプが長くなるほど（1マスにつき -10）蒸気のパワーが減衰します。<br>
+      ・限られた「パイプ残量」をやりくりし、最短ルートを見つけ出してください！
+    </div>
+  </div>
+
+  <div id="overlay">
+    <h2>STAGE CLEAR!</h2>
+    <button id="btn-next">次のステージへ</button>
+  </div>
+
+  <script>
+    const GRID_SIZE = 7;
+    const LOSS_PER_PIPE = 10;
+    let currentLevel = 0;
+    
+    // B=Boiler, F=Factory, R=Rock, .=Empty
+    const levels = [
+      {
+        target: 80,
+        maxPipes: 12,
+        boilers: { "0,0": 200 },
+        map: [
+          "B . . R . . .",
+          ". . . R . . .",
+          ". . . R . . .",
+          ". . . R . F .",
+          ". . . R . . .",
+          ". . . . . . .",
+          ". . . . . . ."
+        ]
+      },
+      {
+        target: 180,
+        maxPipes: 14,
+        boilers: { "0,0": 160, "0,6": 160 },
+        map: [
+          "B . . R . . B",
+          ". . . R . . .",
+          ". . . R . . .",
+          ". . . F . . .",
+          ". . . . . . .",
+          ". . . R . . .",
+          ". . . R . . ."
+        ]
+      },
+      {
+        target: 150,
+        maxPipes: 18,
+        boilers: { "0,0": 100, "0,6": 100, "6,0": 100, "6,6": 100 },
+        map: [
+          "B . . . . . B",
+          . "R R R . R R R",
+          ". . . . . . .",
+          ". . R . R . .",
+          ". . . F . . .",
+          "R R . R . R R",
+          "B . . . . . B"
+        ]
+      }
+    ];
+
+    let gridData = [];
+    let placedPipes = new Set();
+    let isDragging = false;
+    let dragMode = null; // 'build' or 'erase'
+    
+    const gridEl = document.getElementById('grid');
+
+    function initGame(levelIndex) {
+      currentLevel = levelIndex;
+      if (currentLevel >= levels.length) {
+        alert("全ステージクリア！おめでとうございます！");
+        currentLevel = 0;
+      }
+      
+      const level = levels[currentLevel];
+      placedPipes.clear();
+      gridData = [];
+
+      // グリッドデータの生成
+      for (let r = 0; r < GRID_SIZE; r++) {
+        let rowData = [];
+        let rowChars = level.map[r].split(" ");
+        for (let c = 0; c < GRID_SIZE; c++) {
+          rowData.push({ type: rowChars[c], r, c });
+        }
+        gridData.push(rowData);
+      }
+
+      document.getElementById('ui-level').innerText = currentLevel + 1;
+      document.getElementById('ui-target').innerText = level.target;
+      
+      renderGrid();
+      updateSteamPhysics();
+    }
+
+    function renderGrid() {
+      gridEl.innerHTML = '';
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          const cell = gridData[r][c];
+          const div = document.createElement('div');
+          div.className = 'cell';
+          div.dataset.r = r;
+          div.dataset.c = c;
+          
+          if (cell.type === 'B') {
+            div.classList.add('boiler');
+            div.innerHTML = '🔥';
+            div.title = `Power: ${levels[currentLevel].boilers[`${r},${c}`]}`;
+          } else if (cell.type === 'F') {
+            div.classList.add('factory');
+            div.innerHTML = '🏭';
+          } else if (cell.type === 'R') {
+            div.classList.add('rock');
+          } else {
+            div.classList.add('empty');
+            div.dataset.type = 'empty';
+          }
+          gridEl.appendChild(div);
+        }
+      }
+      drawPipes(); // 設置済みパイプの描画
+    }
+
+    function handleInteract(r, c, mode) {
+      const cell = gridData[r][c];
+      if (cell.type !== '.') return; // 空きマス以外は無視
+
+      const key = `${r},${c}`;
+      const hasPipe = placedPipes.has(key);
+      const level = levels[currentLevel];
+
+      if (mode === 'build' && !hasPipe) {
+        if (placedPipes.size >= level.maxPipes) return; // 上限チェック
+        placedPipes.add(key);
+      } else if (mode === 'erase' && hasPipe) {
+        placedPipes.delete(key);
+      }
+      
+      drawPipes();
+      updateSteamPhysics();
+    }
+
+    // ドラッグ操作の実装 (PC & スマホ対応)
+    gridEl.addEventListener('mousedown', (e) => {
+      const cell = e.target.closest('.cell');
+      if (cell && cell.dataset.type === 'empty') {
+        isDragging = true;
+        const key = `${cell.dataset.r},${cell.dataset.c}`;
+        dragMode = placedPipes.has(key) ? 'erase' : 'build';
+        handleInteract(parseInt(cell.dataset.r), parseInt(cell.dataset.c), dragMode);
+      }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const cell = document.elementFromPoint(e.clientX, e.clientY)?.closest('.cell');
+      if (cell && cell.dataset.type === 'empty') {
+        handleInteract(parseInt(cell.dataset.r), parseInt(cell.dataset.c), dragMode);
+      }
+    });
+
+    window.addEventListener('mouseup', () => isDragging = false);
+    
+    // タッチデバイス用
+    gridEl.addEventListener('touchstart', (e) => {
+      const touch = e.touches[0];
+      const cell = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.cell');
+      if (cell && cell.dataset.type === 'empty') {
+        isDragging = true;
+        const key = `${cell.dataset.r},${cell.dataset.c}`;
+        dragMode = placedPipes.has(key) ? 'erase' : 'build';
+        handleInteract(parseInt(cell.dataset.r), parseInt(cell.dataset.c), dragMode);
+      }
+    });
+    window.addEventListener('touchmove', (e) => {
+      if (!isDragging) return;
+      const touch = e.touches[0];
+      const cell = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.cell');
+      if (cell && cell.dataset.type === 'empty') {
+        handleInteract(parseInt(cell.dataset.r), parseInt(cell.dataset.c), dragMode);
+      }
+    });
+    window.addEventListener('touchend', () => isDragging = false);
+
+    function drawPipes() {
+      // 一旦すべてのパイプのDOMを削除し、クラスをリセット
+      document.querySelectorAll('.pipe-core, .pipe-arm').forEach(el => el.remove());
+      
+      placedPipes.forEach(key => {
+        const [r, c] = key.split(',').map(Number);
+        const cellEl = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+        if (!cellEl) return;
+
+        // パイプの中心
+        const core = document.createElement('div');
+        core.className = 'pipe-core';
+        cellEl.appendChild(core);
+
+        // 周囲4方向をチェックして繋がるアームを描画
+        const dirs = [
+          { dr: -1, dc: 0, arm: 'arm-top' },
+          { dr: 1, dc: 0, arm: 'arm-bottom' },
+          { dr: 0, dc: -1, arm: 'arm-left' },
+          { dr: 0, dc: 1, arm: 'arm-right' }
+        ];
+
+        dirs.forEach(d => {
+          const nr = r + d.dr, nc = c + d.dc;
+          if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE) {
+            const neighborType = gridData[nr][nc].type;
+            const neighborKey = `${nr},${nc}`;
+            // パイプ、ボイラー、工場には接続する
+            if (placedPipes.has(neighborKey) || neighborType === 'B' || neighborType === 'F') {
+              const arm = document.createElement('div');
+              arm.className = `pipe-arm ${d.arm}`;
+              cellEl.appendChild(arm);
+            }
+          }
+        });
+      });
+      
+      // パイプ残量表示の更新
+      const level = levels[currentLevel];
+      document.getElementById('ui-pipes').innerText = `${level.maxPipes - placedPipes.size}`;
+    }
+
+    function updateSteamPhysics() {
+      const level = levels[currentLevel];
+      let totalPower = 0;
+      let activePipeSet = new Set();
+      
+      // 一旦すべてのアクティブ状態を解除
+      document.querySelectorAll('.cell.active-pipe, .cell.powered').forEach(el => {
+        el.classList.remove('active-pipe', 'powered');
+      });
+
+      // 各ボイラーから独立して最短パス（BFS）を探索
+      Object.keys(level.boilers).forEach(boilerKey => {
+        const [br, bc] = boilerKey.split(',').map(Number);
+        const startPower = level.boilers[boilerKey];
+        
+        let q = [{ r: br, c: bc, dist: 0, path: [] }];
+        let visited = new Set();
+        visited.add(boilerKey);
+        
+        let bestDist = Infinity;
+        let bestPath = [];
+
+        while (q.length > 0) {
+          let curr = q.shift();
+          const cellType = gridData[curr.r][curr.c].type;
+
+          if (cellType === 'F') {
+            if (curr.dist < bestDist) {
+              bestDist = curr.dist;
+              bestPath = curr.path;
+            }
+            continue; // 工場に到達したらそれ以上先は探索しない
+          }
+
+          const dirs = [[-1,0], [1,0], [0,-1], [0,1]];
+          dirs.forEach(d => {
+            const nr = curr.r + d[0], nc = curr.c + d[1];
+            if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE) {
+              const nKey = `${nr},${nc}`;
+              const nType = gridData[nr][nc].type;
+              
+              // 設置済みパイプ または 工場 なら進める
+              if ((placedPipes.has(nKey) || nType === 'F') && !visited.has(nKey)) {
+                visited.add(nKey);
+                q.push({
+                  r: nr, c: nc, 
+                  dist: curr.dist + 1, 
+                  path: [...curr.path, nKey]
+                });
+              }
+            }
+          });
+        }
+
+        // 工場へのルートが見つかった場合、パワーを加算
+        if (bestDist !== Infinity) {
+          // distは「通ったパイプの数＋工場（1）」。工場自体での減衰は計算しないため -1 する
+          const pipeCount = bestDist - 1; 
+          const powerLoss = pipeCount * LOSS_PER_PIPE;
+          const deliveredPower = Math.max(0, startPower - powerLoss);
+          
+          if (deliveredPower > 0) {
+            totalPower += deliveredPower;
+            // 蒸気が通っているパスを記録
+            bestPath.forEach(pKey => {
+              if (placedPipes.has(pKey)) activePipeSet.add(pKey);
+            });
+          }
+        }
+      });
+
+      // UIの更新とビジュアル反映
+      document.getElementById('ui-power').innerText = totalPower;
+      
+      activePipeSet.forEach(key => {
+        const [r, c] = key.split(',').map(Number);
+        const cellEl = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+        if (cellEl) cellEl.classList.add('active-pipe');
+      });
+
+      // クリア判定
+      const factoryCell = document.querySelector('.cell.factory');
+      if (totalPower >= level.target) {
+        if (factoryCell) factoryCell.classList.add('powered');
+        setTimeout(() => {
+          document.getElementById('overlay').classList.add('show');
+        }, 500);
+      }
+    }
+
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      initGame(currentLevel);
+    });
+    
+    document.getElementById('btn-next').addEventListener('click', () => {
+      document.getElementById('overlay').classList.remove('show');
+      initGame(currentLevel + 1);
+    });
+
+    window.addEventListener("DOMContentLoaded", () => {
+      initGame(0);
+    });
+  </script>
+</body>
+</html>

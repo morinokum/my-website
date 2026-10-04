@@ -37,7 +37,7 @@
     <div id="screen-battle" class="screen">
       <div class="status-bar">
         <div>Lv: <span id="stat-lv">1</span></div>
-        <div>HP: <span id="stat-hp">20</span>/<span id="stat-maxhp">20</span></div>
+        <div>HP: <span id="stat-hp">50</span>/<span id="stat-maxhp">50</span></div>
         <div>EXP: <span id="stat-exp">0</span>/<span id="stat-next">10</span></div>
         <div>進捗: <span id="stat-progress">0</span>%</div>
       </div>
@@ -74,8 +74,8 @@
     let chunks = [];
     let currentIndex = 0;
     let lv = 1;
-    let hp = 20;
-    let maxHp = 20;
+    let hp = 50;
+    let maxHp = 50;
     let exp = 0;
     let nextExp = 10;
     let currentEnemy = "";
@@ -93,14 +93,13 @@
       }
       
       chunks = [];
-      // 2文字ずつ分割
       for (let i = 0; i < text.length; i += 2) {
         chunks.push(text.substr(i, 2));
       }
       
       currentIndex = 0;
       lv = 1;
-      maxHp = 20;
+      maxHp = 50;
       hp = maxHp;
       exp = 0;
       nextExp = 10;
@@ -120,31 +119,31 @@
       
       currentEnemy = chunks[currentIndex];
       
-      // ★文字コード（charCodeAt）を活かした動的ステータス算出ロジック
+      // 文字コードによる重みづけ（マイルドに調整）
       let charCodeSum = 0;
       for (let i = 0; i < currentEnemy.length; i++) {
         charCodeSum += currentEnemy.charCodeAt(i);
       }
       
-      // 文字コードの大きさに応じて敵のHPと攻撃力を変動させる（漢字などは強く、ひらがなは優しめ）
-      let weight = (charCodeSum % 50) + 10; 
-      enemyMaxHp = currentEnemy.length * Math.floor(weight / 3);
-      if (enemyMaxHp < 5) enemyMaxHp = 5;
+      // HPと攻撃力の上限を設けて理不尽に強くならないように調整
+      let weight = (charCodeSum % 20) + 5;
+      enemyMaxHp = currentEnemy.length * Math.min(weight, 10);
+      if (enemyMaxHp < 3) enemyMaxHp = 3;
       enemyHp = enemyMaxHp;
       
-      enemyAtk = Math.max(1, Math.floor(charCodeSum / 300) + Math.floor(currentIndex / 5));
+      enemyAtk = Math.max(1, Math.floor(charCodeSum / 1000) + Math.floor(currentIndex / 10));
+      if (enemyAtk > 5) enemyAtk = 5; // 敵の攻撃力に上限を設定
 
       let readText = chunks.slice(0, currentIndex).join("");
       document.getElementById("current-story").innerText = readText || "(物語の始まり)";
       document.getElementById("enemy-text").innerText = `「${currentEnemy}」 (HP: ${enemyHp}/${enemyMaxHp} / 攻撃力: ${enemyAtk})`;
       
-      logMessage(`新たな文字の敵「${currentEnemy}」が現れた！（強さ: ${enemyMaxHp}）`);
+      logMessage(`新たな文字の敵「${currentEnemy}」が現れた！`);
       updateStatus();
     }
 
     function attackEnemy() {
-      // プレイヤーの攻撃
-      let damage = lv * 3;
+      let damage = lv * 5; // プレイヤーの攻撃力を高めに調整
       enemyHp -= damage;
       if (enemyHp < 0) enemyHp = 0;
 
@@ -152,25 +151,22 @@
       document.getElementById("enemy-text").innerText = `「${currentEnemy}」 (HP: ${enemyHp}/${enemyMaxHp} / 攻撃力: ${enemyAtk})`;
 
       if (enemyHp <= 0) {
-        // 敵撃破！
-        let gainedExp = currentEnemy.length * 8;
+        let gainedExp = currentEnemy.length * 10;
         exp += gainedExp;
         logMessage(`▶ 「${currentEnemy}」を撃破！ EXP +${gainedExp}`);
         
-        // レベルアップ判定
         if (exp >= nextExp) {
           lv++;
           exp -= nextExp;
           nextExp = Math.floor(nextExp * 1.5);
-          maxHp += 10;
-          hp = maxHp; // レベルアップでHP完全回復！
+          maxHp += 15;
+          hp = maxHp; // レベルアップで完全回復
           logMessage(`✨ レベルアップ！ Lv.${lv} になった！ HPが完全回復した！`);
         }
 
         currentIndex++;
         loadNextEnemy();
       } else {
-        // 敵からの反撃
         hp -= enemyAtk;
         if (hp < 0) hp = 0;
         logMessage(`💥 敵の反撃！ ${currentEnemy} から ${enemyAtk} のダメージを受けた！（あなたのHP: ${hp}/${maxHp})`);
@@ -209,7 +205,6 @@
       }
     }
 
-    // イベントリスナー登録
     window.addEventListener("DOMContentLoaded", () => {
       const setupBtn = (id, handler) => {
         const btn = document.getElementById(id);

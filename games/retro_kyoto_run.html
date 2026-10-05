@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<!-- AI-GAME-PORTFOLIO -->
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Retro Kyoto Run</title>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ui-color: #f1b24b;
+            --ui-glow: #e77245;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #05030a;
+            overflow: hidden;
+            font-family: 'DotGothic16', sans-serif;
+            touch-action: none; /* スマホのスワイプ更新防止 */
+            user-select: none;
+        }
+
+        /* SVG Game Container */
+        #gameSvg {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* UI Overlays */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .hud {
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 24px;
+            color: #fff;
+            text-shadow: 2px 2px 0 #000, 0 0 10px var(--ui-glow);
+            z-index: 10;
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(5, 3, 10, 0.7);
+            backdrop-filter: blur(4px);
+            pointer-events: auto;
+            transition: opacity 0.3s ease;
+            z-index: 20;
+        }
+
+        .hidden {
+            opacity: 0;
+            pointer-events: none !important;
+        }
+
+        h1 {
+            color: var(--ui-color);
+            font-size: 4rem;
+            margin: 0 0 10px 0;
+            text-align: center;
+            text-shadow: 4px 4px 0 #000, 0 0 20px var(--ui-glow);
+            letter-spacing: 5px;
+        }
+
+        .subtitle {
+            color: #fff;
+            font-size: 1.5rem;
+            margin-bottom: 40px;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .score-display {
+            font-size: 2rem;
+            color: #fff;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        button {
+            background: transparent;
+            color: var(--ui-color);
+            font-family: 'DotGothic16', sans-serif;
+            font-size: 1.8rem;
+            padding: 15px 50px;
+            border: 4px solid var(--ui-color);
+            border-radius: 0;
+            cursor: pointer;
+            box-shadow: 4px 4px 0 #000, inset 0 0 10px rgba(228, 114, 69, 0.5);
+            transition: all 0.1s ease;
+        }
+
+        button:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0 0 0 #000;
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2.5rem; }
+            .subtitle { font-size: 1.2rem; }
+            button { font-size: 1.2rem; padding: 12px 30px; }
+            .hud { font-size: 18px; padding: 15px 20px; }
+        }
+
+        /* SVG Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .sun-float { animation: float 6s ease-in-out infinite; }
+    </style>
+</head>
+<body>
+
+    <!-- 純SVGによるゲームキャンバス -->
+    <!-- preserveAspectRatio="xMidYMid meet" を指定し、縦画面でも見切れないように全体を収めます -->
+    <svg id="gameSvg" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid meet">
+        <defs>
+            <!-- 夕焼けグラデーション -->
+            <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#2d1b4e" />
+                <stop offset="30%" stop-color="#732753" />
+                <stop offset="60%" stop-color="#b43e5c" />
+                <stop offset="85%" stop-color="#e77245" />
+                <stop offset="100%" stop-color="#f1b24b" />
+            </linearGradient>
+
+            <linearGradient id="sunGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffdf73" />
+                <stop offset="100%" stop-color="#ff4d4d" />
+            </linearGradient>
+
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="10" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+
+            <!-- 共通のシルエットカラー -->
+            <g id="silhouettes" fill="#05030a"></g>
+
+            <!-- 鳥居のアセット -->
+            <g id="asset-torii">
+                <rect x="-40" y="-120" width="12" height="120" fill="#05030a"/>
+                <rect x="28" y="-120" width="12" height="120" fill="#05030a"/>
+                <path d="M-50,-110 Q0,-115 50,-110 L50,-95 Q0,-100 -50,-95 Z" fill="#05030a"/>
+                <rect x="-45" y="-80" width="90" height="10" fill="#05030a"/>
+                <rect x="-6" y="-80" width="12" height="20" fill="#05030a"/>
+            </g>
+
+            <!-- 五重塔（遠景用） -->
+            <g id="asset-pagoda" fill="#0f0920">
+                <rect x="-10" y="-20" width="20" height="20"/>
+                <!-- 5層の屋根 -->
+                <path d="M-25,-20 L25,-20 L15,-30 L-15,-30 Z"/>
+                <rect x="-8" y="-45" width="16" height="15"/>
+                <path d="M-22,-45 L22,-45 L13,-53 L-13,-53 Z"/>
+                <rect x="-6" y="-65" width="12" height="12"/>
+                <path d="M-18,-65 L18,-65 L11,-71 L-11,-71 Z"/>
+                <rect x="-4" y="-80" width="8" height="9"/>
+                <path d="M-14,-80 L14,-80 L8,-85 L-8,-85 Z"/>
+                <rect x="-3" y="-93" width="6" height="8"/>
+                <path d="M-10,-93 L10,-93 L5,-97 L-5,-97 Z"/>
+                <rect x="-1" y="-115" width="2" height="18"/>
+            </g>
+
+            <!-- 町家 -->
+            <g id="asset-machiya">
+                <rect x="-40" y="-60" width="80" height="60" fill="#05030a"/>
+                <path d="M-50,-60 L50,-60 L30,-90 L-30,-90 Z" fill="#05030a"/>
+                <!-- 格子模様（ハイライトで表現） -->
+                <rect x="-30" y="-40" width="15" height="30" fill="#151020"/>
+                <rect x="-10" y="-40" width="15" height="30" fill="#151020"/>
+                <rect x="10" y="-40" width="15" height="30" fill="#151020"/>
+            </g>
+
+            <!-- 障害物：石灯籠 -->
+            <g id="asset-lantern">
+                <!-- 台座 -->
+                <rect x="-15" y="-10" width="30" height="10" fill="#05030a"/>
+                <rect x="-10" y="-35" width="20" height="25" fill="#05030a"/>
+                <rect x="-18" y="-45" width="36" height="10" fill="#05030a"/>
+                <!-- 火袋（光る部分） -->
+                <rect x="-10" y="-65" width="20" height="20" fill="#05030a"/>
+                <rect x="-5" y="-60" width="10" height="10" fill="#f1b24b" filter="url(#glow)"/>
+                <!-- 笠 -->
+                <path d="M-25,-65 L25,-65 L15,-80 L-15,-80 Z" fill="#05030a"/>
+                <circle cx="0" cy="-82" r="4" fill="#05030a"/>
+            </g>
+
+            <!-- プレイヤー：忍者（基本ポーズ） -->
+            <g id="player-ninja">
+                <!-- 胴体 -->
+                <path d="M-10,-35 Q10,-35 15,-15 Q10,5 -5,10 Q-20,0 -15,-20 Z" fill="#05030a"/>
+                <!-- 頭 -->
+                <circle cx="5" cy="-45" r="12" fill="#05030a"/>
+                <!-- マフラー（風になびく） -->
+                <path id="scarf" d="M-5,-40 Q-30,-45 -45,-30 Q-25,-30 -5,-35 Z" fill="#ff2a4b"/>
+                <!-- 足（アニメーション用：要素を作り直さず使い回すための事前定義） -->
+                <g id="legs">
+                    <path id="leg-path" stroke="#05030a" stroke-width="8" stroke-linecap="round" fill="none" d="M-5,10 L-5,35 M5,5 L5,35" />
+                </g>
+            </g>
+        </defs>
+
+        <!-- 背景レイヤー -->
+        <rect width="100%" height="100%" fill="url(#skyGrad)" />
+        
+        <!-- 太陽 -->
+        <circle cx="600" cy="300" r="120" fill="url(#sunGrad)" filter="url(#glow)" class="sun-float"/>
+
+        <!-- 山並み (Layer 1) -->
+        <g id="layer-mountains" fill="#1c1236"></g>
+        
+        <!-- 遠景：五重塔や木々 (Layer 2) -->
+        <g id="layer-midground"></g>
+
+        <!-- 地面 -->
+        <rect x="0" y="500" width="1200" height="100" fill="#05030a" />
+
+        <!-- 近景：町家や鳥居 (Layer 3) -->
+        <g id="layer-foreground"></g>
+
+        <!-- オブジェクト（障害物、アイテム） -->
+        <g id="layer-entities"></g>
+
+        <!-- 桜パーティクル -->
+        <g id="layer-particles"></g>
+
+        <!-- プレイヤー -->
+        <g id="layer-player" transform="translate(150, 500)"></g>
+    </svg>
+
+    <!-- UI Overlay -->
+    <div id="ui-layer">
+        <div class="hud">
+            <div id="scoreDisplay">SCORE: 0</div>
+            <div id="highScoreDisplay">HI-SCORE: 0</div>
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="startScreen" class="screen">
+        <h1>京 走 劇</h1>
+        <div class="subtitle">RETRO KYOTO RUN</div>
+        <p style="color:#aaa; font-size:1.2rem; margin-bottom: 40px; text-shadow: 1px 1px 0 #000;">
+            [ SPACE ] or [ TAP ] to Jump<br>Double Jump Enabled
+        </p>
+        <button id="startBtn">START GAME</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameOverScreen" class="screen hidden">
+        <h1 style="color: #ff2a4b; text-shadow: 4px 4px 0 #000, 0 0 20px #ff2a4b;">無 念</h1>
+        <div class="subtitle">GAME OVER</div>
+        <div class="score-display" id="finalScore">SCORE: 0</div>
+        <button id="restartBtn">RETRY</button>
+    </div>
+
+    <script>
+        const NS = "http://www.w3.org/2000/svg";
+        
+        // DOM Elements
+        const layerMountains = document.getElementById('layer-mountains');
+        const layerMid = document.getElementById('layer-midground');
+        const layerFore = document.getElementById('layer-foreground');
+        const layerEntities = document.getElementById('layer-entities');
+        const layerParticles = document.getElementById('layer-particles');
+        const layerPlayer = document.getElementById('layer-player');
+        
+        const scoreEl = document.getElementById('scoreDisplay');
+        const highScoreEl = document.getElementById('highScoreDisplay');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        
+        // Game Constants
+        const GROUND_Y = 500;
+        const GRAVITY = 0.8;
+        const JUMP_FORCE = -15;
+        const DOUBLE_JUMP_FORCE = -12;
+        const BASE_SPEED = 6;
+        
+        // Game State
+        let gameState = 'START'; // START, PLAYING, GAMEOVER
+        let score = 0;
+        let highScore = localStorage.getItem('kyotoRunHighScore') || 0;
+        let gameSpeed = BASE_SPEED;
+        let distance = 0;
+        let lastTime = 0;
+        let animationFrame;
+        
+        highScoreEl.innerText = `HI-SCORE: ${Math.floor(highScore)}`;
+
+        // Helpers
+        function createSVG(tag, attrs) {
+            const el = document.createElementNS(NS, tag);
+            for (let k in attrs) el.setAttribute(k, attrs[k]);
+            return el;
+        }
+
+        class Player {
+            constructor() {
+                this.x = 150;
+                this.y = GROUND_Y;
+                this.vy = 0;
+                this.isJumping = false;
+                this.jumpCount = 0;
+                
+                // Construct Player SVG
+                this.el = createSVG('use', { href: '#player-ninja' });
+                layerPlayer.innerHTML = '';
+                layerPlayer.appendChild(this.el);
+                
+                // Animation states
+                this.runTimer = 0;
+                this.legState = 0;
+            }
+
+            jump() {
+                if (this.jumpCount < 2) {
+                    this.vy = this.jumpCount === 0 ? JUMP_FORCE : DOUBLE_JUMP_FORCE;
+                    this.isJumping = true;
+                    this.jumpCount++;
+                    createDust(this.x, this.y);
+                }
+            }
+
+            update(dt) {
+                // Physics
+                this.vy += GRAVITY;
+                this.y += this.vy;
+
+                if (this.y >= GROUND_Y) {
+                    this.y = GROUND_Y;
+                    this.vy = 0;
+                    if (this.isJumping) {
+                        createDust(this.x, this.y); // Landing dust
+                    }
+                    this.isJumping = false;
+                    this.jumpCount = 0;
+                }
+
+                layerPlayer.setAttribute('transform', `translate(${this.x}, ${this.y})`);
+
+                // Animation
+                this.runTimer += dt;
+                if (this.runTimer > 100) { // change frame every 100ms
+                    this.runTimer = 0;
+                    this.legState = (this.legState + 1) % 4;
+                    this.updateAnimation();
+                }
+            }
+
+            updateAnimation() {
+                // DOMの再生成をやめ、既存のパスの形状(d属性)だけを更新して軽量化
+                const legPath = document.getElementById('leg-path');
+                if (!legPath) return;
+                
+                let pathStr = "";
+                if (this.isJumping) {
+                    // Jump pose
+                    pathStr = "M-5,10 L-20,25 L-15,35 M5,5 L15,20 L5,35";
+                } else {
+                    // Run cycle
+                    switch(this.legState) {
+                        case 0: pathStr = "M-5,10 L-15,30 M5,5 L15,35"; break;
+                        case 1: pathStr = "M-5,10 L-5,35 M5,5 L5,35"; break;
+                        case 2: pathStr = "M-5,10 L10,35 M5,5 L-10,30"; break;
+                        case 3: pathStr = "M-5,10 L-5,35 M5,5 L5,35"; break;
+                    }
+                }
+                
+                legPath.setAttribute('d', pathStr);
+                
+                // Animate scarf
+                const scarf = document.getElementById('scarf');
+                if (scarf) {
+                    const wave = Math.sin(Date.now() / 100) * 10;
+                    scarf.setAttribute('d', `M-5,-40 Q${-30+wave},-45 ${-45+wave},-30 Q-25,-30 -5,-35 Z`);
+                }
+            }
+            
+            getBounds() {
+                // AABB for collision (Hitbox is slightly smaller than visuals for fairness)
+                return {
+                    left: this.x - 15,
+                    right: this.x + 15,
+                    top: this.y - 40,
+                    bottom: this.y
+                };
+            }
+        }
+
+        class ParallaxLayer {
+            constructor(container, speedFactor, yOffset, generatorFn) {
+                this.container = container;
+                this.speedFactor = speedFactor;
+                this.yOffset = yOffset;
+                this.elements = [];
+                this.generatorFn = generatorFn; // Function that returns SVG element
+                this.spawnTimer = 0;
+            }
+
+            update(dx) {
+                this.spawnTimer -= dx * this.speedFactor;
+                
+                // Spawn new
+                if (this.spawnTimer <= 0) {
+                    this.spawn();
+                    this.spawnTimer = 200 + Math.random() * 300; // Random spacing
+                }
+
+                // Move and cleanup
+                for (let i = this.elements.length - 1; i >= 0; i--) {
+                    let el = this.elements[i];
+                    el.x -= dx * this.speedFactor;
+                    el.node.setAttribute('transform', `translate(${el.x}, ${el.y})`);
+                    
+                    if (el.x < -200) {
+                        this.container.removeChild(el.node);
+                        this.elements.splice(i, 1);
+                    }
+                }
+            }
+
+            spawn() {
+                let node = this.generatorFn();
+                if (!node) return;
+                let y = this.yOffset;
+                let x = 1300; // Spawn just outside right edge
+                node.setAttribute('transform', `translate(${x}, ${y})`);
+                this.container.appendChild(node);
+                this.elements.push({ node, x, y });
+            }
+
+            clear() {
+                this.container.innerHTML = '';
+                this.elements = [];
+                this.spawnTimer = 0;
+            }
+        }
+
+        // Generate mountains dynamically
+        function initMountains() {
+            layerMountains.innerHTML = '';
+            let pathD = `M0,${GROUND_Y} `;
+            let currentX = 0;
+            while(currentX < 2400) {
+                let peakY = 200 + Math.random() * 150;
+                let width = 200 + Math.random() * 300;
+                pathD += `L${currentX + width/2},${peakY} L${currentX + width},${GROUND_Y} `;
+                currentX += width;
+            }
+            pathD += `Z`;
+            const path = createSVG('path', { d: pathD });
+            layerMountains.appendChild(path);
+        }
+        
+        let midLayer, foreLayer;
+
+        class ObstacleManager {
+            constructor() {
+                this.obstacles = [];
+                this.spawnTimer = 0;
+            }
+
+            update(dx) {
+                this.spawnTimer -= dx;
+                
+                if (this.spawnTimer <= 0) {
+                    this.spawn();
+                    // Spacing gets tighter as speed increases
+                    this.spawnTimer = 400 + Math.random() * 600 - (gameSpeed * 10);
+                    if (this.spawnTimer < 250) this.spawnTimer = 250;
+                }
+
+                for (let i = this.obstacles.length - 1; i >= 0; i--) {
+                    let obs = this.obstacles[i];
+                    obs.x -= dx;
+                    obs.node.setAttribute('transform', `translate(${obs.x}, ${GROUND_Y})`);
+                    
+                    if (obs.x < -100) {
+                        layerEntities.removeChild(obs.node);
+                        this.obstacles.splice(i, 1);
+                    }
+                }
+            }
+
+            spawn() {
+                const node = createSVG('use', { href: '#asset-lantern' });
+                const x = 1300;
+                node.setAttribute('transform', `translate(${x}, ${GROUND_Y})`);
+                layerEntities.appendChild(node);
+                this.obstacles.push({ node, x, width: 30, height: 80 }); // Hitbox data
+            }
+
+            checkCollision(playerBounds) {
+                for (let obs of this.obstacles) {
+                    let obsLeft = obs.x - 15;
+                    let obsRight = obs.x + 15;
+                    let obsTop = GROUND_Y - obs.height;
+                    let obsBottom = GROUND_Y;
+
+                    if (playerBounds.right > obsLeft && 
+                        playerBounds.left < obsRight && 
+                        playerBounds.bottom > obsTop && 
+                        playerBounds.top < obsBottom) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            clear() {
+                layerEntities.innerHTML = '';
+                this.obstacles = [];
+                this.spawnTimer = 1000;
+            }
+        }
+
+        class ParticleSystem {
+            constructor(maxParticles = 25) {
+                this.particles = [];
+                this.maxParticles = maxParticles;
+                // パーティクルを毎フレーム生成・破棄するのではなく、最初に全て作って再利用する（処理落ち防止）
+                for (let i = 0; i < maxParticles; i++) {
+                    const node = createSVG('path', {
+                        d: "M0,0 Q5,5 0,10 Q-5,5 0,0 Z",
+                        fill: "#ff99cc"
+                    });
+                    node.style.display = 'none'; // 初期は非表示
+                    layerParticles.appendChild(node);
+                    this.particles.push({ node, active: false, x: 0, y: 0, vx: 0, vy: 0, rot: 0, rotSpeed: 0 });
+                }
+            }
+
+            spawnSakura() {
+                if (Math.random() > 0.1) return; // Adjust density
+                
+                // 非アクティブ（画面外に出て使い終わった）パーティクルを探す
+                const p = this.particles.find(p => !p.active);
+                if (!p) return; // 全て使用中ならスキップ
+
+                // パラメータをリセットして再利用
+                p.active = true;
+                p.x = Math.random() * 1200 + 100;
+                p.y = -10;
+                p.vx = -Math.random() * 3 - 1;
+                p.vy = Math.random() * 2 + 1;
+                p.rot = Math.random() * 360;
+                p.rotSpeed = Math.random() * 10 - 5;
+                p.node.style.display = 'block';
+                p.node.setAttribute('opacity', Math.random() * 0.5 + 0.5);
+            }
+
+            update() {
+                this.spawnSakura();
+                for (let p of this.particles) {
+                    if (!p.active) continue;
+
+                    p.x += p.vx - (gameSpeed * 0.2); // Wind effect
+                    p.y += p.vy;
+                    p.rot += p.rotSpeed;
+                    
+                    p.node.setAttribute('transform', `translate(${p.x}, ${p.y}) rotate(${p.rot})`);
+                    
+                    // 画面外に出たら非アクティブ化して次回の再利用に備える
+                    if (p.y > 600 || p.x < -50) {
+                        p.active = false;
+                        p.node.style.display = 'none';
+                    }
+                }
+            }
+
+            clear() {
+                for (let p of this.particles) {
+                    p.active = false;
+                    p.node.style.display = 'none';
+                }
+            }
+        }
+
+        function createDust(x, y) {
+            const circle = createSVG('circle', {
+                cx: x, cy: y, r: 10, fill: '#fff', opacity: 0.5
+            });
+            layerEntities.appendChild(circle);
+            
+            let scale = 1;
+            let op = 0.5;
+            const animate = () => {
+                scale += 0.1;
+                op -= 0.05;
+                circle.setAttribute('transform', `scale(${scale})`);
+                circle.setAttribute('opacity', op);
+                if (op > 0) requestAnimationFrame(animate);
+                else circle.remove();
+            };
+            requestAnimationFrame(animate);
+        }
+
+        let player, obstacles, particles;
+
+        function initGame() {
+            initMountains();
+            
+            midLayer = new ParallaxLayer(layerMid, 0.3, GROUND_Y, () => {
+                return Math.random() > 0.5 ? createSVG('use', { href: '#asset-pagoda' }) : null;
+            });
+            
+            foreLayer = new ParallaxLayer(layerFore, 0.8, GROUND_Y, () => {
+                const r = Math.random();
+                if (r < 0.4) return createSVG('use', { href: '#asset-torii' });
+                else if (r < 0.7) return createSVG('use', { href: '#asset-machiya' });
+                return null;
+            });
+
+            player = new Player();
+            obstacles = new ObstacleManager();
+            particles = new ParticleSystem();
+            
+            score = 0;
+            distance = 0;
+            gameSpeed = BASE_SPEED;
+            updateScoreUI();
+        }
+
+        function startGame() {
+            gameState = 'PLAYING';
+            startScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            
+            if (midLayer) midLayer.clear();
+            if (foreLayer) foreLayer.clear();
+            if (obstacles) obstacles.clear();
+            if (particles) particles.clear();
+            
+            initGame();
+            lastTime = performance.now();
+            if (animationFrame) cancelAnimationFrame(animationFrame);
+            gameLoop(lastTime);
+        }
+
+        function gameOver() {
+            gameState = 'GAMEOVER';
+            document.getElementById('finalScore').innerText = `SCORE: ${Math.floor(score)}`;
+            gameOverScreen.classList.remove('hidden');
+            
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('kyotoRunHighScore', highScore);
+                highScoreEl.innerText = `HI-SCORE: ${Math.floor(highScore)}`;
+            }
+        }
+
+        function updateScoreUI() {
+            scoreEl.innerText = `SCORE: ${Math.floor(score)}`;
+        }
+
+        function handleInput(e) {
+            if ((e.type === 'keydown' && e.code === 'Space') || e.type === 'touchstart') {
+                e.preventDefault(); // Prevent scrolling on space/touch
+                if (gameState === 'PLAYING') {
+                    player.jump();
+                } else if (gameState !== 'PLAYING') {
+                    // Slight delay to prevent immediate restart on death tap
+                    setTimeout(startGame, 100);
+                }
+            }
+        }
+
+        window.addEventListener('keydown', handleInput);
+        window.addEventListener('touchstart', handleInput, {passive: false});
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('restartBtn').addEventListener('click', startGame);
+
+        function gameLoop(timestamp) {
+            if (gameState !== 'PLAYING') return;
+
+            const dt = timestamp - lastTime;
+            lastTime = timestamp;
+
+            // Move background
+            const moveAmount = gameSpeed;
+            distance += moveAmount;
+            
+            // Score increase
+            score += moveAmount * 0.01;
+            
+            // Gradually increase speed
+            gameSpeed = BASE_SPEED + (score * 0.005);
+            if(gameSpeed > 15) gameSpeed = 15; // Max speed
+
+            // Parallax updates
+            midLayer.update(moveAmount);
+            foreLayer.update(moveAmount);
+
+            // Entities update
+            player.update(dt);
+            obstacles.update(moveAmount);
+            particles.update();
+
+            // Collision check
+            if (obstacles.checkCollision(player.getBounds())) {
+                gameOver();
+            }
+
+            if (Math.floor(score) % 10 === 0) {
+                updateScoreUI();
+            }
+
+            animationFrame = requestAnimationFrame(gameLoop);
+        }
+
+        // Initial setup visual (before pressing start)
+        initGame();
+        player.updateAnimation(); // Set initial pose
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>レトロ町並みアドベンチャー - Humanized Edition</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #000; color: #fff;
+            /* レトロ感を出すためのフォント指定（OSに依存しますが雰囲気が出ます） */
+            font-family: 'DotGothic16', 'MS Gothic', 'Courier New', monospace;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; overflow: hidden; touch-action: manipulation;
+        }
+        :root {
+            /* PC88風の8色パレット */
+            --c-blk: #000000; --c-red: #ff0000; --c-grn: #00ff00; --c-yel: #ffff00;
+            --c-blu: #0000ff; --c-mag: #ff00ff; --c-cyn: #00ffff; --c-wht: #ffffff;
+        }
+        
+        #game-container {
+            width: 100%; max-width: 800px; aspect-ratio: 4 / 3;
+            background-color: var(--c-blk); display: flex; flex-direction: column;
+            position: relative; box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+            border: 2px solid #333;
+        }
+
+        /* ブラウン管(CRT)の走査線とノイズを少し強調し、アニメーションさせる */
+        @keyframes scanlines {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 4px; }
+        }
+        #game-container::after {
+            content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 100; background-size: 100% 4px, 6px 100%; pointer-events: none;
+            animation: scanlines 1s linear infinite;
+        }
+
+        #scene-view {
+            width: 100%; height: 65%; background-color: var(--c-blk);
+            position: relative; cursor: crosshair;
+        }
+        svg { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+        
+        /* 人間味を出すUIレイアウト */
+        #ui-area {
+            width: 100%; height: 35%; border-top: 4px solid var(--c-wht);
+            display: flex; background-color: var(--c-blu);
+        }
+        #portrait-box {
+            width: 25%; max-width: 140px; border-right: 2px solid var(--c-wht);
+            background-color: var(--c-blk); display: flex; justify-content: center; align-items: center;
+            padding: 10px;
+        }
+        #text-box {
+            flex-grow: 1; padding: 15px; font-size: clamp(14px, 2.5vw, 20px);
+            line-height: 1.8; color: var(--c-wht); overflow-y: auto;
+            border-right: 2px solid var(--c-wht); position: relative;
+        }
+        #command-menu {
+            width: 20%; min-width: 90px; display: flex; flex-direction: column; gap: 5px; padding: 10px;
+            position: relative;
+        }
+        .cmd-btn {
+            background-color: var(--c-blk); color: var(--c-wht); border: 2px solid var(--c-wht);
+            padding: 8px 5px; font-family: inherit; font-size: clamp(12px, 2vw, 16px);
+            cursor: pointer; text-align: center; transition: 0.1s;
+        }
+        .cmd-btn:hover, .cmd-btn.active { background-color: var(--c-wht); color: var(--c-blk); font-weight: bold; }
+        #inventory-display {
+            margin-top: auto; font-size: clamp(10px, 1.5vw, 14px); color: var(--c-yel); 
+            text-align: center; border-top: 1px dashed var(--c-wht); padding-top: 5px;
+        }
+
+        .clickable { cursor: pointer; }
+        .clickable:hover { filter: brightness(1.2); }
+        .blinking-cursor { animation: blink 1s step-end infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        /* 人物が生きて呼吸しているようなアニメーション */
+        @keyframes breathe {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-2px); }
+        }
+        .npc { animation: breathe 3s ease-in-out infinite; }
+        
+        /* 飛ぶ鳥のアニメーション */
+        @keyframes fly {
+            0% { transform: translateX(0) translateY(0); }
+            50% { transform: translateX(-30px) translateY(-5px); }
+            100% { transform: translateX(0) translateY(0); }
+        }
+        .bird { animation: fly 5s infinite linear; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="scene-view"></div>
+    <div id="ui-area">
+        <div id="portrait-box">
+            <!-- 顔グラフィックがここに入ります -->
+        </div>
+        <div id="text-box">
+            <span id="message-text"></span>
+            <span id="cursor" class="blinking-cursor">_</span>
+        </div>
+        <div id="command-menu">
+            <button class="cmd-btn active" data-cmd="look">みる</button>
+            <button class="cmd-btn" data-cmd="move">いどう</button>
+            <button class="cmd-btn" data-cmd="talk">はなす</button>
+            <button class="cmd-btn" data-cmd="take">とる</button>
+            <button class="cmd-btn" data-cmd="use">つかう</button>
+            <div id="inventory-display">所持品:<br>なし</div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 色定数
+const C_BLK = '#000000', C_RED = '#ff0000', C_GRN = '#00ff00', C_YEL = '#ffff00', 
+      C_BLU = '#0000ff', C_MAG = '#ff00ff', C_CYN = '#00ffff', C_WHT = '#ffffff';
+
+// SVGのディザリング（網掛け）パターン定義
+const defs = `
+    <defs>
+        <pattern id="d-gry" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="${C_BLK}"/><rect width="2" height="2" fill="${C_WHT}"/><rect x="2" y="2" width="2" height="2" fill="${C_WHT}"/></pattern>
+        <pattern id="d-brn" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="${C_RED}"/><rect width="2" height="2" fill="${C_YEL}"/><rect x="2" y="2" width="2" height="2" fill="${C_YEL}"/><rect x="0" y="2" width="2" height="2" fill="${C_GRN}"/></pattern>
+        <pattern id="d-sky" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="${C_BLU}"/><rect width="2" height="2" fill="${C_CYN}"/><rect x="2" y="2" width="2" height="2" fill="${C_CYN}"/></pattern>
+        <pattern id="d-drk" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="${C_BLK}"/><rect width="2" height="2" fill="${C_BLU}"/></pattern>
+    </defs>
+`;
+
+// キャラクターの顔グラフィック（SVG）
+const portraits = {
+    villager: `<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+        <rect width="100" height="100" fill="${C_BLK}" />
+        <polygon points="10,40 50,10 90,40" fill="${C_RED}" stroke="${C_WHT}" stroke-width="2"/>
+        <rect x="25" y="40" width="50" height="45" fill="${C_WHT}" stroke="${C_WHT}" stroke-width="2"/>
+        <line x1="35" y1="55" x2="45" y2="55" stroke="${C_BLK}" stroke-width="3"/>
+        <line x1="55" y1="55" x2="65" y2="55" stroke="${C_BLK}" stroke-width="3"/>
+        <polygon points="25,85 50,100 75,85" fill="${C_WHT}" stroke="${C_WHT}" stroke-width="2"/>
+        <line x1="45" y1="75" x2="55" y2="75" stroke="${C_BLK}" stroke-width="2"/>
+    </svg>`,
+    shopkeeper: `<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+        <rect width="100" height="100" fill="${C_BLK}"/>
+        <path d="M20,50 C20,20 80,20 80,50" fill="${C_CYN}" stroke="${C_WHT}" stroke-width="2"/>
+        <rect x="25" y="40" width="50" height="50" fill="${C_RED}" stroke="${C_WHT}" stroke-width="2"/>
+        <rect x="30" y="55" width="15" height="10" fill="${C_WHT}" stroke="${C_BLK}" stroke-width="2"/>
+        <rect x="55" y="55" width="15" height="10" fill="${C_WHT}" stroke="${C_BLK}" stroke-width="2"/>
+        <line x1="45" y1="60" x2="55" y2="60" stroke="${C_BLK}" stroke-width="2"/>
+        <path d="M40,80 Q50,90 60,80" fill="none" stroke="${C_BLK}" stroke-width="3"/>
+    </svg>`,
+    clerk: `<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+        <rect width="100" height="100" fill="${C_BLK}"/>
+        <path d="M10,100 L10,60 Q50,40 90,60 L90,100 Z" fill="${C_BLU}" stroke="${C_WHT}" stroke-width="2"/>
+        <rect x="30" y="30" width="40" height="40" fill="${C_WHT}" stroke="${C_WHT}" stroke-width="2"/>
+        <line x1="35" y1="45" x2="45" y2="45" stroke="${C_BLK}" stroke-width="2"/>
+        <line x1="55" y1="45" x2="65" y2="45" stroke="${C_BLK}" stroke-width="2"/>
+        <path d="M40,60 Q50,55 60,60" fill="none" stroke="${C_BLK}" stroke-width="3"/>
+    </svg>`
+};
+
+const state = {
+    currentScene: 'town_square',
+    currentCommand: 'look',
+    isTyping: false,
+    inventory: [],
+    flags: { hasMemo: false, hasKey: false, doorOpen: false },
+    dialogProgress: { oldMan: 0 }
+};
+
+const dom = {
+    sceneView: document.getElementById('scene-view'),
+    messageText: document.getElementById('message-text'),
+    commandBtns: document.querySelectorAll('.cmd-btn'),
+    inventoryDisplay: document.getElementById('inventory-display'),
+    portraitBox: document.getElementById('portrait-box')
+};
+
+const sys = {
+    changeScene: (id, msg) => {
+        state.currentScene = id;
+        sys.clearPortrait();
+        dom.sceneView.innerHTML = scenes[id].svg;
+        if(msg) setTimeout(() => typeText(msg), 100);
+    },
+    updateInv: () => {
+        dom.inventoryDisplay.innerHTML = "所持品:<br>" + (state.inventory.length > 0 ? state.inventory.join("<br>") : "なし");
+    },
+    getItem: (item, msg) => {
+        if(!state.inventory.includes(item)) {
+            state.inventory.push(item);
+            sys.updateInv();
+            return msg + `<br><br>【 ${item} 】を手に入れた！`;
+        }
+        return "もう何もない。";
+    },
+    setPortrait: (id) => { dom.portraitBox.innerHTML = portraits[id] || ''; },
+    clearPortrait: () => { dom.portraitBox.innerHTML = ''; }
+};
+
+const scenes = {
+    town_square: {
+        svg: `<svg viewBox="0 0 640 400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">${defs}
+            <rect width="640" height="250" fill="url(#d-sky)"/>
+            <path d="M 450,80 Q 460,70 470,80 Q 480,70 490,80" fill="none" stroke="${C_WHT}" stroke-width="2" class="bird"/>
+            <path d="M0,250 L100,200 L250,230 L350,180 L500,240 L640,210 L640,250 Z" fill="url(#d-gry)"/>
+            <rect y="250" width="640" height="150" fill="url(#d-brn)"/>
+            
+            <g class="clickable" data-target="inn">
+                <rect x="20" y="100" width="200" height="200" fill="${C_WHT}" stroke="${C_BLK}" stroke-width="4"/>
+                <polygon points="10,100 120,40 230,100" fill="${C_RED}" stroke="${C_BLK}" stroke-width="4"/>
+                <rect x="90" y="220" width="60" height="80" fill="url(#d-brn)" stroke="${C_BLK}" stroke-width="4"/>
+                <rect x="20" y="110" width="100" height="30" fill="${C_YEL}" stroke="${C_BLK}" stroke-width="2"/>
+                <text x="35" y="132" font-family="monospace" font-size="20" font-weight="bold" fill="${C_BLK}">INN</text>
+            </g>
+            <g class="clickable" data-target="shop">
+                <rect x="400" y="120" width="220" height="180" fill="url(#d-gry)" stroke="${C_BLK}" stroke-width="4"/>
+                <rect x="390" y="100" width="240" height="20" fill="${C_GRN}" stroke="${C_BLK}" stroke-width="4"/>
+                <path d="M400,160 L620,160 L600,120 L420,120 Z" fill="${C_MAG}" stroke="${C_BLK}" stroke-width="4"/>
+                <rect x="420" y="200" width="80" height="100" fill="${C_BLK}" stroke="${C_WHT}" stroke-width="2"/>
+                <rect x="520" y="200" width="80" height="60" fill="${C_YEL}" stroke="${C_BLK}" stroke-width="4"/>
+                <text x="530" y="235" font-family="monospace" font-size="16" fill="${C_RED}">ITEM</text>
+            </g>
+            <g class="clickable" data-target="statue">
+                <rect x="280" y="230" width="80" height="40" fill="url(#d-gry)" stroke="${C_BLK}" stroke-width="4"/>
+                <polygon points="320,110 290,210 350,210" fill="${C_CYN}" stroke="${C_BLK}" stroke-width="4"/>
+            </g>
+            <g class="clickable" data-target="path">
+                <rect x="290" y="260" width="60" height="140" fill="${C_YEL}" opacity="0.2"/>
+                <text x="295" y="380" font-size="14" fill="${C_WHT}" style="text-shadow: 2px 2px 0 #000">北の森へ</text>
+            </g>
+            <g class="clickable npc" data-target="villager">
+                <rect x="215" y="240" width="30" height="35" fill="${C_GRN}" stroke="${C_BLK}" stroke-width="3"/>
+                <rect x="220" y="215" width="20" height="25" fill="${C_WHT}" stroke="${C_BLK}" stroke-width="3"/>
+                <rect x="224" y="222" width="4" height="4" fill="${C_BLK}"/><rect x="232" y="222" width="4" height="4" fill="${C_BLK}"/>
+                <line x1="205" y1="210" x2="205" y2="280" stroke="${C_YEL}" stroke-width="4" />
+                <polygon points="210,215 230,195 250,215" fill="${C_RED}" stroke="${C_BLK}" stroke-width="2"/>
+            </g>
+        </svg>`,
+        interactions: {
+            look: {
+                default: "風化しつつある石畳の広場だ。<br>西には古びた宿屋、東には怪しげな道具屋がある。<br>中央には、空を穿つような奇妙な石像。<br>そしてその傍らに、一人の老人が佇んでいる…",
+                inn: "西の建物は宿屋だ。風で看板がかすかに揺れる音がする。", 
+                shop: "東の建物は道具屋だ。窓ガラスの奥は薄暗く、よく見えない。", 
+                statue: "奇妙なモニュメントだ。触れると、石とは思えない温かさを感じる…",
+                villager: "緑の服を着た老人だ。静かにこちらを見つめている。", 
+                path: "北の森へ続く薄暗い道だ。冷たい風が吹き抜けてくる。"
+            },
+            move: {
+                inn: () => { sys.changeScene('inn', "古びた木の扉を開け、宿屋の中に入った。"); return ""; },
+                shop: () => { sys.changeScene('shop', "ドアベルを鳴らし、道具屋に足を踏み入れた。"); return ""; },
+                path: () => { sys.changeScene('forest', "冷たい風に逆らい、北の森の入り口へやってきた。"); return ""; },
+                statue: "ただの石像だ。登れそうにはない。", villager: "老人に近づいた。ほのかに薬草のような香りがする。"
+            },
+            talk: {
+                villager: () => {
+                    sys.setPortrait('villager');
+                    if (state.flags.doorOpen) return "老人「おお…ついに門が開いたか！<br>お主こそが、伝承に語られし勇者だったのじゃな！」";
+                    if (state.flags.hasKey) return "老人「その鍵…！ 道具屋の親父がお主を認めたというのか。<br>ならば、迷わず北の森へ向かうがよい。」";
+                    
+                    const dialogs = [
+                        "老人「見ない顔じゃな。<br>こんな寂れた町へ、よく来たのう。」",
+                        "老人「中央の石像は、かつてこの町を守っていた魔法の装置らしいが…<br>今はただの、冷たい石ころじゃよ。」",
+                        "老人「西の宿屋に、かつての旅人が残した手記があるという噂じゃ。<br>暇なら探してみるとよかろう。」",
+                        "老人「これ以上ワシから話すことはないぞ。<br>ほれ、自分の足で町を見て回らんか。」"
+                    ];
+                    const msg = dialogs[state.dialogProgress.oldMan];
+                    if (state.dialogProgress.oldMan < dialogs.length - 1) state.dialogProgress.oldMan++;
+                    return msg;
+                }
+            }
+        }
+    },
+    inn: {
+        svg: `<svg viewBox="0 0 640 400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">${defs}
+            <rect width="640" height="400" fill="url(#d-brn)"/>
+            <path d="M0,0 L100,100 L540,100 L640,0 Z" fill="${C_RED}" opacity="0.2"/>
+            <g class="clickable" data-target="exit">
+                <rect x="280" y="300" width="80" height="100" fill="${C_BLK}" stroke="${C_WHT}" stroke-width="2"/>
+                <text x="290" y="350" fill="${C_WHT}" font-size="18">出口</text>
+            </g>
+            <rect x="50" y="150" width="200" height="80" fill="url(#d-gry)" stroke="${C_BLK}" stroke-width="4"/>
+            <g class="clickable npc" data-target="clerk">
+                <rect x="120" y="80" width="50" height="70" fill="${C_BLU}" stroke="${C_BLK}" stroke-width="3"/>
+                <circle cx="145" cy="60" r="20" fill="${C_WHT}" stroke="${C_BLK}" stroke-width="3"/>
+            </g>
+            <g class="clickable" data-target="bed">
+                <rect x="400" y="200" width="180" height="100" fill="${C_MAG}" stroke="${C_BLK}" stroke-width="4"/>
+                <rect x="410" y="210" width="50" height="80" fill="${C_WHT}"/>
+            </g>
+            <g class="clickable" data-target="memo">
+                <rect x="350" y="120" width="80" height="40" fill="${C_GRN}" stroke="${C_BLK}" stroke-width="3"/>
+                <rect id="memo-obj" x="370" y="125" width="20" height="15" fill="${C_WHT}" stroke="${C_BLK}" />
+            </g>
+        </svg>`,
+        interactions: {
+            look: {
+                default: "ホコリっぽい匂いのする宿屋の中だ。<br>カウンターには気怠そうな主人が立ち、奥には簡素な客室がある。",
+                exit: "外へ出るための重たい木の扉だ。", 
+                clerk: "暇を持て余している様子の主人だ。", 
+                bed: "シーツは綺麗だが、スプリングの硬そうなベッドだ。",
+                memo: () => state.flags.hasMemo ? "木製の机だ。もう何も置かれていない。" : "机の上に、クシャクシャになった紙切れ（メモ）が残されている。"
+            },
+            move: { exit: () => { sys.changeScene('town_square', "外の空気を吸い、広場に戻った。"); return ""; } },
+            talk: { 
+                clerk: () => {
+                    sys.setPortrait('clerk');
+                    return "主人「いらっしゃい。<br>最近はめっきり客がいなくてね。好きなだけ休んでいくといい。」";
+                }
+            },
+            take: {
+                memo: () => {
+                    if(!state.flags.hasMemo) {
+                        state.flags.hasMemo = true;
+                        document.getElementById('memo-obj').style.display = 'none';
+                        return sys.getItem("謎のメモ", "手記には殴り書きでこう記されている。<br>『月と太陽が交わる時、鋼の心が開く』…どういう意味だろうか。");
+                    }
+                    return "そこにはもう何もない。";
+                }
+            }
+        }
+    },
+    shop: {
+        svg: `<svg viewBox="0 0 640 400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">${defs}
+            <rect width="640" height="400" fill="url(#d-gry)"/>
+            <g class="clickable" data-target="exit">
+                <rect x="280" y="320" width="80" height="80" fill="${C_BLK}" stroke="${C_WHT}" stroke-width="2"/>
+                <text x="290" y="360" fill="${C_WHT}" font-size="18">出口</text>
+            </g>
+            <rect x="100" y="200" width="440" height="100" fill="url(#d-brn)" stroke="${C_BLK}" stroke-width="4"/>
+            <g class="clickable npc" data-target="shopkeeper">
+                <rect x="290" y="100" width="60" height="100" fill="${C_RED}" stroke="${C_BLK}" stroke-width="3"/>
+                <rect x="295" y="60" width="50" height="40" fill="${C_WHT}" stroke="${C_BLK}" stroke-width="3"/>
+                <rect x="300" y="70" width="40" height="10" fill="${C_BLK}"/>
+            </g>
+            <g class="clickable" data-target="shelf">
+                <rect x="50" y="50" width="100" height="120" fill="${C_YEL}" stroke="${C_BLK}" stroke-width="4"/>
+                <circle cx="70" cy="80" r="10" fill="${C_CYN}"/><circle cx="110" cy="80" r="10" fill="${C_MAG}"/>
+            </g>
+        </svg>`,
+        interactions: {
+            look: {
+                default: "薄暗く、薬品の匂いが立ち込める道具屋だ。<br>カウンターの奥から、怪しげな店主がこちらを観察している。",
+                exit: "外へ出る扉だ。", 
+                shopkeeper: "分厚い色眼鏡をかけた店主だ。何を考えているか読み取れない。", 
+                shelf: "色とりどりの怪しい液体が入った瓶が並んでいる。触らない方がよさそうだ。"
+            },
+            move: { exit: () => { sys.changeScene('town_square', "怪しい視線から逃れるように、広場へ戻った。"); return ""; } },
+            talk: {
+                shopkeeper: () => {
+                    sys.setPortrait('shopkeeper');
+                    if(state.flags.hasKey) return "店主「ヒッヒッ、気をつけなよ…<br>森の奥に何が眠っているか、誰も知らないんだからねぇ…」";
+                    if(state.flags.hasMemo) {
+                        state.flags.hasKey = true;
+                        return sys.getItem("古い鍵", "店主「おや、そのメモ…<br>あんた、どうやら『資格』があるようだな。<br>ヒッヒッ、これを持っていきな。」");
+                    }
+                    return "店主「冷やかしなら帰ってくれ。<br>ウチは本気で『探求』する者しか相手にしない主義でね。」";
+                }
+            }
+        }
+    },
+    forest: {
+        svg: `<svg viewBox="0 0 640 400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">${defs}
+            <rect width="640" height="400" fill="url(#d-drk)"/>
+            <path d="M0,400 L50,100 L150,400 Z" fill="${C_GRN}" stroke="${C_BLK}" stroke-width="4"/>
+            <path d="M500,400 L590,50 L640,400 Z" fill="${C_GRN}" stroke="${C_BLK}" stroke-width="4"/>
+            <path d="M100,400 L180,150 L250,400 Z" fill="url(#d-gry)"/>
+            <path d="M400,400 L470,120 L550,400 Z" fill="url(#d-gry)"/>
+            
+            <g class="clickable" data-target="back">
+                <rect x="280" y="350" width="80" height="50" fill="${C_YEL}" opacity="0.3"/>
+                <text x="290" y="380" fill="${C_WHT}">広場へ</text>
+            </g>
+
+            <g class="clickable" data-target="door" id="forest-door">
+                <rect x="220" y="80" width="200" height="250" fill="url(#d-brn)" stroke="${C_WHT}" stroke-width="6"/>
+                <line x1="320" y1="80" x2="320" y2="330" stroke="${C_WHT}" stroke-width="3"/>
+                <circle cx="300" cy="220" r="10" fill="${C_BLK}"/>
+                <circle cx="340" cy="220" r="5" fill="${C_YEL}"/>
+                <circle cx="280" cy="220" r="5" fill="${C_YEL}"/>
+            </g>
+        </svg>`,
+        interactions: {
+            look: {
+                default: "鬱蒼とした森だ。光が遮られ、ひんやりとしている。<br>正面には、道を塞ぐように巨大な石の門がそびえ立っている。",
+                back: "広場へ戻る道だ。あちらは少し明るい。", 
+                door: () => state.flags.doorOpen ? "門は大きく開かれ、奥から神秘的な光が漏れ出している…" : "苔むした重厚な門だ。中央に古い鍵穴が見える。"
+            },
+            move: {
+                back: () => { sys.changeScene('town_square', "広場に戻った。ホッと息をつく。"); return ""; },
+                door: () => {
+                    if(state.flags.doorOpen) {
+                        sys.changeScene('ending', "あなたは眩い光の中へ足を踏み入れた。<br>ここから先は、また別の物語…<br><br>【 ゲ ー ム ク リ ア 】<br>最後まで遊んでくれてありがとう！");
+                        return "";
+                    }
+                    return "門は固く閉ざされており、押しても引いてもビクともしない。";
+                }
+            },
+            use: {
+                door: () => {
+                    if(state.inventory.includes("古い鍵") && !state.flags.doorOpen) {
+                        state.flags.doorOpen = true;
+                        document.getElementById('forest-door').innerHTML = `<rect x="220" y="80" width="200" height="250" fill="${C_WHT}"/><text x="240" y="200" fill="${C_BLK}" font-size="24">道が開けた！</text>`;
+                        return "『古い鍵』を鍵穴に差し込むと、地響きのような重い音を立てて…<br>ついに門が開いた！";
+                    }
+                    return "このままでは何も起こらない。鍵穴に合う何かが必要だ。";
+                }
+            }
+        }
+    },
+    ending: {
+        svg: `<svg viewBox="0 0 640 400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+            <rect width="640" height="400" fill="${C_WHT}"/>
+            <text x="120" y="200" font-family="monospace" font-size="40" fill="${C_BLU}" font-weight="bold">CONGRATULATIONS!</text>
+            <text x="180" y="260" font-family="monospace" font-size="20" fill="${C_BLK}">大いなる冒険は、ここから始まる。</text>
+        </svg>`,
+        interactions: {
+            look: { default: "本当にありがとう！" }
+        }
+    }
+};
+
+// 人間らしい「間」を持つタイピングエフェクト
+function typeText(text) {
+    if (state.isTyping || !text) return;
+    state.isTyping = true;
+    dom.messageText.innerHTML = '';
+    let i = 0;
+    
+    // タイプ中はボタン操作を無効化
+    dom.commandBtns.forEach(btn => btn.style.pointerEvents = 'none');
+
+    function typeChar() {
+        if (i < text.length) {
+            let delay = 40; // 基本のタイピング速度
+            
+            // HTMLタグ（改行）の処理
+            if(text.substring(i, i+4) === '<br>') { 
+                dom.messageText.innerHTML += '<br>'; 
+                i += 4; 
+                delay = 200; // 改行時は少し長めに休止
+            } else { 
+                let char = text.charAt(i);
+                dom.messageText.innerHTML += char; 
+                i++; 
+                
+                // 句読点による人間らしい「間」の演出
+                if (['。', '！', '？'].includes(char)) delay = 500;
+                else if (['、', '…'].includes(char)) delay = 300;
+            }
+            setTimeout(typeChar, delay);
+        } else {
+            state.isTyping = false;
+            dom.commandBtns.forEach(btn => btn.style.pointerEvents = 'auto');
+        }
+        // 下へ自動スクロール
+        dom.messageText.parentElement.scrollTop = dom.messageText.parentElement.scrollHeight;
+    }
+    typeChar();
+}
+
+function handleCommandChange(e) {
+    if (state.isTyping) return;
+    state.currentCommand = e.target.dataset.cmd;
+    
+    // ボタンのアクティブ表示切替
+    dom.commandBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.cmd === state.currentCommand));
+    
+    // コマンド変更時に顔グラフィックをクリア
+    sys.clearPortrait();
+
+    const msgs = { 
+        look:"どこを 調べますか？", 
+        move:"どこへ 移動しますか？", 
+        talk:"だれと 話しますか？", 
+        take:"なにを 取りますか？", 
+        use:"どこに 使いますか？" 
+    };
+    typeText(msgs[state.currentCommand]);
+}
+
+function handleSceneClick(e) {
+    if (state.isTyping) return;
+    
+    // クリックされた対象の判定
+    let target = e.target, targetId = null;
+    while (target && target !== dom.sceneView) {
+        if (target.classList && target.classList.contains('clickable')) { 
+            targetId = target.dataset.target; break; 
+        }
+        target = target.parentNode;
+    }
+
+    // 話すコマンド以外は顔グラフィックを消す
+    if(state.currentCommand !== 'talk') sys.clearPortrait();
+
+    const sceneData = scenes[state.currentScene];
+    let response = "なにも おきなかった。";
+
+    if (targetId) {
+        const action = sceneData.interactions[state.currentCommand]?.[targetId];
+        // 動的なレスポンス（関数）か、静的なテキストかで処理を分ける
+        if (typeof action === 'function') response = action();
+        else if (action) response = action;
+        else response = "ここでは それはできないようだ。";
+    } else {
+        // 背景クリック時
+        if (state.currentCommand === 'look' && sceneData.interactions.look.default) {
+            response = sceneData.interactions.look.default;
+        } else {
+            response = "そこには 特に気になるものはない。";
+        }
+    }
+    
+    if(response) typeText(response);
+}
+
+function initGame() {
+    sys.changeScene(state.currentScene);
+    dom.commandBtns.forEach(btn => btn.addEventListener('click', handleCommandChange));
+    dom.sceneView.addEventListener('click', handleSceneClick);
+    
+    // 初期メッセージの表示
+    setTimeout(() => {
+        typeText(scenes[state.currentScene].interactions.look.default);
+    }, 800);
+}
+
+window.onload = initGame;
+</script>
+</body>
+</html>
+```eof

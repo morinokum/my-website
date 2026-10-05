@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<!-- AI-GAME-PORTFOLIO -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pseudo-3D Raycasting FPS</title>
+    <style>
+        :root {
+            --ui-color: rgba(255, 255, 255, 0.8);
+            --ui-bg: rgba(0, 0, 0, 0.4);
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+            touch-action: none; /* Prevent browser handling of gestures like pinch-zoom */
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 
+         * The canvas scales to fit the screen while maintaining aspect ratio,
+         * ensuring no warnings or cut-off areas on mobile.
+         */
+        #game-canvas {
+            image-rendering: pixelated; /* Gives that retro blocky look */
+            width: 100%;
+            height: 100%;
+            object-fit: contain; 
+            max-width: 100vw;
+            max-height: 100vh;
+        }
+
+        /* UI Layer */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Let clicks pass through to canvas or specific buttons */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+        }
+        
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background-color: rgba(0, 255, 0, 0.7);
+        }
+        
+        #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
+        #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
+
+        .hud-text {
+            color: var(--ui-color);
+            background: var(--ui-bg);
+            padding: 5px 10px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            pointer-events: auto;
+            margin: 10px;
+        }
+
+        #top-hud {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Start Screen */
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 100;
+            pointer-events: auto;
+        }
+
+        #start-btn {
+            padding: 15px 30px;
+            font-size: 24px;
+            font-family: inherit;
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+            text-transform: uppercase;
+            box-shadow: 0 4px 0 #ff0000;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        
+        #start-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #ff0000;
+        }
+
+        /* Mobile Controls */
+        #mobile-controls {
+            display: none;
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            height: 120px;
+            pointer-events: none;
+            padding: 0 20px;
+            box-sizing: border-box;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .joystick-zone {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            position: relative;
+            pointer-events: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .joystick-knob {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            position: absolute;
+        }
+
+        #action-btn {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 71, 87, 0.5);
+            border: 2px solid rgba(255, 71, 87, 0.8);
+            border-radius: 50%;
+            pointer-events: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            user-select: none;
+            margin-bottom: 20px;
+        }
+        
+        #action-btn:active {
+            background: rgba(255, 71, 87, 0.8);
+        }
+
+        /* Weapon SVG Overlay */
+        #weapon-container {
+            position: absolute;
+            bottom: -20px;
+            right: 20%;
+            width: 40%;
+            max-width: 400px;
+            pointer-events: none;
+            transition: transform 0.1s;
+        }
+        
+        .shooting #weapon-container {
+            transform: translateY(-20px) rotate(-5deg);
+        }
+
+        @media (max-width: 768px) {
+            #mobile-controls { display: flex; }
+            .hud-text { font-size: 12px; margin: 5px; }
+            #weapon-container { right: 10%; width: 50%; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- 
+      Internal resolution of the game. 
+      Kept relatively low (320x200 or 640x400) for performance and retro feel.
+    -->
+    <canvas id="game-canvas" width="640" height="400"></canvas>
+    
+    <div id="ui-layer">
+        <div id="top-hud">
+            <div id="fps-counter" class="hud-text">FPS: 0</div>
+            <div id="pos-counter" class="hud-text">Pos: 0, 0</div>
+        </div>
+        
+        <div id="crosshair"></div>
+        
+        <div id="weapon-container">
+            <!-- Procedurally drawn gun using SVG to avoid external images -->
+            <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMax meet">
+                <defs>
+                    <linearGradient id="gunGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#333;stop-opacity:1" />
+                        <stop offset="50%" style="stop-color:#666;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#222;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <!-- Gun barrel -->
+                <rect x="40" y="20" width="20" height="80" fill="url(#gunGrad)" rx="2"/>
+                <rect x="45" y="10" width="10" height="20" fill="#111" />
+                <!-- Muzzle flash (hidden by default) -->
+                <circle id="muzzle-flash" cx="50" cy="10" r="15" fill="#ffa500" opacity="0" />
+                <polygon id="flash-star" points="50,0 55,5 65,5 55,10 60,20 50,15 40,20 45,10 35,5 45,5" fill="#ffff00" opacity="0" />
+            </svg>
+        </div>
+        
+        <div id="mobile-controls">
+            <!-- Left side: Movement Joystick -->
+            <div id="move-joystick" class="joystick-zone">
+                <div id="move-knob" class="joystick-knob"></div>
+            </div>
+            <!-- Right side: Fire Button & Look control area -->
+            <div id="action-btn">FIRE</div>
+        </div>
+    </div>
+    
+    <div id="start-screen">
+        <h1>RETRO RAYCASTER</h1>
+        <p>PC: WASD to Move, Mouse to Look, Click to Shoot</p>
+        <p>Mobile: Left Joystick to Move, Swipe screen to Look, Button to Shoot</p>
+        <button id="start-btn">Click to Start</button>
+    </div>
+</div>
+
+<script>
+    // --- Configuration & Constants ---
+    const SCREEN_WIDTH = 640;
+    const SCREEN_HEIGHT = 400;
+    const FOV = Math.PI / 3; // 60 degrees field of view
+    const MAX_DEPTH = 16;    // Maximum render distance
+    
+    // Canvas setup
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d', { alpha: false }); // Optimize for no transparency
+    
+    // Create an offscreen buffer for direct pixel manipulation (much faster than drawing rects)
+    const offscreenCanvas = document.createElement('canvas');
+    offscreenCanvas.width = SCREEN_WIDTH;
+    offscreenCanvas.height = SCREEN_HEIGHT;
+    const offscreenCtx = offscreenCanvas.getContext('2d', { alpha: false });
+    const imageData = offscreenCtx.createImageData(SCREEN_WIDTH, SCREEN_HEIGHT);
+    const buffer = new Uint32Array(imageData.data.buffer);
+
+    // --- Game Map ---
+    // 0 = empty, >0 = wall colors
+    const mapWidth = 16;
+    const mapHeight = 16;
+    const map = [
+        1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+        1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,
+        1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,
+        1,0,0,2,2,0,1,0,0,3,3,3,3,0,0,1,
+        1,0,0,2,0,0,0,0,0,3,0,0,3,0,0,1,
+        1,0,0,2,0,0,0,0,0,3,0,0,3,0,0,1,
+        1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+        1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,1,
+        1,0,0,0,1,0,0,0,0,4,4,4,4,0,0,1,
+        1,0,0,0,1,0,0,0,0,4,0,0,0,0,0,1,
+        1,0,0,0,1,0,0,0,0,4,0,0,0,0,0,1,
+        1,0,0,0,1,0,0,0,0,4,4,4,4,0,0,1,
+        1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+        1,0,0,5,5,5,5,0,0,6,6,6,6,0,0,1,
+        1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+        1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    ];
+
+    // Color palette for walls (ABGR format for direct Uint32Array manipulation)
+    // 0xFF[B][G][R]
+    const colors = [
+        0xFF000000, // 0: Empty (not used for walls)
+        0xFF444444, // 1: Grey
+        0xFF0000AA, // 2: Red
+        0xFF00AA00, // 3: Green
+        0xFFAA0000, // 4: Blue
+        0xFF00AAAA, // 5: Yellow
+        0xFFAA00AA  // 6: Magenta
+    ];
+    
+    // Floor and Ceiling colors
+    const ceilColor = 0xFF333333;
+    const floorColor = 0xFF555555;
+
+    // --- Player State ---
+    const player = {
+        x: 8.0,
+        y: 8.0,
+        dir: 0.0, // Angle in radians
+        moveSpeed: 3.5,
+        rotSpeed: 2.0,
+        isShooting: false,
+        lastShot: 0
+    };
+
+    // --- Input State ---
+    const keys = {
+        w: false, s: false, a: false, d: false,
+        ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false
+    };
+    
+    let isMouseLocked = false;
+    let isGameRunning = false;
+
+    // Mobile specific inputs
+    const mobileMove = { x: 0, y: 0 };
+    let lookTouchId = null;
+    let lastLookX = 0;
+
+    // UI Elements
+    const fpsCounter = document.getElementById('fps-counter');
+    const posCounter = document.getElementById('pos-counter');
+    const weaponContainer = document.getElementById('weapon-container');
+    const muzzleFlash = document.getElementById('muzzle-flash');
+    const flashStar = document.getElementById('flash-star');
+    const startScreen = document.getElementById('start-screen');
+
+    
+    // --- Keyboard Controls ---
+    window.addEventListener('keydown', (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key] = true; });
+    window.addEventListener('keyup', (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key] = false; });
+
+    // --- Mouse Controls (Pointer Lock) ---
+    document.getElementById('start-btn').addEventListener('click', () => {
+        startScreen.style.display = 'none';
+        isGameRunning = true;
+        // Try to request pointer lock for PC
+        if (window.innerWidth > 768) {
+            document.body.requestPointerLock();
+        }
+    });
+
+    document.addEventListener('pointerlockchange', () => {
+        isMouseLocked = document.pointerLockElement === document.body;
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isMouseLocked || !isGameRunning) return;
+        // Adjust sensitivity
+        player.dir += e.movementX * 0.002;
+    });
+    
+    document.addEventListener('mousedown', (e) => {
+        if (isMouseLocked && isGameRunning) shoot();
+    });
+
+    // --- Mobile Touch Controls ---
+    
+    // Movement Joystick Logic
+    const moveJoystick = document.getElementById('move-joystick');
+    const moveKnob = document.getElementById('move-knob');
+    let moveTouchId = null;
+    const maxJoystickDist = 35;
+
+    function handleMoveTouch(e) {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const touch = e.changedTouches[i];
+            
+            if (moveTouchId === null && e.type === 'touchstart') {
+                // Check if touch is within joystick zone
+                const rect = moveJoystick.getBoundingClientRect();
+                if (touch.clientX >= rect.left && touch.clientX <= rect.right &&
+                    touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+                    moveTouchId = touch.identifier;
+                }
+            }
+
+            if (touch.identifier === moveTouchId) {
+                if (e.type === 'touchend' || e.type === 'touchcancel') {
+                    moveTouchId = null;
+                    moveKnob.style.transform = `translate(0px, 0px)`;
+                    mobileMove.x = 0;
+                    mobileMove.y = 0;
+                } else {
+                    const rect = moveJoystick.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    
+                    let dx = touch.clientX - centerX;
+                    let dy = touch.clientY - centerY;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    
+                    if (dist > maxJoystickDist) {
+                        dx = (dx / dist) * maxJoystickDist;
+                        dy = (dy / dist) * maxJoystickDist;
+                    }
+                    
+                    moveKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+                    
+                    // Normalize to -1 to 1 for game logic
+                    mobileMove.x = dx / maxJoystickDist;
+                    mobileMove.y = -dy / maxJoystickDist; // Invert Y so up is positive
+                }
+            }
+        }
+    }
+    
+    moveJoystick.addEventListener('touchstart', handleMoveTouch, {passive: false});
+    moveJoystick.addEventListener('touchmove', handleMoveTouch, {passive: false});
+    moveJoystick.addEventListener('touchend', handleMoveTouch, {passive: false});
+    moveJoystick.addEventListener('touchcancel', handleMoveTouch, {passive: false});
+
+    // Fire Button
+    document.getElementById('action-btn').addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if(isGameRunning) shoot();
+    });
+
+    // Looking around by swiping the screen (ignoring UI buttons)
+    document.getElementById('ui-layer').addEventListener('touchstart', (e) => {
+        // Only trigger if not touching a button
+        if (e.target.id === 'ui-layer' || e.target.id === 'crosshair' || e.target.id === 'weapon-container') {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (lookTouchId === null) {
+                    lookTouchId = e.changedTouches[i].identifier;
+                    lastLookX = e.changedTouches[i].clientX;
+                }
+            }
+        }
+    }, {passive: false});
+
+    document.getElementById('ui-layer').addEventListener('touchmove', (e) => {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const touch = e.changedTouches[i];
+            if (touch.identifier === lookTouchId) {
+                e.preventDefault(); // Stop scrolling
+                const deltaX = touch.clientX - lastLookX;
+                player.dir += deltaX * 0.005; // Touch sensitivity
+                lastLookX = touch.clientX;
+            }
+        }
+    }, {passive: false});
+    
+    function handleLookEnd(e) {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === lookTouchId) {
+                lookTouchId = null;
+            }
+        }
+    }
+    document.getElementById('ui-layer').addEventListener('touchend', handleLookEnd);
+    document.getElementById('ui-layer').addEventListener('touchcancel', handleLookEnd);
+
+
+    function shoot() {
+        const now = Date.now();
+        if (now - player.lastShot > 200) { // Rate limit
+            player.lastShot = now;
+            
+            // Visual effect
+            document.body.classList.add('shooting');
+            muzzleFlash.setAttribute('opacity', '1');
+            flashStar.setAttribute('opacity', '1');
+            
+            setTimeout(() => {
+                document.body.classList.remove('shooting');
+                muzzleFlash.setAttribute('opacity', '0');
+                flashStar.setAttribute('opacity', '0');
+            }, 50);
+            
+            // Here you would add hitscan logic if there were enemies
+        }
+    }
+
+    function update(dt) {
+        // --- Movement Logic ---
+        
+        // Calculate forward and right vectors based on looking direction
+        const dirX = Math.cos(player.dir);
+        const dirY = Math.sin(player.dir);
+        const rightX = -Math.sin(player.dir);
+        const rightY = Math.cos(player.dir);
+
+        let moveDirX = 0;
+        let moveDirY = 0;
+
+        // PC WASD input
+        if (keys.w || keys.ArrowUp) { moveDirX += dirX; moveDirY += dirY; }
+        if (keys.s || keys.ArrowDown) { moveDirX -= dirX; moveDirY -= dirY; }
+        // Strafing
+        if (keys.a) { moveDirX -= rightX; moveDirY -= rightY; }
+        if (keys.d) { moveDirX += rightX; moveDirY += rightY; }
+        
+        // PC Arrow turning (fallback if mouse isn't locked)
+        if (!isMouseLocked) {
+            if (keys.ArrowLeft) player.dir -= player.rotSpeed * dt;
+            if (keys.ArrowRight) player.dir += player.rotSpeed * dt;
+        }
+
+        // Mobile Joystick Input
+        if (mobileMove.y !== 0) {
+            moveDirX += dirX * mobileMove.y;
+            moveDirY += dirY * mobileMove.y;
+        }
+        if (mobileMove.x !== 0) {
+            moveDirX += rightX * mobileMove.x;
+            moveDirY += rightY * mobileMove.x;
+        }
+
+        // Apply movement with simple collision detection
+        if (moveDirX !== 0 || moveDirY !== 0) {
+            // Normalize movement vector to prevent faster diagonal movement
+            const mag = Math.sqrt(moveDirX*moveDirX + moveDirY*moveDirY);
+            moveDirX = (moveDirX / mag) * player.moveSpeed * dt;
+            moveDirY = (moveDirY / mag) * player.moveSpeed * dt;
+
+            // Collision radius buffer
+            const radius = 0.2; 
+            
+            // Check X collision
+            const checkX = Math.floor(player.x + moveDirX + (moveDirX > 0 ? radius : -radius));
+            const checkY_current = Math.floor(player.y);
+            if (checkX >= 0 && checkX < mapWidth && map[checkY_current * mapWidth + checkX] === 0) {
+                player.x += moveDirX;
+            }
+
+            // Check Y collision
+            const checkX_current = Math.floor(player.x);
+            const checkY = Math.floor(player.y + moveDirY + (moveDirY > 0 ? radius : -radius));
+            if (checkY >= 0 && checkY < mapHeight && map[checkY * mapWidth + checkX_current] === 0) {
+                player.y += moveDirY;
+            }
+        }
+        
+        // Keep angle between 0 and 2PI
+        player.dir = (player.dir + Math.PI * 2) % (Math.PI * 2);
+    }
+
+    
+    function render() {
+        // Clear buffer with floor and ceiling
+        const halfHeight = SCREEN_HEIGHT / 2;
+        for (let y = 0; y < SCREEN_HEIGHT; y++) {
+            const color = y < halfHeight ? ceilColor : floorColor;
+            const offset = y * SCREEN_WIDTH;
+            for (let x = 0; x < SCREEN_WIDTH; x++) {
+                buffer[offset + x] = color;
+            }
+        }
+
+        // Cast rays
+        for (let x = 0; x < SCREEN_WIDTH; x++) {
+            // Calculate ray position and direction
+            const cameraX = 2 * x / SCREEN_WIDTH - 1; // x-coordinate in camera space
+            
+            // Direction vector
+            const dirX = Math.cos(player.dir);
+            const dirY = Math.sin(player.dir);
+            // Camera plane perpendicular to direction
+            const planeX = -Math.sin(player.dir) * Math.tan(FOV/2);
+            const planeY = Math.cos(player.dir) * Math.tan(FOV/2);
+            
+            const rayDirX = dirX + planeX * cameraX;
+            const rayDirY = dirY + planeY * cameraX;
+
+            // Which box of the map we're in
+            let mapX = Math.floor(player.x);
+            let mapY = Math.floor(player.y);
+
+            // Length of ray from current position to next x or y-side
+            let sideDistX;
+            let sideDistY;
+
+            // Length of ray from one x or y-side to next x or y-side
+            const deltaDistX = Math.abs(1 / rayDirX);
+            const deltaDistY = Math.abs(1 / rayDirY);
+            let perpWallDist;
+
+            // What direction to step in x or y-direction (either +1 or -1)
+            let stepX;
+            let stepY;
+
+            let hit = 0; // Was there a wall hit?
+            let side;    // Was a NS or a EW wall hit?
+
+            // Calculate step and initial sideDist
+            if (rayDirX < 0) {
+                stepX = -1;
+                sideDistX = (player.x - mapX) * deltaDistX;
+            } else {
+                stepX = 1;
+                sideDistX = (mapX + 1.0 - player.x) * deltaDistX;
+            }
+            if (rayDirY < 0) {
+                stepY = -1;
+                sideDistY = (player.y - mapY) * deltaDistY;
+            } else {
+                stepY = 1;
+                sideDistY = (mapY + 1.0 - player.y) * deltaDistY;
+            }
+
+            // Perform DDA (Digital Differential Analysis)
+            let depth = 0;
+            while (hit === 0 && depth < MAX_DEPTH) {
+                // Jump to next map square, either in x-direction, or in y-direction
+                if (sideDistX < sideDistY) {
+                    sideDistX += deltaDistX;
+                    mapX += stepX;
+                    side = 0;
+                } else {
+                    sideDistY += deltaDistY;
+                    mapY += stepY;
+                    side = 1;
+                }
+                
+                // Check if ray has hit a wall
+                if (mapX >= 0 && mapX < mapWidth && mapY >= 0 && mapY < mapHeight) {
+                    if (map[mapY * mapWidth + mapX] > 0) hit = 1;
+                } else {
+                    break; // Out of bounds
+                }
+                depth++;
+            }
+
+            if (hit) {
+                // Calculate distance projected on camera direction (Euclidean distance gives fisheye effect)
+                if (side === 0) perpWallDist = (mapX - player.x + (1 - stepX) / 2) / rayDirX;
+                else           perpWallDist = (mapY - player.y + (1 - stepY) / 2) / rayDirY;
+
+                // Calculate height of line to draw on screen
+                // Prevent divide by zero and limit max height
+                let lineHeight = 0;
+                if(perpWallDist > 0) {
+                   lineHeight = Math.floor(SCREEN_HEIGHT / perpWallDist);
+                }
+
+                // Calculate lowest and highest pixel to fill in current stripe
+                let drawStart = -lineHeight / 2 + SCREEN_HEIGHT / 2;
+                if (drawStart < 0) drawStart = 0;
+                let drawEnd = lineHeight / 2 + SCREEN_HEIGHT / 2;
+                if (drawEnd >= SCREEN_HEIGHT) drawEnd = SCREEN_HEIGHT - 1;
+
+                // Get texture/color based on map block type
+                const texNum = map[mapY * mapWidth + mapX];
+                let color = colors[texNum] || colors[1];
+
+                // Give x and y sides different brightness
+                if (side === 1) {
+                    // Darken color slightly using bitwise operations for performance
+                    // Extract RGB, halve them, put back
+                    const a = (color & 0xFF000000);
+                    const b = (color & 0x00FF0000) >> 1;
+                    const g = (color & 0x0000FF00) >> 1;
+                    const r = (color & 0x000000FF) >> 1;
+                    color = a | (b & 0x00FF0000) | (g & 0x0000FF00) | (r & 0x000000FF);
+                }
+
+                // Fake shading based on distance (ambient occlusion style)
+                const distanceDim = Math.min(1.0, 1.0 - (perpWallDist / MAX_DEPTH));
+                if(distanceDim < 1.0) {
+                    const a = (color & 0xFF000000);
+                    const b = Math.floor(((color & 0x00FF0000) >> 16) * distanceDim) << 16;
+                    const g = Math.floor(((color & 0x0000FF00) >> 8) * distanceDim) << 8;
+                    const r = Math.floor((color & 0x000000FF) * distanceDim);
+                    color = a | b | g | r;
+                }
+
+                // Draw the vertical stripe into the buffer
+                drawStart = Math.floor(drawStart);
+                drawEnd = Math.floor(drawEnd);
+                for (let y = drawStart; y < drawEnd; y++) {
+                    buffer[y * SCREEN_WIDTH + x] = color;
+                }
+            }
+        }
+
+        // Put the modified pixel data back onto the context
+        // and then scale it onto the main canvas
+        offscreenCtx.putImageData(imageData, 0, 0);
+        ctx.drawImage(offscreenCanvas, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    }
+
+    
+    let lastTime = 0;
+    let frames = 0;
+    let lastFpsTime = 0;
+
+    function gameLoop(timestamp) {
+        if (!lastTime) lastTime = timestamp;
+        
+        // Delta time in seconds
+        const dt = Math.min((timestamp - lastTime) / 1000, 0.1); 
+        lastTime = timestamp;
+
+        if (isGameRunning) {
+            update(dt);
+            render();
+        }
+
+        // FPS Calculation
+        frames++;
+        if (timestamp - lastFpsTime >= 1000) {
+            fpsCounter.innerText = `FPS: ${frames}`;
+            frames = 0;
+            lastFpsTime = timestamp;
+            
+            // Update position debug info once per second too
+            posCounter.innerText = `X:${Math.floor(player.x)} Y:${Math.floor(player.y)}`;
+        }
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    // Initialize map edges to ensure closed walls
+    for (let i = 0; i < mapWidth; i++) {
+        map[0 * mapWidth + i] = 1;
+        map[(mapHeight - 1) * mapWidth + i] = 1;
+        map[i * mapWidth + 0] = 1;
+        map[i * mapWidth + (mapWidth - 1)] = 1;
+    }
+
+    // Initial render behind start screen
+    render();
+    
+    // Start loop
+    requestAnimationFrame(gameLoop);
+
+</script>
+</body>
+</html>

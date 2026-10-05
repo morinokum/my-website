@@ -1,0 +1,1111 @@
+<!-- AI-GAME-PORTFOLIO -->
+<!DOCTYPE html>
+<html lang="ja" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wizardry-style RPG: Labyrinth of Legends</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #050505;
+            color: #d1d5db;
+        }
+        .retro-font {
+            font-family: 'VT323', monospace;
+        }
+        .crt-overlay {
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+        }
+        /* Custom scrollbar for log windows */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col items-center justify-between p-2 md:p-4 select-none relative overflow-x-hidden">
+    <!-- CRT scanline overlay -->
+    <div class="absolute inset-0 crt-overlay z-50"></div>
+
+    <header class="w-full max-w-5xl bg-gray-900 border-2 border-emerald-600 rounded-lg p-3 mb-2 flex justify-between items-center shadow-lg shadow-emerald-900/30">
+        <div>
+            <h1 class="retro-font text-3xl md:text-4xl text-emerald-400 tracking-wider">LABYRINTH OF LEGENDS</h1>
+            <p class="text-xs text-gray-400">Wizardry-Style Classic 3D Dungeon Crawler</p>
+        </div>
+        <div id="game-stats-header" class="text-right text-xs md:text-sm text-emerald-300">
+            <div>FLOOR: <span id="lbl-floor" class="font-bold text-white">1F</span> | GOLD: <span id="lbl-gold" class="font-bold text-yellow-400">100</span>G</div>
+            <div>STATUS: <span id="lbl-party-status" class="font-bold text-emerald-400">TAVERN</span></div>
+        </div>
+    </header>
+
+    <main class="w-full max-w-5xl flex-1 flex flex-col bg-gray-950 border-2 border-gray-800 rounded-lg overflow-hidden shadow-2xl relative mb-2 min-h-[500px]">
+        
+        <!-- 1. TAVERN VIEW (Base / Party Management) -->
+        <div id="view-tavern" class="flex-1 flex flex-col p-4 md:p-6 justify-between">
+            <div>
+                <h2 class="retro-font text-2xl text-amber-400 border-b border-amber-800 pb-1 mb-4">GILGAMESH'S TAVERN & GUILD</h2>
+                <p class="text-sm text-gray-300 mb-4">冒険者よ、闇の迷宮へ挑むパーティを編成せよ。酒場で仲間を募り、ボルタック商店で装備を整えろ。</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <!-- Party List -->
+                    <div class="bg-gray-900 border border-gray-700 rounded p-3">
+                        <h3 class="text-sm font-bold text-emerald-400 mb-2">現在のパーティ (最大6名)</h3>
+                        <div id="tavern-party-list" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                            <!-- Dynamically populated -->
+                        </div>
+                    </div>
+                    <!-- Roster / Recruitment -->
+                    <div class="bg-gray-900 border border-gray-700 rounded p-3">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="text-sm font-bold text-blue-400">待機中の冒険者 / 新規作成</h3>
+                            <button onclick="openCreateCharModal()" class="bg-blue-700 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded transition">キャラ作成</button>
+                        </div>
+                        <div id="tavern-roster-list" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                            <!-- Dynamically populated -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-2 justify-center pt-2 border-t border-gray-800">
+                <button onclick="goToShop()" class="bg-amber-700 hover:bg-amber-600 text-white px-4 py-2 rounded text-sm font-bold transition shadow">ボルタック商店</button>
+                <button onclick="goToTemple()" class="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 rounded text-sm font-bold transition shadow">カント寺院 (復活・治癒)</button>
+                <button onclick="enterDungeon()" id="btn-enter-dungeon" class="bg-emerald-600 hover:bg-emerald-500 text-gray-950 px-6 py-2 rounded text-sm font-extrabold transition shadow animate-pulse">迷宮へ出発する</button>
+            </div>
+        </div>
+
+        <!-- 2. SHOP VIEW (Boltac's Trading Post) -->
+        <div id="view-shop" class="flex-1 flex flex-col p-4 md:p-6 justify-between hidden">
+            <div>
+                <h2 class="retro-font text-2xl text-amber-400 border-b border-amber-800 pb-1 mb-2">BOLTAC'S TRADING POST</h2>
+                <p class="text-xs text-gray-400 mb-4">「いらっしゃい！ 良い剣があるぜ、武器防具を選んでいきな！」 所持金: <span id="shop-gold" class="text-yellow-400 font-bold">0</span>G</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-gray-900 border border-gray-700 rounded p-3">
+                        <h3 class="text-sm font-bold text-amber-300 mb-2">店売りアイテム</h3>
+                        <div id="shop-items-list" class="space-y-2 max-h-56 overflow-y-auto pr-1"></div>
+                    </div>
+                    <div class="bg-gray-900 border border-gray-700 rounded p-3">
+                        <h3 class="text-sm font-bold text-blue-300 mb-2">メンバーの持ち物 / 装備</h3>
+                        <div class="mb-2">
+                            <select id="shop-target-member" onchange="renderShopInventory()" class="w-full bg-gray-800 text-xs text-white border border-gray-700 rounded p-1"></select>
+                        </div>
+                        <div id="shop-member-inventory" class="space-y-2 max-h-44 overflow-y-auto pr-1"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end pt-2 border-t border-gray-800">
+                <button onclick="returnToTavern()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm font-bold transition">酒場に戻る</button>
+            </div>
+        </div>
+
+        <!-- 3. TEMPLE VIEW (Cant Temple) -->
+        <div id="view-temple" class="flex-1 flex flex-col p-4 md:p-6 justify-between hidden">
+            <div>
+                <h2 class="retro-font text-2xl text-purple-400 border-b border-purple-900 pb-1 mb-2">CANT TEMPLE</h2>
+                <p class="text-xs text-gray-400 mb-4">「神のご加護を... 灰になった者や呪われた者を救済する。」 所持金: <span id="temple-gold" class="text-yellow-400 font-bold">0</span>G</p>
+                
+                <div class="bg-gray-900 border border-gray-700 rounded p-4">
+                    <h3 class="text-sm font-bold text-purple-300 mb-2">寺院での処置対象を選んでください</h3>
+                    <div id="temple-members-list" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+                </div>
+            </div>
+            <div class="flex justify-end pt-2 border-t border-gray-800">
+                <button onclick="returnToTavern()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm font-bold transition">酒場に戻る</button>
+            </div>
+        </div>
+
+        <!-- 4. DUNGEON EXPLORATION VIEW -->
+        <div id="view-dungeon" class="flex-1 flex flex-col md:flex-row h-full hidden">
+            <!-- 3D Wireframe viewport & message log -->
+            <div class="flex-1 flex flex-col border-b md:border-b-0 md:border-r border-gray-800 p-3">
+                <!-- 3D Wireframe Canvas Container -->
+                <div class="w-full h-48 md:h-64 bg-black border-2 border-emerald-800 rounded relative overflow-hidden flex items-center justify-center mb-3 shadow-inner">
+                    <canvas id="dungeon-canvas" class="w-full h-full"></canvas>
+                    <div class="absolute top-2 left-2 bg-black/70 px-2 py-1 rounded text-xs text-emerald-400 font-mono border border-emerald-900">
+                        POS: <span id="pos-x">0</span>, <span id="pos-y">0</span> | DIR: <span id="pos-dir">NORTH</span>
+                    </div>
+                </div>
+
+                <!-- Log Box -->
+                <div class="flex-1 bg-gray-900 border border-gray-800 rounded p-2 flex flex-col min-h-[120px]">
+                    <div id="dungeon-log" class="flex-1 text-xs md:text-sm text-gray-300 overflow-y-auto space-y-1 font-mono pr-1">
+                        <div>迷宮の深部へと足を踏み入れた... 静寂と冷気がパーティを包む。</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Side Controls & Party status in dungeon -->
+            <div class="w-full md:w-80 bg-gray-900/80 p-3 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2 border-b border-gray-800 pb-1">探索パーティ状態</h3>
+                    <div id="dungeon-party-status" class="space-y-2 mb-4">
+                        <!-- Dynamically populated -->
+                    </div>
+                </div>
+
+                <!-- Directional & Action Controls -->
+                <div class="space-y-2">
+                    <div class="grid grid-cols-3 gap-1 w-36 mx-auto mb-2">
+                        <div></div>
+                        <button onclick="movePlayer('FORWARD')" class="bg-gray-800 hover:bg-gray-700 active:bg-emerald-700 border border-gray-600 rounded p-2 text-white font-bold flex items-center justify-center shadow">▲</button>
+                        <div></div>
+                        <button onclick="turnPlayer('LEFT')" class="bg-gray-800 hover:bg-gray-700 active:bg-emerald-700 border border-gray-600 rounded p-2 text-white font-bold flex items-center justify-center shadow">◀</button>
+                        <button onclick="movePlayer('BACK')" class="bg-gray-800 hover:bg-gray-700 active:bg-emerald-700 border border-gray-600 rounded p-2 text-white font-bold flex items-center justify-center shadow">▼</button>
+                        <button onclick="turnPlayer('RIGHT')" class="bg-gray-800 hover:bg-gray-700 active:bg-emerald-700 border border-gray-600 rounded p-2 text-white font-bold flex items-center justify-center shadow">▶</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="openCampMenu()" class="bg-blue-800 hover:bg-blue-700 text-white text-xs font-bold py-2 px-3 rounded shadow transition">キャンプ</button>
+                        <button onclick="returnToTavernConfirm()" class="bg-red-900/80 hover:bg-red-800 text-white text-xs font-bold py-2 px-3 rounded shadow transition">地上へ脱出</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. BATTLE VIEW -->
+        <div id="view-battle" class="flex-1 flex flex-col p-4 justify-between hidden bg-gray-950">
+            <div>
+                <div class="flex justify-between items-center border-b border-red-900 pb-1 mb-3">
+                    <h2 class="retro-font text-2xl text-red-500 animate-pulse">MONSTER ENCOUNTER!</h2>
+                    <span id="battle-round" class="text-xs text-gray-400 font-mono">ROUND 1</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <!-- Enemy List Display -->
+                    <div class="bg-gray-900 border border-red-900/60 rounded p-3">
+                        <h3 class="text-xs font-bold text-red-400 uppercase mb-2">遭遇した敵グループ</h3>
+                        <div id="battle-enemies-list" class="space-y-2 max-h-40 overflow-y-auto pr-1"></div>
+                    </div>
+                    <!-- Party Combat Status -->
+                    <div class="bg-gray-900 border border-gray-700 rounded p-3">
+                        <h3 class="text-xs font-bold text-emerald-400 uppercase mb-2">戦闘パーティ状態</h3>
+                        <div id="battle-party-list" class="space-y-2 max-h-40 overflow-y-auto pr-1"></div>
+                    </div>
+                </div>
+
+                <!-- Battle Log & Action Menu -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2 bg-gray-900 border border-gray-800 rounded p-3 h-36 overflow-y-auto font-mono text-xs text-gray-300" id="battle-log">
+                        <div>魔物が現れた！ 戦闘準備をせよ！</div>
+                    </div>
+                    <div id="battle-command-box" class="bg-gray-900 border border-gray-700 rounded p-3 flex flex-col justify-center space-y-2">
+                        <!-- Dynamically generated action buttons -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. TREASURE / LOOT VIEW -->
+        <div id="view-treasure" class="flex-1 flex flex-col p-6 items-center justify-center hidden">
+            <div class="w-full max-w-md bg-gray-900 border-2 border-yellow-600 rounded-lg p-5 text-center shadow-2xl">
+                <h2 class="retro-font text-3xl text-yellow-400 mb-2">TREASURE CHEST!</h2>
+                <p id="treasure-desc" class="text-sm text-gray-300 mb-4">敵を撃破した！ 床に宝箱が残されている...</p>
+                
+                <div id="treasure-trap-box" class="mb-4 text-xs text-amber-300 font-mono">
+                    トラップの気配がする... 誰が罠を解除する？
+                </div>
+
+                <div id="treasure-actions" class="space-y-2">
+                    <div class="mb-2">
+                        <select id="treasure-thief-select" class="w-full bg-gray-800 text-xs text-white border border-gray-700 rounded p-2"></select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="attemptInspectTrap()" class="bg-amber-700 hover:bg-amber-600 text-white text-xs font-bold py-2 rounded transition">罠を調べる・解除</button>
+                        <button onclick="openTreasureChestDirectly()" class="bg-red-800 hover:bg-red-700 text-white text-xs font-bold py-2 rounded transition">そのまま開ける</button>
+                    </div>
+                    <button onclick="leaveTreasure()" class="w-full bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 rounded transition mt-2">宝箱を放置する</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Character Creation Modal -->
+    <div id="modal-create-char" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-900 border-2 border-blue-600 rounded-lg max-w-md w-full p-5 shadow-2xl">
+            <h3 class="retro-font text-2xl text-blue-400 mb-3 border-b border-blue-900 pb-1">冒険者新規作成</h3>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-gray-400 mb-1">名前</label>
+                    <input type="text" id="input-char-name" value="GUEST" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-gray-400 mb-1">種族</label>
+                        <select id="select-char-race" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white">
+                            <option value="Human">ヒューマン (バランス)</option>
+                            <option value="Elf">エルフ (知恵・魔力)</option>
+                            <option value="Dwarf">ドワーフ (体力・生命力)</option>
+                            <option value="Hobbit">ホビット (素早さ・運)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">職業</label>
+                        <select id="select-char-class" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white">
+                            <option value="Fighter">戦士 (Fighter)</option>
+                            <option value="Mage">魔法使い (Mage)</option>
+                            <option value="Priest">僧侶 (Priest)</option>
+                            <option value="Thief">盗賊 (Thief)</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-1">アライメント (属性)</label>
+                    <select id="select-char-align" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white">
+                        <option value="Good">善 (Good)</option>
+                        <option value="Neutral">中立 (Neutral)</option>
+                        <option value="Evil">悪 (Evil)</option>
+                    </select>
+                </div>
+                <div class="bg-gray-950 p-2 rounded border border-gray-800 text-gray-300">
+                    <div>初期ボーナスポイント: <span id="char-bonus-pts" class="text-yellow-400 font-bold">10</span></div>
+                    <div class="grid grid-cols-3 gap-1 mt-2 text-[11px]">
+                        <div>力(STR): <span id="stat-str">10</span></div>
+                        <div>知(INT): <span id="stat-int">10</span></div>
+                        <div>信仰(PIE): <span id="stat-pie">10</span></div>
+                        <div>体(VIT): <span id="stat-vit">10</span></div>
+                        <div>敏(AGI): <span id="stat-agi">10</span></div>
+                        <div>運(LUK): <span id="stat-luk">10</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 mt-4 pt-2 border-t border-gray-800">
+                <button onclick="closeCreateCharModal()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded text-xs font-bold transition">キャンセル</button>
+                <button onclick="createCharacter()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded text-xs font-bold transition">作成完了</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Camp Modal -->
+    <div id="modal-camp" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-900 border-2 border-purple-600 rounded-lg max-w-md w-full p-5 shadow-2xl">
+            <h3 class="retro-font text-2xl text-purple-400 mb-3 border-b border-purple-900 pb-1">キャンプメニュー</h3>
+            <div class="space-y-2 text-xs">
+                <button onclick="campHealSpells()" class="w-full bg-purple-800 hover:bg-purple-700 text-white p-2.5 rounded font-bold transition text-left flex justify-between items-center">
+                    <span>回復呪文の唱詠 (HP回復)</span>
+                    <span class="text-[10px] text-purple-300">僧侶魔法</span>
+                </button>
+                <button onclick="campCheckStatus()" class="w-full bg-gray-800 hover:bg-gray-700 text-white p-2.5 rounded font-bold transition text-left">
+                    パーティ詳細ステータス確認
+                </button>
+                <button onclick="closeCampModal()" class="w-full bg-gray-700 hover:bg-gray-600 text-white p-2.5 rounded font-bold transition text-center mt-2">
+                    迷宮探索に戻る
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- GAME STATE & DATA ---
+        let gameState = {
+            view: 'tavern', // tavern, shop, temple, dungeon, battle, treasure
+            gold: 250,
+            floor: 1,
+            roster: [], // All created characters
+            party: [],  // Characters in active party (max 6)
+            dungeon: {
+                width: 10,
+                height: 10,
+                x: 0,
+                y: 0,
+                dir: 0, // 0: North, 1: East, 2: South, 3: West
+                map: [] // Generated map cells
+            },
+            battle: null,
+            pendingTreasure: null
+        };
+
+        // Items Database
+        const ITEMS = {
+            shortSword: { id: 'shortSword', name: '短剣 (Short Sword)', type: 'weapon', atk: 3, price: 50, slot: 'weapon' },
+            longSword: { id: 'longSword', name: '長剣 (Long Sword)', type: 'weapon', atk: 7, price: 150, slot: 'weapon' },
+            staff: { id: 'staff', name: '杖 (Staff)', type: 'weapon', atk: 2, price: 30, slot: 'weapon' },
+            leatherArmor: { id: 'leatherArmor', name: '革の鎧 (Leather)', type: 'armor', def: 2, price: 70, slot: 'armor' },
+            chainMail: { id: 'chainMail', name: '鎖帷子 (Chain Mail)', type: 'armor', def: 5, price: 200, slot: 'armor' },
+            shield: { id: 'shield', name: '小盾 (Small Shield)', type: 'shield', def: 2, price: 60, slot: 'shield' },
+            potion: { id: 'potion', name: '回復薬 (Potion)', type: 'item', heal: 30, price: 40, consumable: true }
+        };
+
+        // Monsters Database by Floor
+        const MONSTERS = {
+            1: [
+                { name: 'コボルド (Kobold)', hp: 12, atk: 6, def: 2, exp: 15, gold: 10 },
+                { name: '大スライム (Giant Slime)', hp: 18, atk: 4, def: 1, exp: 12, gold: 8 },
+                { name: 'ゾンビ (Zombie)', hp: 22, atk: 8, def: 3, exp: 25, gold: 18 },
+                { name: 'オーク (Orc)', hp: 30, atk: 11, def: 4, exp: 40, gold: 30 }
+            ],
+            2: [
+                { name: 'オークウォリアー', hp: 45, atk: 15, def: 6, exp: 70, gold: 50 },
+                { name: 'スケルトン', hp: 35, atk: 14, def: 5, exp: 60, gold: 40 },
+                { name: 'ハーピー', hp: 40, atk: 18, def: 4, exp: 85, gold: 65 }
+            ]
+        };
+
+        // Initialize default party members if roster is empty
+        function initDefaultRoster() {
+            if (gameState.roster.length === 0) {
+                gameState.roster = [
+                    createCharObj('Garth', 'Human', 'Fighter', 'Good', 14, 10, 10, 14, 12, 10),
+                    createCharObj('Eowyn', 'Elf', 'Mage', 'Neutral', 9, 16, 11, 9, 13, 10),
+                    createCharObj('Crum', 'Dwarf', 'Priest', 'Good', 13, 9, 15, 15, 8, 10),
+                    createCharObj('Bilbo', 'Hobbit', 'Thief', 'Neutral', 10, 11, 10, 10, 16, 14)
+                ];
+                // Add first 4 to active party
+                gameState.party = [0, 1, 2, 3];
+            }
+        }
+
+        function createCharObj(name, race, cls, align, str, int, pie, vit, agi, luk) {
+            return {
+                id: 'char_' + Math.random().toString(36).substr(2, 9),
+                name: name,
+                race: race,
+                class: cls,
+                align: align,
+                level: 1,
+                exp: 0,
+                hp: 20 + vit * 2,
+                maxHp: 20 + vit * 2,
+                mp: [3, 2, 1, 0], // Spell slots by level
+                maxMp: [3, 2, 1, 0],
+                stats: { str, int, pie, vit, agi, luk },
+                equipment: { weapon: null, armor: null, shield: null },
+                inventory: [ITEMS.potion],
+                status: 'OK' // OK, DEAD, ASHES, PARALYZED, POISON
+            };
+        }
+
+        // --- NAVIGATION & VIEWS ---
+        function switchView(viewName) {
+            gameState.view = viewName;
+            ['tavern', 'shop', 'temple', 'dungeon', 'battle', 'treasure'].forEach(v => {
+                document.getElementById('view-' + v).classList.add('hidden');
+            });
+            document.getElementById('view-' + viewName).classList.remove('hidden');
+
+            // Update header status
+            document.getElementById('lbl-floor').innerText = gameState.floor + 'F';
+            document.getElementById('lbl-gold').innerText = gameState.gold;
+            const statusMap = { tavern: 'TAVERN', shop: 'SHOP', temple: 'TEMPLE', dungeon: 'DUNGEON', battle: 'COMBAT', treasure: 'TREASURE' };
+            document.getElementById('lbl-party-status').innerText = statusMap[viewName] || 'UNKNOWN';
+
+            if (viewName === 'tavern') renderTavern();
+            if (viewName === 'shop') renderShop();
+            if (viewName === 'temple') renderTemple();
+            if (viewName === 'dungeon') {
+                drawDungeonView();
+                renderDungeonParty();
+            }
+            if (viewName === 'battle') renderBattle();
+        }
+
+        // --- TAVERN & GUILD ---
+        function renderTavern() {
+            const partyListEl = document.getElementById('tavern-party-list');
+            partyListEl.innerHTML = '';
+            if (gameState.party.length === 0) {
+                partyListEl.innerHTML = '<div class="text-xs text-gray-500">パーティメンバーがいません。待機中から選んでください。</div>';
+            } else {
+                gameState.party.forEach((rosterIdx, index) => {
+                    const c = gameState.roster[rosterIdx];
+                    partyListEl.innerHTML += `
+                        <div class="bg-gray-800 border border-gray-700 p-2 rounded flex justify-between items-center text-xs">
+                            <div>
+                                <span class="font-bold text-emerald-400">${index+1}. ${c.name}</span> 
+                                <span class="text-gray-400">(${c.race[0]}/${c.class[0]} Lv.${c.level})</span>
+                                <div class="text-gray-300">HP: ${c.hp}/${c.maxHp} | 状態: <span class="${c.status === 'OK' ? 'text-green-400':'text-red-400'}">${c.status}</span></div>
+                            </div>
+                            <button onclick="removeFromParty(${index})" class="bg-red-900/60 hover:bg-red-800 text-white px-2 py-1 rounded">外す</button>
+                        </div>
+                    `;
+                });
+            }
+
+            const rosterListEl = document.getElementById('tavern-roster-list');
+            rosterListEl.innerHTML = '';
+            gameState.roster.forEach((c, idx) => {
+                const isInParty = gameState.party.includes(idx);
+                rosterListEl.innerHTML += `
+                    <div class="bg-gray-800 border border-gray-700 p-2 rounded flex justify-between items-center text-xs">
+                        <div>
+                            <span class="font-bold text-blue-300">${c.name}</span> (${c.race} ${c.class}) 
+                            <div>HP:${c.hp}/${c.maxHp} Lv:${c.level}</div>
+                        </div>
+                        <div>
+                            ${isInParty ? '<span class="text-gray-500 text-[10px]">同行中</span>' : `<button onclick="addToParty(${idx})" class="bg-emerald-700 hover:bg-emerald-600 text-white px-2 py-1 rounded">加える</button>`}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function addToParty(rosterIdx) {
+            if (gameState.party.length >= 6) {
+                alertBox("パーティは最大6名までです。");
+                return;
+            }
+            gameState.party.push(rosterIdx);
+            renderTavern();
+        }
+
+        function removeFromParty(partyIdx) {
+            gameState.party.splice(partyIdx, 1);
+            renderTavern();
+        }
+
+        // Character Creation Modal Logic
+        function openCreateCharModal() {
+            document.getElementById('modal-create-char').classList.remove('hidden');
+        }
+        function closeCreateCharModal() {
+            document.getElementById('modal-create-char').classList.add('hidden');
+        }
+
+        function createCharacter() {
+            const name = document.getElementById('input-char-name').value || 'Adventurer';
+            const race = document.getElementById('select-char-race').value;
+            const cls = document.getElementById('select-char-class').value;
+            const align = document.getElementById('select-char-align').value;
+
+            // Base stats based on race
+            let str=10, int=10, pie=10, vit=10, agi=10, luk=10;
+            if (race === 'Elf') { int += 3; agi += 2; str -= 2; }
+            if (race === 'Dwarf') { str += 3; vit += 3; agi -= 2; }
+            if (race === 'Hobbit') { agi += 4; luk += 3; str -= 3; }
+
+            const newChar = createCharObj(name, race, cls, align, str, int, pie, vit, agi, luk);
+            gameState.roster.push(newChar);
+            closeCreateCharModal();
+            renderTavern();
+        }
+
+        function goToShop() { switchView('shop'); }
+        function goToTemple() { switchView('temple'); }
+
+        // --- SHOP ---
+        function renderShop() {
+            document.getElementById('shop-gold').innerText = gameState.gold;
+            const listEl = document.getElementById('shop-items-list');
+            listEl.innerHTML = '';
+            for (let key in ITEMS) {
+                const item = ITEMS[key];
+                listEl.innerHTML += `
+                    <div class="bg-gray-800 border border-gray-700 p-2 rounded flex justify-between items-center text-xs">
+                        <div>
+                            <span class="font-bold text-amber-300">${item.name}</span>
+                            <div class="text-gray-400">価格: ${item.price}G ${item.atk ? '| 攻+'+item.atk : ''} ${item.def ? '| 防+'+item.def : ''}</div>
+                        </div>
+                        <button onclick="buyItem('${key}')" class="bg-amber-700 hover:bg-amber-600 text-white px-2.5 py-1 rounded font-bold">購入</button>
+                    </div>
+                `;
+            }
+
+            // Populate target member dropdown for inventory
+            const selectEl = document.getElementById('shop-target-member');
+            selectEl.innerHTML = '';
+            gameState.party.forEach((rIdx, idx) => {
+                const c = gameState.roster[rIdx];
+                selectEl.innerHTML += `<option value="${rIdx}">${c.name} (${c.class})</option>`;
+            });
+            renderShopInventory();
+        }
+
+        function buyItem(itemKey) {
+            const item = ITEMS[itemKey];
+            if (gameState.gold < item.price) {
+                alertBox("所持金が足りません！");
+                return;
+            }
+            const selectEl = document.getElementById('shop-target-member');
+            if (!selectEl.value) {
+                alertBox("アイテムを持たせるキャラクターを選択してください。");
+                return;
+            }
+            gameState.gold -= item.price;
+            const c = gameState.roster[parseInt(selectEl.value)];
+            c.inventory.push(JSON.parse(JSON.stringify(item)));
+            renderShop();
+        }
+
+        function renderShopInventory() {
+            const selectEl = document.getElementById('shop-target-member');
+            const invEl = document.getElementById('shop-member-inventory');
+            invEl.innerHTML = '';
+            if (!selectEl.value) return;
+            const c = gameState.roster[parseInt(selectEl.value)];
+
+            // Equipment display
+            invEl.innerHTML += `<div class="text-emerald-400 font-bold mb-1">装備中:</div>`;
+            ['weapon', 'armor', 'shield'].forEach(slot => {
+                const eq = c.equipment[slot];
+                invEl.innerHTML += `
+                    <div class="bg-gray-800 p-1 rounded text-gray-300 flex justify-between items-center text-[11px] mb-1">
+                        <span>[${slot.toUpperCase()}] ${eq ? eq.name : 'なし'}</span>
+                        ${eq ? `<button onclick="unequipItem('${c.id}', '${slot}')" class="text-red-400 hover:underline">外す</button>` : ''}
+                    </div>
+                `;
+            });
+
+            invEl.innerHTML += `<div class="text-blue-400 font-bold mt-2 mb-1">所持品:</div>`;
+            c.inventory.forEach((invItem, idx) => {
+                invEl.innerHTML += `
+                    <div class="bg-gray-800 p-1 rounded text-gray-300 flex justify-between items-center text-[11px] mb-1">
+                        <span>${invItem.name}</span>
+                        <div class="space-x-1">
+                            ${invItem.type !== 'item' ? `<button onclick="equipItem('${c.id}', ${idx})" class="text-amber-400 hover:underline">装備</button>` : ''}
+                            <button onclick="sellItem('${c.id}', ${idx})" class="text-red-400 hover:underline">売却</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function equipItem(charId, invIdx) {
+            const c = gameState.roster.find(x => x.id === charId);
+            const item = c.inventory[invIdx];
+            const slot = item.slot || (item.type === 'weapon' ? 'weapon' : 'armor');
+            
+            // Unequip current if any
+            if (c.equipment[slot]) {
+                c.inventory.push(c.equipment[slot]);
+            }
+            c.equipment[slot] = item;
+            c.inventory.splice(invIdx, 1);
+            renderShopInventory();
+        }
+
+        function unequipItem(charId, slot) {
+            const c = gameState.roster.find(x => x.id === charId);
+            if (c.equipment[slot]) {
+                c.inventory.push(c.equipment[slot]);
+                c.equipment[slot] = null;
+                renderShopInventory();
+            }
+        }
+
+        function sellItem(charId, invIdx) {
+            const c = gameState.roster.find(x => x.id === charId);
+            const item = c.inventory[invIdx];
+            gameState.gold += Math.floor(item.price * 0.5);
+            c.inventory.splice(invIdx, 1);
+            renderShop();
+        }
+
+        // --- TEMPLE ---
+        function renderTemple() {
+            document.getElementById('temple-gold').innerText = gameState.gold;
+            const listEl = document.getElementById('temple-members-list');
+            listEl.innerHTML = '';
+            gameState.roster.forEach((c, idx) => {
+                if (c.status !== 'OK') {
+                    let cost = c.level * 100;
+                    if (c.status === 'ASHES') cost *= 5;
+                    listEl.innerHTML += `
+                        <div class="bg-gray-800 border border-gray-700 p-3 rounded flex justify-between items-center text-xs">
+                            <div>
+                                <span class="font-bold text-purple-300">${c.name}</span> 
+                                <span class="text-red-400 font-bold">(${c.status})</span>
+                                <div class="text-gray-400">治療費: ${cost}G</div>
+                            </div>
+                            <button onclick="healCharacter(${idx}, ${cost})" class="bg-purple-700 hover:bg-purple-600 text-white px-3 py-1 rounded font-bold">治療・復活</button>
+                        </div>
+                    `;
+                }
+            });
+            if (listEl.innerHTML === '') {
+                listEl.innerHTML = '<div class="text-xs text-gray-500">現在、寺院で治療を必要とする仲間はいません。</div>';
+            }
+        }
+
+        function healCharacter(rosterIdx, cost) {
+            if (gameState.gold < cost) {
+                alertBox("お布施のゴールドが足りません！");
+                return;
+            }
+            gameState.gold -= cost;
+            const c = gameState.roster[rosterIdx];
+            c.status = 'OK';
+            c.hp = c.maxHp;
+            renderTemple();
+        }
+
+        // --- DUNGEON GENERATION & EXPLORATION ---
+        function generateDungeon() {
+            const w = 10, h = 10;
+            let map = [];
+            for (let y = 0; y < h; y++) {
+                let row = [];
+                for (let x = 0; x < w; x++) {
+                    // Simple random wall/floor generation (ensure start 0,0 is open)
+                    let isWall = (x === 0 && y === 0) ? false : (Math.random() < 0.25);
+                    row.push({ wall: isWall, visited: false });
+                }
+                map.push(row);
+            }
+            gameState.dungeon = {
+                width: w,
+                height: h,
+                x: 0,
+                y: 0,
+                dir: 0, // 0: N, 1: E, 2: S, 3: W
+                map: map
+            };
+            gameState.dungeon.map[0][0].visited = true;
+        }
+
+        function enterDungeon() {
+            if (gameState.party.length === 0) {
+                alertBox("パーティメンバーが0人です。酒場で編成してください。");
+                return;
+            }
+            generateDungeon();
+            switchView('dungeon');
+            logDungeon("地下1階の迷宮に足を踏み入れた。");
+        }
+
+        function logDungeon(msg) {
+            const logEl = document.getElementById('dungeon-log');
+            logEl.innerHTML += `<div>> ${msg}</div>`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        const DIR_NAMES = ['NORTH', 'EAST', 'SOUTH', 'WEST'];
+        const DX = [0, 1, 0, -1];
+        const DY = [-1, 0, 1, 0];
+
+        function turnPlayer(turnDir) {
+            if (turnDir === 'LEFT') {
+                gameState.dungeon.dir = (gameState.dungeon.dir + 3) % 4;
+            } else {
+                gameState.dungeon.dir = (gameState.dungeon.dir + 1) % 4;
+            }
+            drawDungeonView();
+        }
+
+        function movePlayer(action) {
+            let d = gameState.dungeon.dir;
+            if (action === 'BACK') {
+                d = (d + 2) % 4;
+            }
+            const nx = gameState.dungeon.x + DX[d];
+            const ny = gameState.dungeon.y + DY[d];
+
+            // Check boundaries and walls
+            if (nx < 0 || nx >= gameState.dungeon.width || ny < 0 || ny >= gameState.dungeon.height) {
+                logDungeon("堅い壁に阻まれている。進めない。");
+                return;
+            }
+            if (gameState.dungeon.map[ny][nx].wall) {
+                logDungeon("目の前は壁だ。進むことはできない。");
+                return;
+            }
+
+            gameState.dungeon.x = nx;
+            gameState.dungeon.y = ny;
+            gameState.dungeon.map[ny][nx].visited = true;
+
+            document.getElementById('pos-x').innerText = nx;
+            document.getElementById('pos-y').innerText = ny;
+            document.getElementById('pos-dir').innerText = DIR_NAMES[gameState.dungeon.dir];
+
+            drawDungeonView();
+            checkRandomEncounter();
+        }
+
+        // 3D Wireframe Canvas Renderer
+        function drawDungeonView() {
+            const canvas = document.getElementById('dungeon-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+
+            ctx.fillStyle = '#050505';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // Draw wireframe corridor perspective lines
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2;
+
+            // Simple pseudo-3D perspective drawing
+            // Outer frame
+            ctx.strokeRect(10, 10, w - 20, h - 20);
+
+            // Center perspective box
+            const cx = w / 2;
+            const cy = h / 2;
+            ctx.strokeRect(cx - 60, cy - 40, 120, 80);
+
+            // Diagonal corner lines
+            ctx.beginPath();
+            ctx.moveTo(10, 10); ctx.lineTo(cx - 60, cy - 40);
+            ctx.moveTo(w - 10, 10); ctx.lineTo(cx + 60, cy - 40);
+            ctx.moveTo(10, h - 10); ctx.lineTo(cx - 60, cy + 40);
+            ctx.moveTo(w - 10, h - 10); ctx.lineTo(cx + 60, cy + 40);
+            ctx.stroke();
+
+            // Check if front cell is wall
+            const d = gameState.dungeon.dir;
+            const fx = gameState.dungeon.x + DX[d];
+            const fy = gameState.dungeon.y + DY[d];
+            let isFrontWall = false;
+            if (fx < 0 || fx >= gameState.dungeon.width || fy < 0 || fy >= gameState.dungeon.height) {
+                isFrontWall = true;
+            } else if (gameState.dungeon.map[fy][fx].wall) {
+                isFrontWall = true;
+            }
+
+            if (isFrontWall) {
+                ctx.fillStyle = 'rgba(16, 185, 129, 0.2)';
+                ctx.fillRect(cx - 60, cy - 40, 120, 80);
+                ctx.fillStyle = '#10b981';
+                ctx.font = '12px monospace';
+                ctx.fillText("WALL", cx - 15, cy + 4);
+            }
+        }
+
+        function renderDungeonParty() {
+            const container = document.getElementById('dungeon-party-status');
+            container.innerHTML = '';
+            gameState.party.forEach(rIdx => {
+                const c = gameState.roster[rIdx];
+                const hpPercent = Math.max(0, Math.min(100, (c.hp / c.maxHp) * 100));
+                let barColor = 'bg-emerald-500';
+                if (hpPercent < 50) barColor = 'bg-yellow-500';
+                if (hpPercent < 25) barColor = 'bg-red-500';
+
+                container.innerHTML += `
+                    <div class="bg-gray-800 p-2 rounded text-xs">
+                        <div class="flex justify-between font-bold text-gray-200">
+                            <span>${c.name}</span>
+                            <span class="${c.status === 'OK' ? 'text-emerald-400' : 'text-red-400'}">${c.hp}/${c.maxHp} HP</span>
+                        </div>
+                        <div class="w-full bg-gray-700 h-1.5 rounded-full mt-1 overflow-hidden">
+                            <div class="${barColor} h-full" style="width: ${hpPercent}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function checkRandomEncounter() {
+            if (Math.random() < 0.3) { // 30% encounter rate per step
+                startBattle();
+            }
+        }
+
+        // --- BATTLE SYSTEM ---
+        function startBattle() {
+            const floorMonsters = MONSTERS[gameState.floor] || MONSTERS[1];
+            const template = floorMonsters[Math.floor(Math.random() * floorMonsters.length)];
+            const count = Math.floor(Math.random() * 3) + 1;
+
+            gameState.battle = {
+                round: 1,
+                enemies: Array.from({ length: count }, (_, i) => ({
+                    id: i,
+                    name: template.name + (count > 1 ? ` #${i+1}` : ''),
+                    hp: template.hp,
+                    maxHp: template.hp,
+                    atk: template.atk,
+                    def: template.def,
+                    exp: template.exp,
+                    gold: template.gold,
+                    alive: true
+                }))
+            };
+
+            switchView('battle');
+            logBattle(`魔物の群れが現れた！`);
+            renderBattleCommands();
+        }
+
+        function logBattle(msg) {
+            const logEl = document.getElementById('battle-log');
+            logEl.innerHTML += `<div>> ${msg}</div>`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function renderBattle() {
+            document.getElementById('battle-round').innerText = `ROUND ${gameState.battle.round}`;
+            
+            // Render Enemies
+            const enemyEl = document.getElementById('battle-enemies-list');
+            enemyEl.innerHTML = '';
+            gameState.battle.enemies.forEach(e => {
+                if (e.alive) {
+                    enemyEl.innerHTML += `
+                        <div class="bg-gray-800 p-2 rounded flex justify-between items-center text-xs">
+                            <span class="font-bold text-red-400">${e.name}</span>
+                            <span class="text-gray-300">HP: ${e.hp}/${e.maxHp}</span>
+                        </div>
+                    `;
+                }
+            });
+
+            // Render Party
+            const partyEl = document.getElementById('battle-party-list');
+            partyEl.innerHTML = '';
+            gameState.party.forEach(rIdx => {
+                const c = gameState.roster[rIdx];
+                partyEl.innerHTML += `
+                    <div class="bg-gray-800 p-2 rounded flex justify-between items-center text-xs">
+                        <span class="font-bold text-emerald-400">${c.name}</span>
+                        <span class="${c.hp > 0 ? 'text-gray-300' : 'text-red-500'}">HP: ${c.hp}/${c.maxHp} (${c.status})</span>
+                    </div>
+                `;
+            });
+        }
+
+        function renderBattleCommands() {
+            const box = document.getElementById('battle-command-box');
+            box.innerHTML = `
+                <div class="text-xs font-bold text-gray-300 mb-1">行動コマンド選択</div>
+                <button onclick="executeBattleAction('attack')" class="w-full bg-red-800 hover:bg-red-700 text-white text-xs py-2 rounded font-bold transition shadow">通常攻撃 (FIGHT)</button>
+                <button onclick="executeBattleAction('defend')" class="w-full bg-blue-800 hover:bg-blue-700 text-white text-xs py-2 rounded font-bold transition shadow">防御 (DEFEND)</button>
+                <button onclick="executeBattleAction('run')" class="w-full bg-gray-700 hover:bg-gray-600 text-white text-xs py-2 rounded font-bold transition shadow">逃走 (RUN)</button>
+            `;
+        }
+
+        function executeBattleAction(action) {
+            if (action === 'run') {
+                if (Math.random() < 0.6) {
+                    logBattle("うまく逃げ切ることに成功した！");
+                    setTimeout(() => switchView('dungeon'), 1200);
+                    return;
+                } else {
+                    logBattle("逃走に失敗した！");
+                }
+            } else if (action === 'attack' || action === 'defend') {
+                // Party turns
+                gameState.party.forEach(rIdx => {
+                    const c = gameState.roster[rIdx];
+                    if (c.hp <= 0 || c.status !== 'OK') return;
+
+                    const aliveEnemies = gameState.battle.enemies.filter(e => e.alive);
+                    if (aliveEnemies.length === 0) return;
+                    const target = aliveEnemies[0];
+
+                    if (action === 'attack') {
+                        let weaponAtk = c.equipment.weapon ? c.equipment.weapon.atk : 2;
+                        let dmg = Math.max(1, Math.floor((c.stats.str / 2) + weaponAtk + Math.random() * 5) - target.def);
+                        target.hp -= dmg;
+                        logBattle(`${c.name}の攻撃！ ${target.name}に ${dmg} のダメージ！`);
+                        if (target.hp <= 0) {
+                            target.alive = false;
+                            logBattle(`${target.name}を倒した！`);
+                        }
+                    }
+                });
+
+                // Check victory
+                if (gameState.battle.enemies.every(e => !e.alive)) {
+                    logBattle("戦闘に勝利した！");
+                    setTimeout(() => triggerTreasure(), 1500);
+                    return;
+                }
+
+                // Enemies turn
+                gameState.battle.enemies.forEach(e => {
+                    if (!e.alive) return;
+                    const aliveParty = gameState.party.map(r => gameState.roster[r]).filter(c => c.hp > 0 && c.status === 'OK');
+                    if (aliveParty.length === 0) return;
+                    const targetChar = aliveParty[Math.floor(Math.random() * aliveParty.length)];
+
+                    let armorDef = targetChar.equipment.armor ? targetChar.equipment.armor.def : 0;
+                    let shieldDef = targetChar.equipment.shield ? targetChar.equipment.shield.def : 0;
+                    let dmg = Math.max(1, Math.floor(e.atk + Math.random() * 4) - (armorDef + shieldDef));
+                    targetChar.hp -= dmg;
+                    logBattle(`${e.name}の攻撃！ ${targetChar.name}に ${dmg} のダメージ！`);
+
+                    if (targetChar.hp <= 0) {
+                        targetChar.hp = 0;
+                        targetChar.status = 'DEAD';
+                        logBattle(`${targetChar.name}は倒れてしまった...`);
+                    }
+                });
+
+                // Check party defeat
+                const activeAlive = gameState.party.map(r => gameState.roster[r]).some(c => c.hp > 0 && c.status === 'OK');
+                if (!activeAlive) {
+                    logBattle("パーティは全滅してしまった...");
+                    setTimeout(() => {
+                        alertBox("全滅しました... 酒場に戻ります。");
+                        gameState.party.forEach(r => {
+                            let c = gameState.roster[r];
+                            if (c.hp <= 0) c.status = 'ASHES';
+                        });
+                        switchView('tavern');
+                    }, 2000);
+                    return;
+                }
+
+                gameState.battle.round++;
+            }
+            renderBattle();
+        }
+
+        // --- TREASURE & LOOT ---
+        function triggerTreasure() {
+            let totalExp = gameState.battle.enemies.reduce((acc, e) => acc + e.exp, 0);
+            let totalGold = gameState.battle.enemies.reduce((acc, e) => acc + e.gold, 0);
+
+            gameState.gold += totalGold;
+            // Distribute exp and check level up
+            gameState.party.forEach(r => {
+                let c = gameState.roster[r];
+                c.exp += totalExp;
+                if (c.exp >= c.level * 100) {
+                    c.level++;
+                    c.maxHp += 8;
+                    c.hp = c.maxHp;
+                    logBattle(`${c.name} は レベル ${c.level} にアップした！`);
+                }
+            });
+
+            gameState.pendingTreasure = {
+                gold: totalGold,
+                trap: Math.random() < 0.5 ? 'Poison Needle' : null
+            };
+
+            switchView('treasure');
+            document.getElementById('treasure-desc').innerText = `戦闘勝利！ 獲得EXP: ${totalExp} | 獲得GOLD: ${totalGold}G\n床に宝箱が残されている。`;
+            
+            const thiefSelect = document.getElementById('treasure-thief-select');
+            thiefSelect.innerHTML = '';
+            gameState.party.forEach(r => {
+                let c = gameState.roster[r];
+                thiefSelect.innerHTML += `<option value="${r}">${c.name} (${c.class})</option>`;
+            });
+
+            document.getElementById('treasure-trap-box').innerText = gameState.pendingTreasure.trap ? "宝箱には怪しい仕掛け(罠)があるようだ..." : "宝箱に罠の気配はない。";
+        }
+
+        function attemptInspectTrap() {
+            const thiefIdx = parseInt(document.getElementById('treasure-thief-select').value);
+            const c = gameState.roster[thiefIdx];
+            
+            if (gameState.pendingTreasure.trap) {
+                let successChance = 0.5 + (c.class === 'Thief' ? 0.3 : 0) + (c.stats.agi * 0.01);
+                if (Math.random() < successChance) {
+                    alertBox(`${c.name}は見事に罠を解除した！`);
+                    gameState.pendingTreasure.trap = null;
+                    openTreasureChestDirectly();
+                } else {
+                    alertBox(`罠の解除に失敗した！ ${c.name}に罠が作動した！`);
+                    c.hp = Math.max(1, c.hp - 10);
+                    gameState.pendingTreasure.trap = null;
+                    openTreasureChestDirectly();
+                }
+            } else {
+                alertBox("罠は仕掛けられていなかった！");
+                openTreasureChestDirectly();
+            }
+        }
+
+        function openTreasureChestDirectly() {
+            if (gameState.pendingTreasure.trap) {
+                alertBox("罠が発動した！ パーティ全体にダメージ！");
+                gameState.party.forEach(r => {
+                    let c = gameState.roster[r];
+                    c.hp = Math.max(1, c.hp - 8);
+                });
+            }
+            alertBox("宝箱を開け、アイテムとゴールドを手に入れた！");
+            switchView('dungeon');
+            renderDungeonParty();
+        }
+
+        function leaveTreasure() {
+            alertBox("宝箱をその場に放置した。");
+            switchView('dungeon');
+            renderDungeonParty();
+        }
+
+        // --- CAMP & MISC ---
+        function openCampMenu() {
+            document.getElementById('modal-camp').classList.remove('hidden');
+        }
+        function closeCampModal() {
+            document.getElementById('modal-camp').classList.add('hidden');
+        }
+
+        function campHealSpells() {
+            let healedCount = 0;
+            gameState.party.forEach(r => {
+                let c = gameState.roster[r];
+                if (c.class === 'Priest' || c.class === 'Mage') {
+                    c.hp = Math.min(c.maxHp, c.hp + 20);
+                    healedCount++;
+                }
+            });
+            if (healedCount > 0) {
+                alertBox("呪詠によりパーティのHPが回復した！");
+            } else {
+                alertBox("パーティに呪文を使えるメンバー(僧侶/魔使い)がいません。");
+            }
+            closeCampModal();
+            renderDungeonParty();
+        }
+
+        function campCheckStatus() {
+            closeCampModal();
+            let summary = gameState.party.map(r => {
+                let c = gameState.roster[r];
+                return `${c.name} (Lv.${c.level} ${c.class}) HP:${c.hp}/${c.maxHp} [${c.status}]`;
+            }).join('\n');
+            alertBox("【パーティステータス】\n" + summary);
+        }
+
+        function returnToTavernConfirm() {
+            if (confirm("地上（酒場）へ脱出しますか？")) {
+                switchView('tavern');
+            }
+        }
+
+        // Custom Safe Message Box (no alert() compliance)
+        function alertBox(msg) {
+            // Simple custom modal or log overlay replacement
+            if (gameState.view === 'dungeon') {
+                logDungeon(msg);
+            } else if (gameState.view === 'battle') {
+                logBattle(msg);
+            } else {
+                // Create custom alert popup overlay
+                const existing = document.getElementById('custom-alert-overlay');
+                if (existing) existing.remove();
+
+                const overlay = document.createElement('div');
+                overlay.id = 'custom-alert-overlay';
+                overlay.className = 'fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4';
+                overlay.innerHTML = `
+                    <div class="bg-gray-900 border-2 border-emerald-500 rounded-lg max-w-sm w-full p-4 text-center shadow-2xl">
+                        <p class="text-xs text-gray-200 mb-4 whitespace-pre-line">${msg}</p>
+                        <button onclick="document.getElementById('custom-alert-overlay').remove()" class="bg-emerald-600 hover:bg-emerald-500 text-gray-950 font-bold px-4 py-1.5 rounded text-xs">OK</button>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+            }
+        }
+
+        // Initialize on load
+        window.onload = function() {
+            initDefaultRoster();
+            switchView('tavern');
+        };
+    </script>
+</body>
+</html>

@@ -1,19 +1,26 @@
 #!/bin/bash
 
-echo "🔍 PC内からゲーム（AI-GAME-PORTFOLIO）を探索中..."
+echo "🔍 ダウンロードフォルダから新しいゲーム（AI-GAME-PORTFOLIO）を探索中..."
 
-# 1. 一度 games フォルダの中をリセット（kabe.htmlを保護しつつ、または毎回集め直す）
+# 1. games フォルダを準備
 mkdir -p games
 
-# 2. 目印のあるファイルだけを安全に games フォルダに集める
-grep -rl "AI-GAME-PORTFOLIO" ~ --include="*.html" 2>/dev/null | while read file; do
+# 2. ダウンロードフォルダ（~/Downloads）から目印のあるファイルだけを探索
+# ChromebookでLinuxと共有しているダウンロードフォルダの場合は /mnt/chromeos/MyFiles/Downloads になることもあります
+grep -rl "AI-GAME-PORTFOLIO" ~/Downloads --include="*.html" 2>/dev/null | while read file; do
   # 自分の my-website フォルダ内にあるものはコピー元として除外（無限ループ防止）
   case "$file" in
     */my-website/*) continue ;;
   esac
   
   filename=$(basename "$file")
-  echo "✨ 発見して収集: $filename"
+  
+  # すでに games フォルダに同じファイルが存在する場合はスキップ
+  if [ -f "games/$filename" ]; then
+    continue
+  fi
+
+  echo "✨ 新しく発見して収集: $filename"
   cp "$file" games/
 done
 

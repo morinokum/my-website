@@ -1,0 +1,434 @@
+<!-- AI-GAME-PORTFOLIO -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>レトロ町並みアドベンチャー</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #000;
+            color: #fff;
+            /* Use a retro-looking monospaced font */
+            font-family: 'Courier New', Courier, monospace, 'MS Gothic', 'MS Mincho', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: manipulation; /* Prevent pinch zoom on double tap */
+        }
+
+        /* 
+         * PC88 Digital 8-color palette (roughly):
+         * Black, Red, Green, Yellow, Blue, Magenta, Cyan, White
+         */
+        :root {
+            --color-black: #000000;
+            --color-red: #ff0000;
+            --color-green: #00ff00;
+            --color-yellow: #ffff00;
+            --color-blue: #0000ff;
+            --color-magenta: #ff00ff;
+            --color-cyan: #00ffff;
+            --color-white: #ffffff;
+            
+            /* Dithering pattern for gray/brown simulation */
+            --pattern-size: 4px;
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 800px;
+            aspect-ratio: 4 / 3; /* Classic monitor aspect ratio */
+            background-color: var(--color-black);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            /* Optional: CRT scanline effect overlay */
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+            border: 2px solid #333;
+        }
+
+        /* CRT Scanline effect */
+        #game-container::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 100;
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+        }
+
+        #scene-view {
+            width: 100%;
+            height: 65%; /* 65% for graphics, 35% for text/UI */
+            background-color: var(--color-black);
+            position: relative;
+            cursor: crosshair; /* Classic point-and-click cursor */
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+            image-rendering: pixelated; /* Crucial for sharp pixel art look if using raster, helps with some SVG scaling too */
+        }
+
+        #ui-area {
+            width: 100%;
+            height: 35%;
+            border-top: 4px solid var(--color-white);
+            display: flex;
+            background-color: var(--color-blue); /* Classic blue background for text box */
+            padding: 10px;
+        }
+
+        #text-box {
+            flex-grow: 1;
+            padding: 10px;
+            font-size: clamp(14px, 2.5vw, 20px);
+            line-height: 1.5;
+            color: var(--color-white);
+            overflow-y: auto;
+            border-right: 2px solid var(--color-white);
+        }
+
+        #command-menu {
+            width: 30%;
+            min-width: 120px;
+            padding-left: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .cmd-btn {
+            background-color: var(--color-black);
+            color: var(--color-white);
+            border: 2px solid var(--color-white);
+            padding: 8px;
+            font-family: inherit;
+            font-size: clamp(12px, 2vw, 16px);
+            cursor: pointer;
+            text-align: left;
+            transition: background-color 0.1s, color 0.1s;
+        }
+
+        .cmd-btn:hover, .cmd-btn.active {
+            background-color: var(--color-white);
+            color: var(--color-black);
+        }
+
+        /* Interactive areas in SVG */
+        .clickable {
+            cursor: pointer;
+            /* Optionally add a subtle visual hint when hovering, but classic games didn't always have this */
+            /* opacity: 0.9; */
+        }
+        
+        .clickable:hover {
+             filter: brightness(1.2); /* A little modern convenience, can be removed for strict purity */
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="scene-view">
+        <!-- SVG content will be injected here by JS -->
+    </div>
+    
+    <div id="ui-area">
+        <div id="text-box">
+            <span id="message-text">ここはどうやら古い町のようだ。<br>コマンドを選択してください。</span>
+            <span id="cursor" class="blinking-cursor">_</span>
+        </div>
+        <div id="command-menu">
+            <button class="cmd-btn active" data-cmd="look">みる</button>
+            <button class="cmd-btn" data-cmd="move">いどう</button>
+            <button class="cmd-btn" data-cmd="talk">はなす</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Blinking cursor effect */
+    .blinking-cursor {
+        animation: blink 1s step-end infinite;
+    }
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
+    }
+</style>
+
+<script>
+const state = {
+    currentScene: 'town_square',
+    currentCommand: 'look', // look, move, talk
+    isTyping: false
+};
+
+const dom = {
+    sceneView: document.getElementById('scene-view'),
+    messageText: document.getElementById('message-text'),
+    commandBtns: document.querySelectorAll('.cmd-btn')
+};
+
+// PC88 Color constants for JS reference
+const C_BLK = '#000000', C_RED = '#ff0000', C_GRN = '#00ff00', C_YEL = '#ffff00', 
+      C_BLU = '#0000ff', C_MAG = '#ff00ff', C_CYN = '#00ffff', C_WHT = '#ffffff';
+
+// Define scenes using SVG strings to maintain the single-file rule easily and allow complex drawing
+const scenes = {
+    town_square: {
+        id: 'town_square',
+        name: '町の中央広場',
+        svg: `
+            <svg viewBox="0 0 640 400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <!-- PC88-style Dithering Patterns for pseudo-colors (e.g., Gray, Brown) -->
+                    <pattern id="dither-gray" width="4" height="4" patternUnits="userSpaceOnUse">
+                        <rect width="4" height="4" fill="${C_BLK}" />
+                        <rect x="0" y="0" width="2" height="2" fill="${C_WHT}" />
+                        <rect x="2" y="2" width="2" height="2" fill="${C_WHT}" />
+                    </pattern>
+                    <pattern id="dither-brown" width="4" height="4" patternUnits="userSpaceOnUse">
+                        <rect width="4" height="4" fill="${C_RED}" />
+                        <rect x="0" y="0" width="2" height="2" fill="${C_YEL}" />
+                        <rect x="2" y="2" width="2" height="2" fill="${C_YEL}" />
+                        <rect x="0" y="2" width="2" height="2" fill="${C_GRN}" /> <!-- Mixed to simulate darker tone -->
+                    </pattern>
+                    <pattern id="dither-cyan-blu" width="4" height="4" patternUnits="userSpaceOnUse">
+                        <rect width="4" height="4" fill="${C_BLU}" />
+                        <rect x="0" y="0" width="2" height="2" fill="${C_CYN}" />
+                        <rect x="2" y="2" width="2" height="2" fill="${C_CYN}" />
+                    </pattern>
+                </defs>
+
+                <!-- Sky -->
+                <rect x="0" y="0" width="640" height="250" fill="url(#dither-cyan-blu)" />
+                
+                <!-- Distant Mountains / Horizon -->
+                <path d="M0,250 L100,200 L250,230 L350,180 L500,240 L640,210 L640,250 Z" fill="${C_MAG}" opacity="0.5"/> <!-- Using pure colors for stark contrast -->
+                <path d="M0,250 L100,200 L250,230 L350,180 L500,240 L640,210 L640,250 Z" fill="url(#dither-gray)"/>
+                
+                <!-- Ground -->
+                <rect x="0" y="250" width="640" height="150" fill="url(#dither-brown)" />
+                <!-- Ground details (lines) -->
+                <line x1="0" y1="280" x2="640" y2="280" stroke="${C_BLK}" stroke-width="2" stroke-dasharray="10 20"/>
+                <line x1="0" y1="320" x2="640" y2="320" stroke="${C_BLK}" stroke-width="2" stroke-dasharray="20 40"/>
+
+                <!-- Left Building (Bar/Inn) -->
+                <g id="obj-inn" class="clickable" data-target="inn">
+                    <rect x="20" y="100" width="200" height="200" fill="${C_WHT}" stroke="${C_BLK}" stroke-width="4"/>
+                    <!-- Roof -->
+                    <polygon points="10,100 120,40 230,100" fill="${C_RED}" stroke="${C_BLK}" stroke-width="4"/>
+                    <!-- Door -->
+                    <rect x="90" y="220" width="60" height="80" fill="url(#dither-brown)" stroke="${C_BLK}" stroke-width="4"/>
+                    <circle cx="140" cy="260" r="5" fill="${C_YEL}" /> <!-- Knob -->
+                    <!-- Window -->
+                    <rect x="40" y="140" width="60" height="60" fill="${C_CYN}" stroke="${C_BLK}" stroke-width="4"/>
+                    <line x1="70" y1="140" x2="70" y2="200" stroke="${C_BLK}" stroke-width="4"/>
+                    <line x1="40" y1="170" x2="100" y2="170" stroke="${C_BLK}" stroke-width="4"/>
+                    <!-- Sign -->
+                    <rect x="20" y="110" width="100" height="30" fill="${C_YEL}" stroke="${C_BLK}" stroke-width="2"/>
+                    <text x="35" y="132" font-family="monospace" font-size="20" font-weight="bold" fill="${C_BLK}">INN</text>
+                </g>
+
+                <!-- Right Building (Shop) -->
+                <g id="obj-shop" class="clickable" data-target="shop">
+                    <rect x="400" y="120" width="220" height="180" fill="url(#dither-gray)" stroke="${C_BLK}" stroke-width="4"/>
+                    <!-- Roof (Flat style) -->
+                    <rect x="390" y="100" width="240" height="20" fill="${C_GRN}" stroke="${C_BLK}" stroke-width="4"/>
+                    <!-- Awning -->
+                    <path d="M400,160 L620,160 L600,120 L420,120 Z" fill="${C_MAG}" stroke="${C_BLK}" stroke-width="4"/>
+                    <!-- Door -->
+                    <rect x="420" y="200" width="80" height="100" fill="${C_BLK}" stroke="${C_WHT}" stroke-width="2"/> <!-- Dark door -->
+                    <!-- Large Window Display -->
+                    <rect x="520" y="200" width="80" height="60" fill="${C_YEL}" stroke="${C_BLK}" stroke-width="4"/>
+                    <text x="530" y="235" font-family="monospace" font-size="16" fill="${C_RED}">ITEM</text>
+                </g>
+
+                <!-- Center object (Statue/Fountain) -->
+                <g id="obj-statue" class="clickable" data-target="statue">
+                    <!-- Base -->
+                    <rect x="280" y="230" width="80" height="40" fill="url(#dither-gray)" stroke="${C_BLK}" stroke-width="4"/>
+                    <rect x="290" y="210" width="60" height="20" fill="${C_WHT}" stroke="${C_BLK}" stroke-width="4"/>
+                    <!-- Spire / Shape -->
+                    <polygon points="320,110 290,210 350,210" fill="${C_CYN}" stroke="${C_BLK}" stroke-width="4"/>
+                    <circle cx="320" cy="110" r="15" fill="${C_YEL}" stroke="${C_BLK}" stroke-width="4"/>
+                </g>
+                
+                <!-- Sun/Moon -->
+                <circle cx="550" cy="60" r="30" fill="${C_RED}" />
+                
+                <!-- Cloud lines (PC88 minimalist style) -->
+                <path d="M50,40 L150,40 M80,60 L200,60 M120,80 L250,80" stroke="${C_WHT}" stroke-width="4" stroke-dasharray="10 5" fill="none"/>
+
+            </svg>
+        `,
+        interactions: {
+            look: {
+                default: "ここは町の広場だ。西に宿屋、東に道具屋がある。中央には奇妙なモニュメントが建っている。",
+                inn: "「INN」と書かれた看板がある。西側の建物は宿屋のようだ。",
+                shop: "東側の建物は道具屋だ。ショーウィンドウにアイテムが並んでいる。",
+                statue: "広場の中央には、天を指すような奇妙な石像がある。材質はよくわからない。"
+            },
+            move: {
+                inn: "宿屋の中に入った...（プロトタイプのため移動できません）",
+                shop: "道具屋に入った...（プロトタイプのため移動できません）",
+                statue: "石像に近づいた。見上げると首が痛い。"
+            },
+            talk: {
+                default: "ここには誰もいないようだ。",
+                inn: "外から叫んでも誰も返事をしない。",
+                shop: "店員は見当たらない。",
+                statue: "石像に話しかけてみた。「......」当然、返事はない。"
+            }
+        }
+    }
+    // Add more scenes here in the future
+};
+
+// Typewriter effect for text
+function typeText(text, callback) {
+    if (state.isTyping) return;
+    state.isTyping = true;
+    dom.messageText.innerHTML = '';
+    let i = 0;
+    
+    // Disable command buttons while typing
+    dom.commandBtns.forEach(btn => btn.style.pointerEvents = 'none');
+
+    function typeChar() {
+        if (i < text.length) {
+            // Handle simple HTML like <br> if needed, but for now just raw text
+            if(text.substring(i, i+4) === '<br>') {
+                dom.messageText.innerHTML += '<br>';
+                i += 4;
+            } else {
+                dom.messageText.innerHTML += text.charAt(i);
+                i++;
+            }
+            // Add a small random delay for retro feel
+            setTimeout(typeChar, 20 + Math.random() * 30);
+        } else {
+            state.isTyping = false;
+            // Re-enable command buttons
+            dom.commandBtns.forEach(btn => btn.style.pointerEvents = 'auto');
+            if (callback) callback();
+        }
+        // Auto-scroll to bottom
+        dom.messageText.parentElement.scrollTop = dom.messageText.parentElement.scrollHeight;
+    }
+    typeChar();
+}
+
+function handleCommandChange(e) {
+    if (state.isTyping) return;
+    
+    const cmd = e.target.dataset.cmd;
+    state.currentCommand = cmd;
+    
+    // Update UI active state
+    dom.commandBtns.forEach(btn => {
+        if(btn.dataset.cmd === cmd) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    let msg = "";
+    switch(cmd) {
+        case 'look': msg = "なにを みますか？"; break;
+        case 'move': msg = "どこへ いどうしますか？"; break;
+        case 'talk': msg = "だれと はなしますか？"; break;
+    }
+    typeText(msg);
+}
+
+function handleSceneClick(e) {
+    if (state.isTyping) return;
+
+    // Find if a clickable element was clicked
+    // Traverse up to find an element with 'data-target'
+    let target = e.target;
+    let targetId = null;
+    
+    while (target && target !== dom.sceneView) {
+        if (target.classList && target.classList.contains('clickable')) {
+            targetId = target.dataset.target;
+            break;
+        }
+        target = target.parentNode;
+    }
+
+    const sceneData = scenes[state.currentScene];
+    let response = "";
+
+    if (targetId) {
+        // Specific object clicked
+        if (sceneData.interactions[state.currentCommand] && sceneData.interactions[state.currentCommand][targetId]) {
+            response = sceneData.interactions[state.currentCommand][targetId];
+        } else {
+            response = "なにも おきなかった。";
+        }
+    } else {
+        // Background clicked
+        if (state.currentCommand === 'look' && sceneData.interactions.look.default) {
+             response = sceneData.interactions.look.default;
+        } else {
+             response = "そこには なにもない。";
+        }
+    }
+
+    typeText(response);
+}
+
+function initGame() {
+    // Load initial scene
+    dom.sceneView.innerHTML = scenes[state.currentScene].svg;
+    
+    // Bind UI events
+    dom.commandBtns.forEach(btn => {
+        // Support both click and touch for commands
+        btn.addEventListener('click', handleCommandChange);
+        btn.addEventListener('touchstart', (e) => {
+             e.preventDefault(); // Prevent double firing with click
+             handleCommandChange(e);
+        }, {passive: false});
+    });
+
+    // Bind Scene events
+    dom.sceneView.addEventListener('click', handleSceneClick);
+    // For touch devices, map touchstart to the click logic (simplification)
+    dom.sceneView.addEventListener('touchstart', (e) => {
+        // We use click for standard mouse, for touch we might just rely on the click event 
+        // that fires after touch, but if we want instant response:
+        // e.preventDefault(); // Warning: preventing default might stop actual clicks if not careful
+        // Actually, standard click event usually works fine for this kind of point-and-click on mobile if touch-action is manipulated.
+        // Let's stick to click for SVG interactions to keep coordinate handling simple for this prototype.
+    }, {passive: false});
+}
+
+// Start the game when window loads
+window.onload = initGame;
+
+</script>
+</body>
+</html>

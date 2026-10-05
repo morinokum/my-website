@@ -7,7 +7,7 @@ mkdir -p games
 
 # 2. ダウンロードフォルダ（~/Downloads）から目印のあるファイルだけを探索
 # ChromebookでLinuxと共有しているダウンロードフォルダの場合は /mnt/chromeos/MyFiles/Downloads になることもあります
-grep -rl "AI-GAME-PORTFOLIO" ~/Downloads --include="*.html" 2>/dev/null | while read file; do
+grep -rl "AI-GAME-PORTFOLIO" ~/ダウンロード --include="*.html" 2>/dev/null | while read file; do
   # 自分の my-website フォルダ内にあるものはコピー元として除外（無限ループ防止）
   case "$file" in
     */my-website/*) continue ;;

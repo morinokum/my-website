@@ -5,17 +5,14 @@ echo "🔍 ダウンロードフォルダから新しいゲーム（AI-GAME-PORT
 # 1. games フォルダを準備
 mkdir -p games
 
-# 2. ダウンロードフォルダ（~/Downloads）から目印のあるファイルだけを探索
-# ChromebookでLinuxと共有しているダウンロードフォルダの場合は /mnt/chromeos/MyFiles/Downloads になることもあります
+# 2. ダウンロードフォルダから目印のあるファイルだけを探索
 grep -rl "AI-GAME-PORTFOLIO" ~/ダウンロード --include="*.html" 2>/dev/null | while read file; do
-  # 自分の my-website フォルダ内にあるものはコピー元として除外（無限ループ防止）
   case "$file" in
     */my-website/*) continue ;;
   esac
   
   filename=$(basename "$file")
   
-  # すでに games フォルダに同じファイルが存在する場合はスキップ
   if [ -f "games/$filename" ]; then
     continue
   fi
@@ -58,7 +55,11 @@ cat << 'HTMLEOF' > index.html
 HTMLEOF
 
 # 4. games フォルダ内のHTMLを自動で読み込んでカードを追加
-for file in games/*.html; do
+# 【変更点1】処理したゲームのタイトルを記憶するための「連想配列」を用意
+declare -A seen_titles
+
+# 【変更点2】ls -t を使って「ファイルが新しい順」に読み込む（スペース入りのファイル名にも対応）
+while IFS= read -r file; do
   [ -e "$file" ] || continue
   filename=$(basename "$file")
   
@@ -66,6 +67,16 @@ for file in games/*.html; do
   gametitle=$(grep -io '<title>.*</title>' "$file" | sed -e 's/<title>//i' -e 's/<\/title>//i' | head -n 1)
   gametitle=${gametitle:-${filename%.*}}
   
+  # 【変更点3】すでに同じタイトルの新しいバージョンを追加済みの場合はスキップ
+  if [ -n "${seen_titles["$gametitle"]}" ]; then
+    echo "  ※重複タイトルをスキップ（過去のバージョン）: $filename"
+    # 本当に不要ならここで `rm "$file"` を入れて古いファイルを削除してもOKです
+    continue
+  fi
+  
+  # このタイトルは公開リストに追加したと記録する
+  seen_titles["$gametitle"]=1
+
   cat << HTMLEOF >> index.html
       <div class="card">
         <h3>${gametitle}</h3>
@@ -74,7 +85,7 @@ for file in games/*.html; do
         <a href="games/${filename}" class="button">Play Game</a>
       </div>
 HTMLEOF
-done
+done < <(ls -t games/*.html 2>/dev/null)
 
 # 5. HTMLのフッター部分を閉じる
 cat << 'HTMLEOF' >> index.html

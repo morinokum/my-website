@@ -1,0 +1,825 @@
+<!-- AI-GAME-PORTFOLIO -->
+<!DOCTYPE html>
+<html lang="ja" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conquistador: Smoke & Rank (1519 Mexico Expedition)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #080604;
+            color: #e5e7eb;
+        }
+        .retro-font {
+            font-family: 'VT323', monospace;
+        }
+        .crt-overlay {
+            background: linear-gradient(rgba(18, 16, 12, 0) 50%, rgba(0, 0, 0, 0.3) 50%), linear-gradient(90deg, rgba(255, 200, 0, 0.03), rgba(0, 255, 100, 0.01), rgba(0, 100, 255, 0.03));
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #140f0a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #453221;
+            border-radius: 3px;
+        }
+        .wood-border {
+            border: 2px solid #855b32;
+            box-shadow: inset 0 0 10px #000;
+        }
+        .gold-glow {
+            text-shadow: 0 0 8px rgba(234, 179, 8, 0.6);
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col items-center justify-between p-2 md:p-4 select-none relative overflow-x-hidden">
+    <div class="absolute inset-0 crt-overlay z-50"></div>
+
+    <!-- Header / Stats Bar -->
+    <header class="w-full max-w-5xl bg-stone-900 border-2 border-amber-700 rounded-lg p-3 mb-2 flex justify-between items-center shadow-lg shadow-amber-950/40">
+        <div>
+            <h1 class="retro-font text-3xl md:text-4xl text-amber-500 tracking-wider gold-glow">CONQUISTADOR 1519</h1>
+            <p class="text-xs text-stone-400">新大陸メキシコ遠征録 — 「のろし」と「軍略」の戦略RPG</p>
+        </div>
+        <div id="game-stats-header" class="text-right text-xs md:text-sm text-amber-200">
+            <div>階級: <span id="lbl-rank" class="font-bold text-amber-400">一兵卒</span> | 功績: <span id="lbl-fame" class="font-bold text-yellow-300">0</span> pts</div>
+            <div>金貨: <span id="lbl-gold" class="font-bold text-yellow-400">120</span> G | 拠点: <span id="lbl-location" class="font-bold text-emerald-400">ベラクルス陣地</span></div>
+        </div>
+    </header>
+
+    <!-- Main View Area -->
+    <main class="w-full max-w-5xl flex-1 flex flex-col bg-stone-950 border-2 border-stone-800 rounded-lg overflow-hidden shadow-2xl relative mb-2 min-h-[540px]">
+        
+        <!-- 1. CAMP / HUB VIEW (遠征隊陣地) -->
+        <div id="view-hub" class="flex-1 flex flex-col p-4 md:p-6 justify-between">
+            <div>
+                <div class="flex justify-between items-center border-b border-amber-900/80 pb-2 mb-4">
+                    <h2 class="retro-font text-2xl md:text-3xl text-amber-400">VERACRUZ EXPEDITION CAMP</h2>
+                    <span class="text-xs text-stone-400 font-mono">1519年5月 ベラクルス海岸拠点</span>
+                </div>
+                <p class="text-xs md:text-sm text-stone-300 mb-4 leading-relaxed">
+                    メキシコ沿岸部。退路の船は焼かれた。前に進む以外に生き残る道はない。<br>
+                    ここでは<span class="text-amber-400 font-bold">個人レベルを上げる無意味な戦い</span>は死を意味する。傭兵を集め、奴隷を管理し、王室へ手柄を捧げて<span class="text-amber-400 font-bold">「出世」し軍隊を増強</span>せよ。
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <!-- Unit Summary -->
+                    <div class="bg-stone-900 border border-stone-700 rounded p-3">
+                        <h3 class="text-xs font-bold text-amber-400 mb-2 border-b border-stone-800 pb-1">直属部隊・常駐軍勢</h3>
+                        <div class="space-y-1.5 text-xs text-stone-300">
+                            <div class="flex justify-between"><span>指揮官 (あなた):</span> <span class="text-white font-bold" id="hub-hero-hp">HP 40/40</span></div>
+                            <div class="flex justify-between"><span>契約傭兵 (Mercenaries):</span> <span class="text-amber-300 font-bold" id="hub-merc-count">2名</span></div>
+                            <div class="flex justify-between"><span>所有奴隷 (Slaves/Porters):</span> <span class="text-stone-400 font-bold" id="hub-slave-count">3名</span></div>
+                            <div class="flex justify-between border-t border-stone-800 pt-1"><span>同行率いる軍隊:</span> <span class="text-emerald-400 font-bold" id="hub-reinforce-type">なし (のろし要請のみ)</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Hire / Slaves Operations -->
+                    <div class="bg-stone-900 border border-stone-700 rounded p-3">
+                        <h3 class="text-xs font-bold text-amber-400 mb-2 border-b border-stone-800 pb-1">兵力補充・調達</h3>
+                        <div class="space-y-2 text-xs">
+                            <button onclick="hireMercenary()" class="w-full bg-amber-900/80 hover:bg-amber-800 text-amber-100 p-2 rounded flex justify-between items-center transition border border-amber-700">
+                                <span>プロ傭兵を雇う</span>
+                                <span class="font-bold text-yellow-400">80G</span>
+                            </button>
+                            <button onclick="buySlave()" class="w-full bg-stone-800 hover:bg-stone-700 text-stone-200 p-2 rounded flex justify-between items-center transition border border-stone-600">
+                                <span>荷役奴隷を買い足す</span>
+                                <span class="font-bold text-yellow-400">30G</span>
+                            </button>
+                            <p class="text-[10px] text-stone-400 italic">※奴隷は戦闘時「肉の壁（身代わり）」として機能します。</p>
+                        </div>
+                    </div>
+
+                    <!-- Promotion & Royal Audience -->
+                    <div class="bg-stone-900 border border-stone-700 rounded p-3 flex flex-col justify-between">
+                        <div>
+                            <h3 class="text-xs font-bold text-amber-400 mb-2 border-b border-stone-800 pb-1">王室・総督への献上（出世）</h3>
+                            <p class="text-[11px] text-stone-300 mb-2">獲得した金銀財宝を献上し、軍階級を昇進させよ。</p>
+                            <div class="text-xs font-bold text-yellow-400 mb-2" id="hub-promotion-req">次等級 (小隊長) 必要功績: 100 pts</div>
+                        </div>
+                        <button onclick="payTribute()" class="w-full bg-yellow-700 hover:bg-yellow-600 text-stone-950 font-bold p-2 rounded text-xs transition shadow">
+                            財宝を50G献上する (+50pts)
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-3 justify-center pt-3 border-t border-stone-800">
+                <button onclick="restAtCamp()" class="bg-stone-800 hover:bg-stone-700 text-stone-200 px-5 py-2.5 rounded text-xs font-bold transition">全軍休息・補給 (30G)</button>
+                <button onclick="enterJungle()" class="bg-amber-600 hover:bg-amber-500 text-stone-950 px-8 py-2.5 rounded text-sm font-extrabold transition shadow-lg shadow-amber-900/50 animate-pulse">アステカ密林へ進撃</button>
+            </div>
+        </div>
+
+        <!-- 2. JUNGLE / EXPLORATION VIEW (密林探索) -->
+        <div id="view-jungle" class="flex-1 flex flex-col md:flex-row h-full hidden">
+            <div class="flex-1 flex flex-col border-b md:border-b-0 md:border-r border-stone-800 p-3">
+                <div class="w-full h-44 md:h-52 bg-black border-2 border-amber-900 rounded relative overflow-hidden flex items-center justify-center mb-2 shadow-inner">
+                    <canvas id="jungle-canvas" class="w-full h-full"></canvas>
+                    <div class="absolute top-2 left-2 bg-stone-950/80 px-2.5 py-1 rounded text-xs text-amber-400 font-mono border border-amber-900">
+                        座標: <span id="pos-x">0</span>, <span id="pos-y">0</span> | 方角: <span id="pos-dir">NORTH</span>
+                    </div>
+                </div>
+
+                <!-- Minimap Canvas -->
+                <div class="w-full h-24 bg-stone-950 border border-stone-800 rounded mb-2 relative flex items-center justify-center p-1">
+                    <canvas id="minimap-canvas" class="w-full h-full"></canvas>
+                </div>
+
+                <div class="flex-1 bg-stone-900 border border-stone-800 rounded p-2 flex flex-col min-h-[80px]">
+                    <div id="jungle-log" class="flex-1 text-xs md:text-sm text-stone-300 overflow-y-auto space-y-1 font-mono pr-1">
+                        <div>密林の静寂の中を進む... アステカ戦士の気配に警戒せよ。</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="w-full md:w-80 bg-stone-900/90 p-3 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2 border-b border-stone-800 pb-1">遠征隊の現有兵力</h3>
+                    <div id="jungle-party-status" class="space-y-2 mb-4"></div>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="grid grid-cols-3 gap-1 w-36 mx-auto mb-2">
+                        <div></div>
+                        <button onclick="movePlayer('FORWARD')" class="bg-stone-800 hover:bg-stone-700 active:bg-amber-700 border border-stone-600 rounded p-2.5 text-white font-bold shadow">▲</button>
+                        <div></div>
+                        <button onclick="turnPlayer('LEFT')" class="bg-stone-800 hover:bg-stone-700 active:bg-amber-700 border border-stone-600 rounded p-2.5 text-white font-bold shadow">◀</button>
+                        <button onclick="movePlayer('BACK')" class="bg-stone-800 hover:bg-stone-700 active:bg-amber-700 border border-stone-600 rounded p-2.5 text-white font-bold shadow">▼</button>
+                        <button onclick="turnPlayer('RIGHT')" class="bg-stone-800 hover:bg-stone-700 active:bg-amber-700 border border-stone-600 rounded p-2.5 text-white font-bold shadow">▶</button>
+                    </div>
+                    <button onclick="returnToHubConfirm()" class="w-full bg-red-950 hover:bg-red-900 text-stone-200 text-xs font-bold py-2 rounded border border-red-800 transition">海岸拠点へ全軍撤退</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. BATTLE VIEW (アステカ遭遇戦 & のろし/軍団戦術) -->
+        <div id="view-battle" class="flex-1 flex flex-col p-4 justify-between hidden bg-stone-950">
+            <div>
+                <div class="flex justify-between items-center border-b border-red-900/80 pb-1.5 mb-3">
+                    <div class="flex items-center space-x-2">
+                        <h2 class="retro-font text-2xl text-red-500 animate-pulse">AZTEC WARRIORS ENCOUNTER!</h2>
+                        <span id="battle-smoke-badge" class="bg-stone-800 text-amber-400 text-xs font-mono px-2 py-0.5 rounded border border-amber-800">軍勢: 未配置</span>
+                    </div>
+                    <span id="battle-round" class="text-xs text-stone-400 font-mono">TURN 1</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                    <!-- Enemy Field -->
+                    <div class="bg-stone-900 border border-red-950 rounded p-3 relative overflow-hidden">
+                        <h3 class="text-xs font-bold text-red-400 uppercase mb-2">敵群（アステカ帝国先鋒）</h3>
+                        <div id="battle-enemies-list" class="space-y-2 max-h-36 overflow-y-auto pr-1"></div>
+                        <div class="mt-2 text-[11px] text-red-300 font-mono bg-red-950/40 p-1.5 rounded border border-red-900/50">
+                            ⚠️ 注意: アステカ戦士の集団攻撃は強力です。単身で打ち合うと1〜2ターンで即死します！
+                        </div>
+                    </div>
+
+                    <!-- Player Squad Status -->
+                    <div class="bg-stone-900 border border-stone-800 rounded p-3">
+                        <h3 class="text-xs font-bold text-amber-400 uppercase mb-2">味方部隊ステータス</h3>
+                        <div id="battle-squad-list" class="space-y-2 max-h-40 overflow-y-auto pr-1"></div>
+                    </div>
+                </div>
+
+                <!-- Battle Log & Tactical Action Menu -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2 bg-stone-900 border border-stone-800 rounded p-3 h-40 overflow-y-auto font-mono text-xs text-stone-300" id="battle-log">
+                        <div class="text-red-400">アステカの戦士たちが黒曜石の剣を手に襲いかかってきた！</div>
+                    </div>
+                    
+                    <div id="battle-command-box" class="bg-stone-900 border border-amber-900/60 rounded p-3 flex flex-col justify-center space-y-2 shadow-inner">
+                        <!-- Dynamic Tactical Commands rendered by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. VICTORY / LOOT VIEW (戦利品獲得) -->
+        <div id="view-loot" class="flex-1 flex flex-col p-6 items-center justify-center hidden">
+            <div class="w-full max-w-md bg-stone-900 border-2 border-yellow-600 rounded-lg p-5 text-center shadow-2xl">
+                <h2 class="retro-font text-3xl text-yellow-400 mb-2 gold-glow">VICTORY & SPOILS</h2>
+                <p id="loot-summary-text" class="text-xs text-stone-300 mb-4 whitespace-pre-line leading-relaxed"></p>
+                <button onclick="finishLootAndReturn()" class="w-full bg-amber-600 hover:bg-amber-500 text-stone-950 text-xs font-extrabold py-2.5 rounded transition shadow">探索を再開する</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Custom Modal System -->
+    <div id="custom-modal-overlay" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-stone-900 border-2 border-amber-600 rounded-lg max-w-sm w-full p-4 text-center shadow-2xl">
+            <p id="modal-msg-text" class="text-xs text-stone-200 mb-4 whitespace-pre-line leading-relaxed"></p>
+            <div id="modal-btn-group" class="flex justify-center space-x-2"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript Game Engine -->
+    <script>
+        // Core Game State Definition
+        let gameState = {
+            view: 'hub',
+            gold: 120,
+            fame: 0,
+            rankIndex: 0, // 0: 一兵卒, 1: 小隊長, 2: 遠征軍司令官, 3: 新大陸提督
+            hero: { hp: 40, maxHp: 40, atk: 6, def: 2 },
+            mercenaries: 2, // 傭兵の数
+            slaves: 3,      // 奴隷（肉の壁）の数
+            jungle: { width: 12, height: 12, x: 0, y: 0, dir: 0, map: [] },
+            battle: null
+        };
+
+        // Ranks Specification (Rank 1+ gets permanent accompanying armies instead of smoke)
+        const RANKS = [
+            { title: "一兵卒 (Soldado)", reqFame: 0, smokeTurns: 3, unitName: "なし (のろし要請)", armyCommand: null, desc: "軍隊なし。のろし要請(3T)" },
+            { title: "小隊長 (Capitán)", reqFame: 100, smokeTurns: 0, unitName: "火縄銃小隊 (20名直属)", armyCommand: "🔥 火縄銃一斉射撃 (100-140 DMG)", desc: "火縄銃隊を常時同行！即座に斉射" },
+            { title: "遠征軍司令官 (Comandante)", reqFame: 300, smokeTurns: 0, unitName: "重装コンキスタドール騎兵中隊", armyCommand: "🐴 騎兵迂回突撃 (200-280 DMG)", desc: "重装騎兵を常時同行！即座に蹂躙" },
+            { title: "新大陸提督 (Adelantado)", reqFame: 700, smokeTurns: 0, unitName: "遠征大軍団＆ガレオン艦隊砲撃手", armyCommand: "💣 艦砲全爆撃 (全滅技)", desc: "全軍常時同行！一瞬で敵軍全滅" }
+        ];
+
+        // Enemy Types
+        const MONSTERS = [
+            { name: "アステカ投石兵 (Atlatl)", hp: 35, atk: 12, exp: 20, gold: 35 },
+            { name: "アステカジャガー戦士 (Jaguar Warrior)", hp: 70, atk: 22, exp: 50, gold: 75 },
+            { name: "アステカ鷲の戦士 (Eagle Warrior)", hp: 110, atk: 35, exp: 100, gold: 140 }
+        ];
+
+        // --- VIEW NAVIGATION ---
+        function switchView(viewName) {
+            gameState.view = viewName;
+            ['hub', 'jungle', 'battle', 'loot'].forEach(v => {
+                document.getElementById('view-' + v).classList.add('hidden');
+            });
+            document.getElementById('view-' + viewName).classList.remove('hidden');
+
+            // Refresh Header Display
+            const currentRank = RANKS[gameState.rankIndex];
+            document.getElementById('lbl-rank').innerText = currentRank.title;
+            document.getElementById('lbl-fame').innerText = gameState.fame;
+            document.getElementById('lbl-gold').innerText = gameState.gold;
+
+            const locMap = { hub: 'ベラクルス海岸拠点', jungle: 'アステカ未知の密林', battle: '遭遇戦領域', loot: '戦利品検分' };
+            document.getElementById('lbl-location').innerText = locMap[viewName] || '密林';
+
+            if (viewName === 'hub') renderHub();
+            if (viewName === 'jungle') {
+                drawJungleView();
+                drawMiniMap();
+                renderJungleParty();
+            }
+            if (viewName === 'battle') renderBattle();
+        }
+
+        // --- HUB / CAMP LOGIC ---
+        function renderHub() {
+            document.getElementById('hub-hero-hp').innerText = `HP ${gameState.hero.hp}/${gameState.hero.maxHp}`;
+            document.getElementById('hub-merc-count').innerText = `${gameState.mercenaries}名`;
+            document.getElementById('hub-slave-count').innerText = `${gameState.slaves}名`;
+
+            const currentRank = RANKS[gameState.rankIndex];
+            document.getElementById('hub-reinforce-type').innerText = `${currentRank.unitName}`;
+
+            const nextRank = RANKS[gameState.rankIndex + 1];
+            if (nextRank) {
+                document.getElementById('hub-promotion-req').innerText = `次等級 (${nextRank.title}) 必要功績: ${nextRank.reqFame} pts`;
+            } else {
+                document.getElementById('hub-promotion-req').innerText = `最高階級: 新大陸提督に到達済み`;
+            }
+        }
+
+        function hireMercenary() {
+            if (gameState.gold < 80) {
+                showCustomModal("傭兵の契約金(80G)が不足しています。");
+                return;
+            }
+            gameState.gold -= 80;
+            gameState.mercenaries++;
+            showCustomModal("スペイン人傭兵を1名雇い入れました！");
+            switchView('hub');
+        }
+
+        function buySlave() {
+            if (gameState.gold < 30) {
+                showCustomModal("奴隷購入金(30G)が不足しています。");
+                return;
+            }
+            gameState.gold -= 30;
+            gameState.slaves++;
+            showCustomModal("荷役奴隷を1名買い足しました。（戦闘時の肉の壁として耐久力を提供します）");
+            switchView('hub');
+        }
+
+        function payTribute() {
+            if (gameState.gold < 50) {
+                showCustomModal("献上する金貨(50G)が足りません。");
+                return;
+            }
+            gameState.gold -= 50;
+            gameState.fame += 50;
+
+            // Check Promotion
+            const nextRank = RANKS[gameState.rankIndex + 1];
+            if (nextRank && gameState.fame >= nextRank.reqFame) {
+                gameState.rankIndex++;
+                showCustomModal(`【昇進報告】\n功績が認められ、王室より「${nextRank.title}」に任ぜられました！\nこれより「のろし」は不要となり、『${nextRank.unitName}』を常時配下に引き連れて行軍できます！`);
+            } else {
+                showCustomModal("王室へ金貨50Gを献上し、功績+50ptsを獲得しました。");
+            }
+            switchView('hub');
+        }
+
+        function restAtCamp() {
+            if (gameState.gold < 30) {
+                showCustomModal("補給・休息費用(30G)がありません。");
+                return;
+            }
+            gameState.gold -= 30;
+            gameState.hero.hp = gameState.hero.maxHp;
+            showCustomModal("全軍で休息を取り、指揮官のHPが全回復しました。");
+            switchView('hub');
+        }
+
+        function enterJungle() {
+            generateJungleMap();
+            switchView('jungle');
+            const currentRank = RANKS[gameState.rankIndex];
+            if (gameState.rankIndex === 0) {
+                logJungle("密林探検を開始。兵力が少ないため、のろし用の火種を用意した。");
+            } else {
+                logJungle(`密林探検を開始。【${currentRank.unitName}】が周囲を固めて行軍中！`);
+            }
+        }
+
+        // --- JUNGLE EXPLORATION LOGIC ---
+        function generateJungleMap() {
+            const w = 12, h = 12;
+            let map = [];
+            for (let y = 0; y < h; y++) {
+                let row = [];
+                for (let x = 0; x < w; x++) {
+                    let isWall = (x === 0 && y === 0) ? false : (Math.random() < 0.25);
+                    row.push({ wall: isWall, visited: false });
+                }
+                map.push(row);
+            }
+            gameState.jungle = { width: w, height: h, x: 0, y: 0, dir: 0, map };
+            gameState.jungle.map[0][0].visited = true;
+        }
+
+        function logJungle(msg) {
+            const logEl = document.getElementById('jungle-log');
+            logEl.innerHTML += `<div>> ${msg}</div>`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        const DIR_NAMES = ['NORTH', 'EAST', 'SOUTH', 'WEST'];
+        const DX = [0, 1, 0, -1];
+        const DY = [-1, 0, 1, 0];
+
+        function turnPlayer(turnDir) {
+            if (turnDir === 'LEFT') {
+                gameState.jungle.dir = (gameState.jungle.dir + 3) % 4;
+            } else {
+                gameState.jungle.dir = (gameState.jungle.dir + 1) % 4;
+            }
+            drawJungleView();
+            document.getElementById('pos-dir').innerText = DIR_NAMES[gameState.jungle.dir];
+        }
+
+        function movePlayer(action) {
+            let d = gameState.jungle.dir;
+            if (action === 'BACK') d = (d + 2) % 4;
+            const nx = gameState.jungle.x + DX[d];
+            const ny = gameState.jungle.y + DY[d];
+
+            if (nx < 0 || nx >= gameState.jungle.width || ny < 0 || ny >= gameState.jungle.height) {
+                logJungle("深い密林と底なし沼に阻まれ進めない。");
+                return;
+            }
+            if (gameState.jungle.map[ny][nx].wall) {
+                logJungle("古代アステカの巨大石壁が行手を阻む。");
+                return;
+            }
+
+            gameState.jungle.x = nx;
+            gameState.jungle.y = ny;
+            gameState.jungle.map[ny][nx].visited = true;
+
+            document.getElementById('pos-x').innerText = nx;
+            document.getElementById('pos-y').innerText = ny;
+            document.getElementById('pos-dir').innerText = DIR_NAMES[gameState.jungle.dir];
+
+            drawJungleView();
+            drawMiniMap();
+            checkRandomEncounter();
+        }
+
+        function drawJungleView() {
+            const canvas = document.getElementById('jungle-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+
+            ctx.fillStyle = '#060a05';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // Wireframe Dungeon Outline
+            ctx.strokeStyle = '#d97706';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(10, 10, w - 20, h - 20);
+
+            const cx = w / 2;
+            const cy = h / 2;
+            ctx.strokeRect(cx - 50, cy - 35, 100, 70);
+
+            ctx.beginPath();
+            ctx.moveTo(10, 10); ctx.lineTo(cx - 50, cy - 35);
+            ctx.moveTo(w - 10, 10); ctx.lineTo(cx + 50, cy - 35);
+            ctx.moveTo(10, h - 10); ctx.lineTo(cx - 50, cy + 35);
+            ctx.moveTo(w - 10, h - 10); ctx.lineTo(cx + 50, cy + 35);
+            ctx.stroke();
+
+            const d = gameState.jungle.dir;
+            const fx = gameState.jungle.x + DX[d];
+            const fy = gameState.jungle.y + DY[d];
+            let isFrontWall = (fx < 0 || fx >= gameState.jungle.width || fy < 0 || fy >= gameState.jungle.height || gameState.jungle.map[fy][fx].wall);
+
+            if (isFrontWall) {
+                ctx.fillStyle = 'rgba(180, 83, 9, 0.3)';
+                ctx.fillRect(cx - 50, cy - 35, 100, 70);
+                ctx.fillStyle = '#f59e0b';
+                ctx.font = '13px monospace';
+                ctx.fillText("STONE WALL", cx - 35, cy + 4);
+            }
+        }
+
+        function drawMiniMap() {
+            const canvas = document.getElementById('minimap-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+
+            ctx.fillStyle = '#0a0806';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const map = gameState.jungle.map;
+            const rows = map.length;
+            const cols = map[0].length;
+            const cellW = canvas.width / cols;
+            const cellH = canvas.height / rows;
+
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if (map[y][x].visited) {
+                        ctx.fillStyle = map[y][x].wall ? '#451a03' : '#1c1917';
+                        ctx.fillRect(x * cellW, y * cellH, cellW - 1, cellH - 1);
+                    }
+                }
+            }
+
+            ctx.fillStyle = '#f59e0b';
+            ctx.fillRect(gameState.jungle.x * cellW, gameState.jungle.y * cellH, cellW - 1, cellH - 1);
+        }
+
+        function renderJungleParty() {
+            const container = document.getElementById('jungle-party-status');
+            const rankInfo = RANKS[gameState.rankIndex];
+            container.innerHTML = `
+                <div class="bg-stone-800 p-2 rounded text-xs space-y-1">
+                    <div class="flex justify-between text-amber-300 font-bold">
+                        <span>指揮官 (主人公)</span>
+                        <span>HP ${gameState.hero.hp}/${gameState.hero.maxHp}</span>
+                    </div>
+                    <div class="flex justify-between text-stone-300">
+                        <span>傭兵: ${gameState.mercenaries}名</span>
+                        <span>奴隷: ${gameState.slaves}名</span>
+                    </div>
+                    <div class="border-t border-stone-700 pt-1 text-emerald-400 font-bold text-[11px]">
+                        率いる軍隊: ${rankInfo.unitName}
+                    </div>
+                </div>
+            `;
+        }
+
+        function checkRandomEncounter() {
+            if (Math.random() < 0.30) startBattle();
+        }
+
+        function returnToHubConfirm() {
+            showCustomModal("ベラクルス海岸拠点へ撤退しますか？", true, () => {
+                switchView('hub');
+            });
+        }
+
+        // --- BATTLE ENGINE & ARMY COMMAND MECHANICS ---
+        function startBattle() {
+            const tier = Math.min(MONSTERS.length - 1, Math.floor(Math.random() * (gameState.rankIndex + 2)));
+            const template = MONSTERS[tier];
+            const count = Math.floor(Math.random() * 2) + 2; // 2 to 3 enemies
+
+            gameState.battle = {
+                turn: 1,
+                smokeLit: false,
+                turnsLeftForSmoke: 99,
+                enemies: Array.from({ length: count }, (_, i) => ({
+                    id: i,
+                    name: template.name + ` #${i+1}`,
+                    hp: template.hp,
+                    maxHp: template.hp,
+                    atk: template.atk,
+                    exp: template.exp,
+                    gold: template.gold,
+                    alive: true
+                }))
+            };
+
+            switchView('battle');
+            logBattle(`アステカ戦士の集団(${count}体)が立ち塞がった！`);
+            if (gameState.rankIndex === 0) {
+                logBattle(`※警告: 個人で「たたかう」を挑んでも全滅します。「のろし」で援軍を呼んで耐えてください！`);
+            } else {
+                const rankInfo = RANKS[gameState.rankIndex];
+                logBattle(`【本隊陣形展開】率いる『${rankInfo.unitName}』が即座に戦闘態勢に入った！`);
+            }
+            renderBattleCommands();
+        }
+
+        function logBattle(msg) {
+            const logEl = document.getElementById('battle-log');
+            logEl.innerHTML += `<div>> ${msg}</div>`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function renderBattle() {
+            document.getElementById('battle-round').innerText = `TURN ${gameState.battle.turn}`;
+            
+            const badge = document.getElementById('battle-smoke-badge');
+            const rankInfo = RANKS[gameState.rankIndex];
+
+            if (gameState.rankIndex === 0) {
+                if (gameState.battle.smokeLit) {
+                    badge.innerText = `のろし点火中 (到着まであと ${gameState.battle.turnsLeftForSmoke} ターン)`;
+                    badge.className = "bg-amber-900 text-yellow-300 text-xs font-mono px-2 py-0.5 rounded border border-yellow-500 animate-pulse";
+                } else {
+                    badge.innerText = `のろし: 未着火`;
+                    badge.className = "bg-stone-800 text-amber-400 text-xs font-mono px-2 py-0.5 rounded border border-amber-800";
+                }
+            } else {
+                badge.innerText = `軍団同行中: ${rankInfo.title}`;
+                badge.className = "bg-emerald-950 text-emerald-300 text-xs font-mono px-2 py-0.5 rounded border border-emerald-700 font-bold";
+            }
+
+            // Enemies List
+            const enemyEl = document.getElementById('battle-enemies-list');
+            enemyEl.innerHTML = '';
+            gameState.battle.enemies.forEach(e => {
+                if (e.alive) {
+                    enemyEl.innerHTML += `
+                        <div class="bg-stone-800/80 border border-red-900/60 p-2 rounded flex justify-between items-center text-xs">
+                            <span class="font-bold text-red-400">${e.name}</span>
+                            <span class="text-stone-300">HP: ${e.hp}/${e.maxHp} (攻撃力:${e.atk})</span>
+                        </div>
+                    `;
+                }
+            });
+
+            // Squad Status List
+            const squadEl = document.getElementById('battle-squad-list');
+            squadEl.innerHTML = `
+                <div class="bg-stone-800 p-2 rounded text-xs space-y-1">
+                    <div class="flex justify-between font-bold text-amber-300">
+                        <span>指揮官 (主人公)</span>
+                        <span class="${gameState.hero.hp < 15 ? 'text-red-400 font-bold' : 'text-emerald-400'}">HP ${gameState.hero.hp}/${gameState.hero.maxHp}</span>
+                    </div>
+                    <div class="flex justify-between text-stone-300">
+                        <span>直属傭兵: ${gameState.mercenaries}名</span>
+                        <span>肉の壁(奴隷): ${gameState.slaves}名</span>
+                    </div>
+                    <div class="border-t border-stone-700 pt-1 text-emerald-400 font-bold text-[11px]">
+                        連れている軍隊: ${rankInfo.unitName}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderBattleCommands() {
+            const box = document.getElementById('battle-command-box');
+            box.innerHTML = '';
+
+            const rankInfo = RANKS[gameState.rankIndex];
+
+            if (gameState.rankIndex === 0) {
+                // Rank 0 (Soldado) -> Must use Signal Smoke
+                const smokeLit = gameState.battle.smokeLit;
+                if (!smokeLit) {
+                    box.innerHTML += `
+                        <button onclick="executeBattleAction('smoke')" class="w-full bg-amber-600 hover:bg-amber-500 text-stone-950 text-xs py-2.5 rounded font-extrabold shadow-lg shadow-amber-900/50 animate-bounce">
+                            🔥 のろしを上げる (SIGNAL SMOKE)
+                        </button>
+                    `;
+                } else {
+                    box.innerHTML += `
+                        <div class="text-[11px] text-yellow-400 text-center font-bold mb-1">援軍到着まで耐え抜け！</div>
+                    `;
+                }
+            } else {
+                // Rank 1+ (Capitán/Comandante/Adelantado) -> No Smoke required! Direct army order button
+                box.innerHTML += `
+                    <button onclick="executeBattleAction('army_command')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-stone-950 text-xs py-2.5 rounded font-extrabold shadow-lg shadow-emerald-900/50 border border-emerald-400 animate-pulse">
+                        ${rankInfo.armyCommand}
+                    </button>
+                `;
+            }
+
+            box.innerHTML += `
+                <button onclick="executeBattleAction('defend')" class="w-full bg-blue-900 hover:bg-blue-800 text-stone-100 text-xs py-2 rounded font-bold border border-blue-700">
+                    🛡️ 全軍厳重防御 (被ダメージ半減)
+                </button>
+                <button onclick="executeBattleAction('meatshield')" class="w-full bg-stone-800 hover:bg-stone-700 text-amber-200 text-xs py-2 rounded font-bold border border-stone-600 ${gameState.slaves <= 0 ? 'opacity-40 cursor-not-allowed':''}">
+                    🩸 奴隷を肉の壁にする (${gameState.slaves}名所持)
+                </button>
+                <button onclick="executeBattleAction('attack')" class="w-full bg-red-950 hover:bg-red-900 text-red-200 text-xs py-1.5 rounded font-bold border border-red-800">
+                    ⚔️ 個人で攻撃 (無謀)
+                </button>
+            `;
+        }
+
+        function executeBattleAction(action) {
+            const rankInfo = RANKS[gameState.rankIndex];
+
+            // Direct Army Order Execution for Rank 1+
+            if (action === 'army_command') {
+                logBattle(`=================================`);
+                logBattle(`⚡【軍団突撃！】指揮官の号令のもと『${rankInfo.unitName}』が即座に敵陣へ襲いかかる！`);
+
+                if (gameState.rankIndex === 1) {
+                    logBattle(`火縄銃隊(Arcabuceros)の至近距離一斉射撃！ 硝煙と共にアステカ戦士が次々と崩れ去る！`);
+                } else if (gameState.rankIndex === 2) {
+                    logBattle(`重装コンキスタドール騎兵隊が咆哮と共に突撃！ アステカの陣形を跡形もなく蹂躙！`);
+                } else if (gameState.rankIndex === 3) {
+                    logBattle(`沿岸ガレオン船からの大砲一斉全爆撃！ 敵群は一瞬にして焦土と化した！`);
+                }
+
+                // Direct wipeout or massive damage
+                let totalExp = 0;
+                let totalGold = 0;
+                gameState.battle.enemies.forEach(e => {
+                    e.alive = false;
+                    totalExp += e.exp;
+                    totalGold += e.gold;
+                });
+
+                gameState.gold += totalGold;
+                gameState.fame += totalExp;
+
+                setTimeout(() => {
+                    switchView('loot');
+                    document.getElementById('loot-summary-text').innerText = 
+                        `【完勝】\n直属の軍隊『${rankInfo.unitName}』の圧倒的火力により、アステカ軍勢を完勝・殲滅しました！\n\n獲得手柄(功績): +${totalExp} pts\n略奪金貨: +${totalGold} G`;
+                }, 1500);
+                return;
+            }
+
+            // Rank 0 Smoke Action
+            if (action === 'smoke') {
+                gameState.battle.smokeLit = true;
+                gameState.battle.turnsLeftForSmoke = rankInfo.smokeTurns;
+                logBattle(`のろしを焚き上げた！ 黒煙が上空へ舞い上がる！`);
+                logBattle(`【救援要請】歩兵支援小隊 が急行中！（到着まであと ${rankInfo.smokeTurns} ターン）`);
+            } else if (action === 'attack') {
+                logBattle(`主人公は剣を振りかざし挑んだが、多勢に無勢！ わずかな痛撃しか与えられない！`);
+                const aliveEnemies = gameState.battle.enemies.filter(e => e.alive);
+                if (aliveEnemies.length > 0) {
+                    aliveEnemies[0].hp -= 5;
+                }
+            } else if (action === 'defend') {
+                logBattle(`盾をかかげ、強固な防御陣形を組んだ！（このターンの被ダメージ軽減）`);
+            } else if (action === 'meatshield') {
+                if (gameState.slaves <= 0) {
+                    logBattle(`身代わりにする奴隷がもういない！`);
+                } else {
+                    gameState.slaves--;
+                    logBattle(`奴隷1名を前に押し出し、アステカ戦士の第一波を防がせた！（主人公のダメージ無効化）`);
+                }
+            }
+
+            // Check if Smoke Reinforcements Arrive (Rank 0 only)
+            if (gameState.rankIndex === 0 && gameState.battle.smokeLit && action !== 'smoke') {
+                gameState.battle.turnsLeftForSmoke--;
+                if (gameState.battle.turnsLeftForSmoke <= 0) {
+                    triggerReinforcements();
+                    return;
+                } else {
+                    logBattle(`のろしの煙を目印に、味方部隊が接近中... (あと ${gameState.battle.turnsLeftForSmoke} ターン)`);
+                }
+            }
+
+            // Enemy Attack Phase
+            const aliveEnemies = gameState.battle.enemies.filter(e => e.alive);
+            if (aliveEnemies.length > 0) {
+                let totalEnemyAtk = aliveEnemies.reduce((sum, e) => sum + e.atk, 0);
+
+                if (action === 'defend') {
+                    totalEnemyAtk = Math.floor(totalEnemyAtk * 0.35);
+                }
+                if (action === 'meatshield' && gameState.slaves >= 0) {
+                    totalEnemyAtk = 0; // Completely absorbed
+                }
+
+                if (totalEnemyAtk > 0) {
+                    gameState.hero.hp -= totalEnemyAtk;
+                    logBattle(`アステカ戦士たちの波状攻撃！ 主人公に ${totalEnemyAtk} の猛烈なダメージ！`);
+                }
+            }
+
+            // Check Death
+            if (gameState.hero.hp <= 0) {
+                gameState.hero.hp = 0;
+                logBattle(`主人公は力尽き、密林の中に倒れた... 全軍瓦解！`);
+                setTimeout(() => {
+                    showCustomModal("全滅しました...\n個人の力ではアステカの軍勢には勝てません。\n海岸拠点へ送還されます。", false, () => {
+                        gameState.hero.hp = gameState.hero.maxHp;
+                        switchView('hub');
+                    });
+                }, 1800);
+                return;
+            }
+
+            gameState.battle.turn++;
+            renderBattle();
+            renderBattleCommands();
+        }
+
+        function triggerReinforcements() {
+            logBattle(`=================================`);
+            logBattle(`⚡【援軍到着！】 歩兵支援小隊が戦場に乱入！`);
+            logBattle(`スペイン歩兵部隊が長槍を構え、アステカの陣形を打ち砕く！`);
+
+            let totalExp = 0;
+            let totalGold = 0;
+            gameState.battle.enemies.forEach(e => {
+                e.alive = false;
+                totalExp += e.exp;
+                totalGold += e.gold;
+            });
+
+            gameState.gold += totalGold;
+            gameState.fame += totalExp;
+
+            setTimeout(() => {
+                switchView('loot');
+                document.getElementById('loot-summary-text').innerText = 
+                    `【大勝利】\nのろしによる迅速な軍隊召集により、アステカ軍勢を駆逐しました！\n\n獲得手柄(功績): +${totalExp} pts\n略奪金貨: +${totalGold} G`;
+            }, 2000);
+        }
+
+        function finishLootAndReturn() {
+            switchView('jungle');
+        }
+
+        // --- CUSTOM MODAL UTILITY ---
+        function showCustomModal(msg, isConfirm = false, onOk = null) {
+            const overlay = document.getElementById('custom-modal-overlay');
+            const msgEl = document.getElementById('modal-msg-text');
+            const btnGroup = document.getElementById('modal-btn-group');
+
+            msgEl.innerText = msg;
+            btnGroup.innerHTML = '';
+
+            if (isConfirm) {
+                btnGroup.innerHTML = `
+                    <button id="modal-btn-cancel" class="bg-stone-700 hover:bg-stone-600 text-stone-200 px-4 py-1.5 rounded text-xs font-bold">キャンセル</button>
+                    <button id="modal-btn-ok" class="bg-amber-600 hover:bg-amber-500 text-stone-950 px-4 py-1.5 rounded text-xs font-extrabold">実行する</button>
+                `;
+                document.getElementById('modal-btn-cancel').onclick = () => overlay.classList.add('hidden');
+                document.getElementById('modal-btn-ok').onclick = () => {
+                    overlay.classList.add('hidden');
+                    if (onOk) onOk();
+                };
+            } else {
+                btnGroup.innerHTML = `
+                    <button id="modal-btn-ok" class="bg-amber-600 hover:bg-amber-500 text-stone-950 px-5 py-1.5 rounded text-xs font-extrabold">了解</button>
+                `;
+                document.getElementById('modal-btn-ok').onclick = () => {
+                    overlay.classList.add('hidden');
+                    if (onOk) onOk();
+                };
+            }
+            overlay.classList.remove('hidden');
+        }
+
+        // --- INIT ON LOAD ---
+        window.onload = function() {
+            switchView('hub');
+        };
+    </script>
+</body>
+</html>

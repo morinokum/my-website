@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<!-- AI-GAME-PORTFOLIO -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>壁ドン即死回避：空気抵抗のみ</title>
+    <!-- Tailwind CSS for UI styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+        canvas {
+            display: block;
+            background: linear-gradient(to bottom, #1e293b, #0f172a);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between items-center">
+
+    <header class="w-full max-w-4xl p-4 flex justify-between items-center bg-slate-900/80 backdrop-blur border-b border-slate-800 z-10 shadow-lg">
+        <div>
+            <h1 class="text-xl font-extrabold text-cyan-400 tracking-wider">⚡ 壁ドン即死回避ゲーム (空気抵抗編)</h1>
+            <p class="text-xs text-slate-400">モンスターに投げられた！画面をタップ／押し続けて空気抵抗（大の字）で減速し、生存しろ！</p>
+        </div>
+        <div id="stats" class="flex gap-4 text-sm font-semibold">
+            <div class="bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">STAGE: <span id="stageNum" class="text-amber-400">1</span></div>
+            <div class="bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">LV: <span id="throwSpeed" class="text-cyan-400">NORMAL</span></div>
+        </div>
+    </header>
+
+    <main class="relative flex-1 w-full flex items-center justify-center overflow-hidden">
+        <canvas id="gameCanvas" class="w-full h-full shadow-2xl cursor-pointer"></canvas>
+
+        <!-- Start / Result Overlay Modal -->
+        <div id="modalOverlay" class="absolute inset-0 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center p-6 z-20 text-center">
+            <div id="modalContent" class="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-md w-full shadow-2xl space-y-6">
+                <div class="space-y-2">
+                    <h2 id="modalTitle" class="text-3xl font-black text-cyan-400">モンスターに投げられた！</h2>
+                    <p id="modalDesc" class="text-sm text-slate-300">
+                        猛スピードで壁に直撃します！<br>
+                        <strong class="text-amber-300">【操作方法】</strong><br>
+                        画面のどこでも <strong>長押し / タップ</strong>、または <strong>W / 上キー / スペースキー</strong> で<strong>「大の字（空気抵抗）」</strong>を展開！<br>
+                        <strong class="text-emerald-400">空気抵抗だけでしっかり減速</strong>して即死を回避せよ！
+                    </p>
+                </div>
+                <button id="actionBtn" class="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-2xl shadow-lg transition transform active:scale-95 text-lg">
+                    投擲を受ける！ (START)
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // DOM Elements
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalDesc = document.getElementById('modalDesc');
+        const actionBtn = document.getElementById('actionBtn');
+        const stageNumEl = document.getElementById('stageNum');
+        const throwSpeedEl = document.getElementById('throwSpeed');
+
+        // Game States
+        let gameState = 'START'; // START, FLYING, RESULT
+        let stage = 1;
+
+        // Physics & Character State
+        let player = {
+            x: 0,
+            y: 0,
+            vx: 0,
+            vy: 0,
+            spread: false,  // Air resistance mode (大の字)
+            radius: 24
+        };
+
+        // Well-balanced throw distance
+        const worldWidth = 4500;
+        const targetWallX = 2700;
+        let cameraX = 0;
+
+        // Input state
+        let isTouchingOrPressing = false;
+
+        // Resize canvas to fit container
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Keyboard inputs
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') {
+                isTouchingOrPressing = true;
+                player.spread = true;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') {
+                isTouchingOrPressing = false;
+                player.spread = false;
+            }
+        });
+
+        // Tap/Click anywhere on canvas or game area for air resistance
+        canvas.addEventListener('mousedown', () => {
+            if (gameState === 'FLYING') {
+                isTouchingOrPressing = true;
+                player.spread = true;
+            }
+        });
+        window.addEventListener('mouseup', () => {
+            isTouchingOrPressing = false;
+            player.spread = false;
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (gameState === 'FLYING') {
+                e.preventDefault();
+                isTouchingOrPressing = true;
+                player.spread = true;
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            isTouchingOrPressing = false;
+            player.spread = false;
+        }, { passive: false });
+
+        function startStage() {
+            modalOverlay.classList.add('hidden');
+            gameState = 'FLYING';
+
+            // Initial position (thrown from monster on the left)
+            player.x = 150;
+            player.y = canvas.height / 2;
+            
+            // Balanced initial throw speed
+            const baseSpeed = 18 + stage * 3.0;
+            player.vx = baseSpeed;
+            player.vy = (Math.random() - 0.5) * 3;
+            player.spread = false;
+            isTouchingOrPressing = false;
+
+            stageNumEl.textContent = stage;
+            throwSpeedEl.textContent = stage === 1 ? 'NORMAL (標準遠投)' : stage === 2 ? 'SUPER LONG (超遠投)' : 'EXTREME (激ムズ遠投)';
+        }
+
+        actionBtn.addEventListener('click', startStage);
+
+        function update() {
+            if (gameState !== 'FLYING') return;
+
+            // Air resistance & Drag
+            // If spread (大の字), drag is much higher!
+            const drag = player.spread ? 0.94 : 0.995;
+            player.vx *= drag;
+            player.vy *= drag;
+
+            // Update position
+            player.x += player.vx;
+            player.y += player.vy;
+
+            // Gravity pulling down slightly
+            player.vy += 0.05;
+
+            // Check if player came to a complete stop before reaching the wall (Stall/Game Over)
+            if (player.vx < 0.5 && player.x < targetWallX - 50) {
+                resolveStall();
+                return;
+            }
+
+            // Camera follows player smoothly with offset
+            cameraX = player.x - canvas.width * 0.35;
+            if (cameraX < 0) cameraX = 0;
+            if (cameraX > targetWallX - canvas.width + 150) {
+                cameraX = targetWallX - canvas.width + 150;
+            }
+
+            // Check if player hit the wall
+            if (player.x + player.radius >= targetWallX) {
+                resolveImpact();
+            }
+
+            // Boundary top/bottom safety
+            if (player.y < 50 || player.y > canvas.height - 50) {
+                player.vy *= -0.5;
+            }
+        }
+
+        function resolveStall() {
+            gameState = 'RESULT';
+            modalOverlay.classList.remove('hidden');
+            modalTitle.textContent = "💤 落下・力尽きた…";
+            modalTitle.className = "text-3xl font-black text-amber-500";
+            
+            modalDesc.innerHTML = `
+                空気抵抗（大の字）を使いすぎて、壁にたどり着く前にスピードが完全に失われてしまいました！<br><br>
+                <span class="text-slate-300">減速しすぎないように大の字を使うタイミングを調整しよう！</span>
+            `;
+            actionBtn.textContent = "リトライする";
+            actionBtn.onclick = () => {
+                actionBtn.onclick = startStage;
+                startStage();
+            };
+        }
+
+        function resolveImpact() {
+            gameState = 'RESULT';
+
+            const impactSpeed = Math.hypot(player.vx, player.vy);
+
+            // Success criteria: Only speed matters now!
+            const speedSafe = impactSpeed < 9.0;
+
+            showResultModal(speedSafe, impactSpeed);
+        }
+
+        function showResultModal(speedSafe, speed) {
+            modalOverlay.classList.remove('hidden');
+
+            if (speedSafe) {
+                modalTitle.textContent = "🎉 生還クリア！";
+                modalTitle.className = "text-3xl font-black text-emerald-400";
+                modalDesc.innerHTML = `
+                    見事な空気抵抗コントロール！減速に成功して無事生存しました！<br>
+                    衝突速度: <strong>${speed.toFixed(1)}</strong> (安全圏)<br><br>
+                    <span class="text-emerald-300">モンスターの遠投を見事に攻略しました！次のステージへ！</span>
+                `;
+                actionBtn.textContent = "次のステージへ進む";
+                actionBtn.onclick = () => {
+                    stage++;
+                    actionBtn.onclick = startStage;
+                    startStage();
+                };
+            } else {
+                modalTitle.textContent = "💥 即死…（激突大破）";
+                modalTitle.className = "text-3xl font-black text-rose-500";
+                
+                modalDesc.innerHTML = `
+                    スピードが速すぎて壁に激突してしまいました！<br><br>
+                    衝突速度: <span class="text-rose-400">${speed.toFixed(1)}</span> (目標: 9.0未満)<br><br>
+                    <span class="text-slate-400">もっと長く画面をタップしてしっかり減速しよう！</span>
+                `;
+                actionBtn.textContent = "リトライする";
+                actionBtn.onclick = () => {
+                    actionBtn.onclick = startStage;
+                    startStage();
+                };
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(-cameraX, 0);
+
+            // Draw Background Grid across the wide world
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let x = 0; x <= targetWallX + 300; x += 100) {
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+            }
+            ctx.stroke();
+
+            // Draw distance markers on the ground
+            ctx.fillStyle = '#64748b';
+            ctx.font = 'bold 14px sans-serif';
+            for (let dist = 1000; dist < targetWallX; dist += 1000) {
+                ctx.fillText(`📍 ${dist}m`, dist, canvas.height - 20);
+                ctx.strokeStyle = '#475569';
+                ctx.beginPath();
+                ctx.moveTo(dist, canvas.height - 40);
+                ctx.lineTo(dist, canvas.height);
+                ctx.stroke();
+            }
+
+            // Draw Wall with Danger indicator
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(targetWallX, 0, 400, canvas.height);
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(targetWallX, 0, 12, canvas.height);
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = 'bold 20px sans-serif';
+            ctx.save();
+            ctx.translate(targetWallX + 50, canvas.height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.textAlign = 'center';
+            ctx.fillText('⚡ 激突注意の壁 (GOAL) ⚡', 0, 0);
+            ctx.restore();
+
+            // Draw Monster on the left throwing the player
+            ctx.fillStyle = '#8b5cf6';
+            ctx.beginPath();
+            ctx.arc(80, canvas.height / 2, 45, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = 'bold 24px sans-serif';
+            ctx.fillText('👹', 65, canvas.height / 2 + 8);
+
+            // Draw Player
+            ctx.save();
+            ctx.translate(player.x, player.y);
+
+            if (player.spread) {
+                // 大の字 (Spread / Air resistance mode) - Expands to slow down
+                ctx.fillStyle = '#38bdf8';
+                ctx.fillRect(-35, -35, 70, 70);
+                ctx.fillStyle = '#0284c7';
+                ctx.font = '12px sans-serif';
+                ctx.fillText('✋大の字', -22, -42);
+            } else {
+                // Normal compact body
+                ctx.fillStyle = '#f59e0b';
+                ctx.beginPath();
+                ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+            ctx.restore(); // Restore camera translation
+
+            // Draw HUD fixed on screen
+            if (gameState === 'FLYING') {
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+                ctx.fillRect(20, 20, 310, 110);
+                ctx.strokeStyle = '#475569';
+                ctx.strokeRect(20, 20, 310, 110);
+
+                ctx.fillStyle = '#f8fafc';
+                ctx.font = '14px sans-serif';
+                ctx.fillText(`残りの距離: ${Math.max(0, Math.round(targetWallX - player.x))}m`, 35, 48);
+                ctx.fillText(`速度 (Speed): ${Math.round(player.vx * 10)} km/h`, 35, 75);
+                ctx.fillText(`空気抵抗 (画面タップ中): ${player.spread ? 'ON ✋' : 'OFF (通常)'}`, 35, 102);
+                
+                ctx.fillStyle = player.spread ? '#38bdf8' : '#64748b';
+                ctx.fillRect(215, 92, player.spread ? 85 : 40, 8);
+            }
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>

@@ -5,12 +5,8 @@ echo "🔍 ダウンロードフォルダから新しいゲーム（AI-GAME-PORT
 # 1. games フォルダを準備
 mkdir -p games
 
-# 2. ダウンロードフォルダから目印のあるファイルだけを探索
-grep -rl "AI-GAME-PORTFOLIO" ~/ダウンロード --include="*.html" 2>/dev/null | while read file; do
-  case "$file" in
-    */my-website/*) continue ;;
-  esac
-  
+# 2. ダウンロードフォルダから目印のあるファイルだけを探索 (grepのオプションで除外設定を最適化)
+grep -rl "AI-GAME-PORTFOLIO" ~/ダウンロード --include="*.html" --exclude-dir="my-website" 2>/dev/null | while read -r file; do
   filename=$(basename "$file")
   
   if [ -f "games/$filename" ]; then
@@ -21,7 +17,7 @@ grep -rl "AI-GAME-PORTFOLIO" ~/ダウンロード --include="*.html" 2>/dev/null
   cp "$file" games/
 done
 
-# 3. index.html のデザイン部分を生成（モーダルやコピー用トースト通知のCSSも追加）
+# 3. index.html のデザイン部分を生成（検索窓とCSSを追加）
 cat << 'HTMLEOF' > index.html
 <!DOCTYPE html>
 <html lang="ja">
@@ -34,8 +30,10 @@ cat << 'HTMLEOF' > index.html
     header { text-align: center; padding: 50px 20px; background-color: #252526; border-bottom: 2px solid #007acc; }
     h1 { margin: 0; font-size: 2.5em; color: #007acc; }
     header p { color: #cccccc; margin-top: 10px; }
-    .container { max-width: 1000px; margin: 0 auto; padding: 40px 20px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-top: 20px; }
+    .controls { max-width: 1000px; margin: 20px auto 0; padding: 0 20px; }
+    #searchInput { width: 100%; max-width: 300px; padding: 10px; border-radius: 4px; border: 1px solid #3e3e42; background: #2d2d30; color: #fff; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; }
     .card { background: #2d2d30; border-radius: 8px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.2s; border: 1px solid #3e3e42; display: flex; flex-direction: column; justify-content: space-between; }
     .card:hover { transform: translateY(-5px); border-color: #007acc; }
     .card h3 { margin-top: 0; color: #ffffff; font-size: 1.4em; }
@@ -46,8 +44,7 @@ cat << 'HTMLEOF' > index.html
     a.button:hover, button.button:hover { background: #005999; }
     button.copy-btn { background: #3e3e42; }
     button.copy-btn:hover { background: #505055; }
-    /* コピー完了時の通知（トースト） */
-    #toast { visibility: hidden; min-width: 200px; background-color: #333; color: #fff; text-align: center; border-radius: 4px; padding: 12px; position: z-index: 1000; position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    #toast { visibility: hidden; min-width: 200px; background-color: #333; color: #fff; text-align: center; border-radius: 4px; padding: 12px; position: fixed; z-index: 1000; left: 50%; bottom: 30px; transform: translateX(-50%); box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
     #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
     @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
     @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
@@ -58,13 +55,19 @@ cat << 'HTMLEOF' > index.html
     <h1>AI Game Portfolio</h1>
     <p>AIと共に制作したゲーム・プロトタイプの展示室</p>
   </header>
+  
+  <div class="controls">
+    <input type="text" id="searchInput" placeholder="ゲームを検索..." onkeyup="filterGames()">
+  </div>
+
   <div class="container">
-    <div class="grid">
+    <div class="grid" id="gameGrid">
 HTMLEOF
 
-# 4. games フォルダ内のHTMLを自動で読み込んでカードを追加
+# 4. games フォルダ内のHTMLを読み込んでカードを追加
 declare -A seen_titles
 
+# ls -t で新しい順に処理
 while IFS= read -r file; do
   [ -e "$file" ] || continue
   filename=$(basename "$file")
@@ -80,12 +83,9 @@ while IFS= read -r file; do
   
   seen_titles["$gametitle"]=1
 
-  # 各ゲームファイルの実際のソースコードを読み込んで、JavaScriptの変数として安全に埋め込む
-  # (改行やエスケープ文字対策としてbase64エンコードを利用すると非常に安全に渡せます)
-  encoded_code=$(base64 -w 0 "$file")
-
+  # Base64エンコードをやめ、ファイル名だけをJSに渡すように変更
   cat << HTMLEOF >> index.html
-      <div class="card">
+      <div class="card" data-title="${gametitle}">
         <div>
           <h3>${gametitle}</h3>
           <span class="tag">Web Game</span>
@@ -93,13 +93,14 @@ while IFS= read -r file; do
         </div>
         <div class="button-group">
           <a href="games/${filename}" class="button" target="_blank">Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('${encoded_code}', '${filename}')">コードコピー</button>
+          <!-- onclickにファイル名を渡す -->
+          <button class="button copy-btn" onclick="copyGameCode('${filename}')">コードコピー</button>
         </div>
       </div>
 HTMLEOF
 done < <(ls -t games/*.html 2>/dev/null)
 
-# 5. HTMLのフッターと、コピー機能を実現するJavaScriptを追加
+# 5. HTMLのフッターと、Fetch APIを利用したコピー機能・検索機能を追加
 cat << 'HTMLEOF' >> index.html
     </div>
   </div>
@@ -107,21 +108,28 @@ cat << 'HTMLEOF' >> index.html
   <div id="toast">コードをクリップボードにコピーしました！</div>
 
   <script>
-    function copyGameCode(base64Code, filename) {
+    // 検索フィルター機能
+    function filterGames() {
+      const input = document.getElementById('searchInput').value.toLowerCase();
+      const cards = document.querySelectorAll('.card');
+      cards.forEach(card => {
+        const title = card.getAttribute('data-title').toLowerCase();
+        card.style.display = title.includes(input) ? '' : 'none';
+      });
+    }
+
+    // Fetch APIを使ったスマートなコードコピー機能
+    async function copyGameCode(filename) {
       try {
-        // Base64から元のHTMLコード（文字列）に復元
-        const decodedHtml = decodeURIComponent(escape(window.atob(base64Code)));
+        const response = await fetch('games/' + filename);
+        if (!response.ok) throw new Error('Network response was not ok');
+        const text = await response.text();
         
-        // クリップボードにコピー
-        navigator.clipboard.writeText(decodedHtml).then(() => {
-          showToast(filename + ' のコードをコピーしました！');
-        }).catch(err => {
-          console.error('コピーに失敗しました', err);
-          alert('コピーに失敗しました。');
-        });
-      } catch (e) {
-        console.error('デコードエラー', e);
-        alert('コードの読み込みに失敗しました。');
+        await navigator.clipboard.writeText(text);
+        showToast(filename + ' のコードをコピーしました！');
+      } catch (err) {
+        console.error('コピーに失敗しました', err);
+        alert('コードの読み込みに失敗しました。ローカル環境(file://)では動作しない場合があります。');
       }
     }
 
@@ -136,8 +144,13 @@ cat << 'HTMLEOF' >> index.html
 </html>
 HTMLEOF
 
-# 6. Gitで自動コミット＆プッシュ
-git add .
-git commit -m "ゲームカードにコードコピー機能を追加"
-git push origin main
-echo "🎉 サイトの自動収集・コードコピー機能付きビルド・公開が完了しました！"
+# 6. Gitで安全に自動コミット＆プッシュ（変更がある場合のみ実行）
+if [ -n "$(git status --porcelain)" ]; then
+  git add .
+  # コミットメッセージに日時を追加して履歴をわかりやすく
+  git commit -m "ポートフォリオ更新: $(date +'%Y-%m-%d %H:%M:%S')"
+  git push origin main
+  echo "🎉 サイトの自動収集・ビルド・公開が完了しました！"
+else
+  echo "✅ 変更がないため、Gitの更新はスキップしました。"
+fi

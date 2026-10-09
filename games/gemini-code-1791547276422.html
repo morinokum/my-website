@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天空の呪い - Fallout-style Narrative RPG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Shippori+Mincho:wght@400;600;800&family=Share+Tech+Mono&display=swap');
+
+        :root {
+            --pip-amber: #ffb833;
+            --term-green: #34d399;
+            --bg-dark: #070707;
+        }
+
+        body {
+            font-family: 'Shippori Mincho', serif;
+            background-color: var(--bg-dark);
+            color: #d1d5db;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(139, 0, 0, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(20, 40, 80, 0.15) 0%, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        .header-font { font-family: 'Cinzel', serif; }
+        .mono-font { font-family: 'Share Tech Mono', monospace; }
+
+        /* Custom Scrollbar for Immersion */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #111; border-left: 1px solid #333; }
+        ::-webkit-scrollbar-thumb { background: #442211; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #883322; }
+
+        /* Enhanced CRT Glow & Scanline Effects */
+        .crt-container {
+            position: relative;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.9), inset 0 0 20px rgba(212, 107, 44, 0.05);
+            z-index: 1;
+        }
+
+        .crt-container::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 20;
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+            border-radius: inherit;
+        }
+
+        /* Moving Scanline */
+        .crt-scanline-animate {
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 10%;
+            background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.04), transparent);
+            opacity: 0.4;
+            animation: scanline 8s linear infinite;
+            pointer-events: none;
+            z-index: 21;
+            border-radius: inherit;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(1000%); }
+        }
+
+        /* Screen Flicker */
+        .flicker-effect {
+            animation: flicker 0.15s infinite;
+        }
+        @keyframes flicker {
+            0% { opacity: 0.98; }
+            50% { opacity: 1; }
+            100% { opacity: 0.99; }
+        }
+
+        /* Choice Button Glow Animation */
+        .choice-btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.2s ease-out;
+        }
+        .choice-btn::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 184, 51, 0.1), transparent);
+            transition: left 0.4s ease;
+        }
+        .choice-btn:hover:not(:disabled)::after {
+            left: 150%;
+        }
+        .choice-btn:hover:not(:disabled) {
+            transform: translateX(4px);
+            border-color: var(--pip-amber);
+            box-shadow: -2px 0 10px rgba(255, 184, 51, 0.15);
+        }
+
+        .slide-fade {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); filter: blur(2px); }
+            to { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+
+        /* Terminal Text Cursor */
+        .cursor-blink::after {
+            content: '█';
+            animation: blink 1s step-end infinite;
+            margin-left: 4px;
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+    </style>
+</head>
+<body class="min-h-screen flex flex-col p-3 md:p-6 select-none bg-stone-950">
+
+    <!-- Navigation Header -->
+    <header class="max-w-6xl mx-auto w-full mb-6 border-b border-red-900/50 pb-4 flex flex-wrap justify-between items-center gap-3 slide-fade">
+        <div class="flex items-center space-x-4">
+            <div class="relative">
+                <i class="fa-solid fa-radiation text-3xl text-red-600 animate-[spin_10s_linear_infinite]"></i>
+                <div class="absolute inset-0 bg-red-500 blur-md opacity-30 animate-pulse"></div>
+            </div>
+            <div>
+                <h1 class="header-font text-2xl md:text-3xl font-bold tracking-widest text-red-500 uppercase drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]">天空の呪い</h1>
+                <p class="text-xs text-amber-500/70 mono-font tracking-wide">POST-APOCALYPTIC NARRATIVE ENGINE v1.4</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-3">
+            <button id="terminal-btn" class="px-4 py-2 rounded text-xs bg-emerald-950/80 border border-emerald-700 hover:border-emerald-400 hover:bg-emerald-900 text-emerald-400 transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.15)] cursor-pointer">
+                <i class="fa-solid fa-terminal"></i><span class="mono-font font-bold">ARCHEO-OS 起動</span>
+            </button>
+            <button id="sound-toggle" class="px-3 py-2 rounded text-xs bg-stone-900 border border-stone-700 hover:border-amber-500 text-stone-300 transition-colors cursor-pointer w-24 flex justify-center">
+                <i class="fa-solid fa-volume-high text-amber-500 mr-1.5"></i><span id="sound-text" class="mono-font">SE: ON</span>
+            </button>
+            <button id="restart-btn" class="px-3 py-2 rounded text-xs bg-red-950/40 hover:bg-red-900 border border-red-800 text-red-300 transition-colors cursor-pointer">
+                <i class="fa-solid fa-rotate-left mr-1.5"></i>RESET
+            </button>
+        </div>
+    </header>
+
+    <!-- ANCIENT TERMINAL MODAL -->
+    <div id="terminal-modal" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-3 md:p-5 hidden select-none transition-opacity duration-300">
+        <div class="bg-[#020504] border border-emerald-500/60 rounded-lg max-w-4xl w-full p-1 crt-container text-emerald-400 mono-font shadow-[0_0_40px_rgba(16,185,129,0.15)] relative flex flex-col max-h-[95vh] overflow-hidden">
+            <div class="crt-scanline-animate"></div>
+            
+            <div class="border-2 border-emerald-900/80 rounded m-1 p-3 md:p-5 flex-grow flex flex-col relative z-30 bg-black/40">
+                <div class="flex justify-between items-center border-b border-emerald-800/80 pb-3 mb-4">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-server text-lg text-emerald-500"></i>
+                        <span class="font-bold tracking-widest text-xs md:text-sm text-emerald-300">ARCHEO-OS v3.04 // SKY-COLONY HISTORICAL TERMINAL</span>
+                    </div>
+                    <button id="close-terminal-btn" class="text-emerald-700 hover:text-emerald-300 px-3 py-1 bg-emerald-950/30 border border-emerald-900 hover:border-emerald-500 rounded text-xs transition-colors cursor-pointer">
+                        EXIT [ESC]
+                    </button>
+                </div>
+
+                <!-- Terminal Main Screen -->
+                <div id="terminal-screen" class="bg-[#000804] border border-emerald-900/50 rounded p-4 flex-grow overflow-y-auto min-h-[350px] flex flex-col space-y-4 shadow-inner relative flicker-effect">
+                    
+                    <!-- Text Output Log -->
+                    <div id="terminal-output" class="text-sm space-y-2 leading-relaxed text-emerald-500">
+                        <!-- Content injected via JS typewriter -->
+                    </div>
+
+                    <!-- Canvas Visualizer / Game Display -->
+                    <div id="terminal-canvas-container" class="hidden relative border-2 border-emerald-800/60 rounded overflow-hidden bg-black mt-2">
+                        <canvas id="terminal-canvas" class="w-full h-64 md:h-72 block bg-black"></canvas>
+                        <div id="canvas-overlay-caption" class="absolute bottom-2 left-2 right-2 bg-black/80 p-2 text-xs text-emerald-300 border border-emerald-800/50 rounded shadow-lg backdrop-blur-sm">
+                            <!-- Caption -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive Command Buttons -->
+                <div id="terminal-menu" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 relative z-10 mt-2">
+                    <button class="term-cmd-btn p-3 text-xs text-left bg-emerald-950/20 hover:bg-emerald-900/50 border border-emerald-800 hover:border-emerald-400 text-emerald-400 hover:text-emerald-200 transition-all flex items-center justify-between cursor-pointer rounded group" data-action="play-war">
+                        <span><i class="fa-solid fa-film mr-2 text-emerald-600 group-hover:text-emerald-400"></i>1. 映像記録再生</span>
+                        <span class="text-[10px] bg-emerald-950 border border-emerald-800 px-1.5 py-0.5 rounded opacity-70">DATA</span>
+                    </button>
+                    <button class="term-cmd-btn p-3 text-xs text-left bg-emerald-950/20 hover:bg-emerald-900/50 border border-emerald-800 hover:border-emerald-400 text-emerald-400 hover:text-emerald-200 transition-all flex items-center justify-between cursor-pointer rounded group" data-action="play-game">
+                        <span><i class="fa-solid fa-crosshairs mr-2 text-emerald-600 group-hover:text-emerald-400"></i>2. 軌道防衛シミュレータ</span>
+                        <span class="text-[10px] bg-emerald-950 border border-emerald-800 px-1.5 py-0.5 rounded opacity-70">EXE</span>
+                    </button>
+                    <button class="term-cmd-btn p-3 text-xs text-left bg-emerald-950/20 hover:bg-emerald-900/50 border border-emerald-800 hover:border-emerald-400 text-emerald-400 hover:text-emerald-200 transition-all flex items-center justify-between cursor-pointer rounded group" data-action="read-truth">
+                        <span><i class="fa-solid fa-file-code mr-2 text-emerald-600 group-hover:text-emerald-400"></i>3. 暗黒史テキスト解読</span>
+                        <span class="text-[10px] bg-emerald-950 border border-emerald-800 px-1.5 py-0.5 rounded opacity-70">TXT</span>
+                    </button>
+                    <button class="term-cmd-btn p-3 text-xs text-left bg-emerald-950/20 hover:bg-emerald-900/50 border border-emerald-800 hover:border-emerald-400 text-emerald-400 hover:text-emerald-200 transition-all flex items-center justify-between cursor-pointer rounded group" data-action="reset">
+                        <span><i class="fa-solid fa-broom mr-2 text-emerald-600 group-hover:text-emerald-400"></i>4. コンソール・クリア</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Game Workspace -->
+    <main class="max-w-6xl mx-auto w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- LEFT PANEL: Character Pip-Boy Dashboard -->
+        <aside class="lg:col-span-4 bg-stone-900/90 border-2 border-stone-800 rounded-lg p-5 crt-container backdrop-blur-md relative overflow-hidden slide-fade" style="animation-delay: 0.1s;">
+            <div class="crt-scanline-animate"></div>
+            
+            <h2 class="header-font text-sm uppercase font-bold text-amber-500 border-b border-stone-700 pb-2 mb-4 flex items-center justify-between relative z-10">
+                <span class="flex items-center"><i class="fa-solid fa-id-card mr-2 text-amber-600"></i>ステータス</span>
+                <span class="text-[10px] text-amber-600/60 mono-font tracking-widest">SYS.PRFL</span>
+            </h2>
+
+            <!-- Player Profile & Attributes -->
+            <div id="player-attributes" class="space-y-2.5 text-sm mb-6 bg-black/40 p-3 rounded border border-stone-800/80 relative z-10 font-medium">
+                <div class="flex justify-between items-center group">
+                    <span class="text-stone-400 group-hover:text-red-400 transition-colors"><i class="fa-solid fa-fist-raised mr-2 w-4 text-center"></i>[武力] STR</span>
+                    <span id="stat-str" class="mono-font text-amber-400 font-bold text-base">14</span>
+                </div>
+                <div class="flex justify-between items-center group">
+                    <span class="text-stone-400 group-hover:text-cyan-400 transition-colors"><i class="fa-solid fa-comments mr-2 w-4 text-center"></i>[弁舌] CHA</span>
+                    <span id="stat-cha" class="mono-font text-cyan-400 font-bold text-base">16</span>
+                </div>
+                <div class="flex justify-between items-center group">
+                    <span class="text-stone-400 group-hover:text-emerald-400 transition-colors"><i class="fa-solid fa-brain mr-2 w-4 text-center"></i>[知識] INT</span>
+                    <span id="stat-int" class="mono-font text-emerald-400 font-bold text-base">12</span>
+                </div>
+                <div class="flex justify-between items-center group">
+                    <span class="text-stone-400 group-hover:text-purple-400 transition-colors"><i class="fa-solid fa-mask mr-2 w-4 text-center"></i>[密偵] DEX</span>
+                    <span id="stat-dex" class="mono-font text-purple-400 font-bold text-base">10</span>
+                </div>
+            </div>
+
+            <!-- Inventory Section (NEW) -->
+            <h2 class="header-font text-sm uppercase font-bold text-amber-500 border-b border-stone-700 pb-2 mb-3 flex items-center justify-between relative z-10">
+                <span class="flex items-center"><i class="fa-solid fa-box-archive mr-2 text-amber-600"></i>所持アイテム</span>
+                <span class="text-[10px] text-amber-600/60 mono-font tracking-widest">INVENTORY</span>
+            </h2>
+            <div id="inventory-list" class="space-y-2 mb-6 bg-black/50 p-3 rounded border border-stone-800/80 min-h-[90px] max-h-[130px] overflow-y-auto relative z-10 text-xs">
+                <!-- Dynamically populated items -->
+            </div>
+
+            <!-- Faction Reputation Gauge -->
+            <h2 class="header-font text-sm uppercase font-bold text-amber-500 border-b border-stone-700 pb-2 mb-4 flex items-center justify-between relative z-10">
+                <span class="flex items-center"><i class="fa-solid fa-handshake mr-2 text-amber-600"></i>勢力評価</span>
+                <span class="text-[10px] text-amber-600/60 mono-font tracking-widest">FACTIONS</span>
+            </h2>
+
+            <div class="space-y-4 text-xs mb-6 relative z-10">
+                <!-- Red Tribe -->
+                <div>
+                    <div class="flex justify-between mb-1.5">
+                        <span class="text-stone-300"><i class="fa-solid fa-fire text-red-500 mr-1.5"></i>赤の部族（同胞）</span>
+                        <span id="rep-red-val" class="mono-font text-red-400 font-bold">50%</span>
+                    </div>
+                    <div class="w-full bg-black h-2.5 rounded-full overflow-hidden border border-stone-800 shadow-inner">
+                        <div id="rep-red-bar" class="bg-gradient-to-r from-red-800 to-red-500 h-full transition-all duration-700 ease-out" style="width: 50%"></div>
+                    </div>
+                </div>
+
+                <!-- Blue Tribe -->
+                <div>
+                    <div class="flex justify-between mb-1.5">
+                        <span class="text-stone-300"><i class="fa-solid fa-water text-cyan-500 mr-1.5"></i>青の部族（対立）</span>
+                        <span id="rep-blue-val" class="mono-font text-cyan-400 font-bold">20%</span>
+                    </div>
+                    <div class="w-full bg-black h-2.5 rounded-full overflow-hidden border border-stone-800 shadow-inner">
+                        <div id="rep-blue-bar" class="bg-gradient-to-r from-cyan-800 to-cyan-500 h-full transition-all duration-700 ease-out" style="width: 20%"></div>
+                    </div>
+                </div>
+
+                <!-- Earthbound Ancients -->
+                <div>
+                    <div class="flex justify-between mb-1.5">
+                        <span class="text-stone-300"><i class="fa-solid fa-skull text-purple-500 mr-1.5"></i>地上人の残党（変異）</span>
+                        <span id="rep-earth-val" class="mono-font text-purple-400 font-bold">10%</span>
+                    </div>
+                    <div class="w-full bg-black h-2.5 rounded-full overflow-hidden border border-stone-800 shadow-inner">
+                        <div id="rep-earth-bar" class="bg-gradient-to-r from-purple-800 to-purple-500 h-full transition-all duration-700 ease-out" style="width: 10%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- World Transformation Log -->
+            <h2 class="header-font text-sm uppercase font-bold text-amber-500 border-b border-stone-700 pb-2 mb-3 flex items-center justify-between relative z-10">
+                <span class="flex items-center"><i class="fa-solid fa-timeline mr-2 text-amber-600"></i>行動ログ</span>
+            </h2>
+            <div id="world-flags-log" class="text-xs space-y-1.5 text-amber-500/80 bg-black/50 p-3 rounded border border-stone-800/80 h-32 overflow-y-auto leading-relaxed mono-font relative z-10 shadow-inner">
+                <!-- Log injected dynamically -->
+            </div>
+        </aside>
+
+        <!-- RIGHT PANEL: Main Narrative Area -->
+        <section class="lg:col-span-8 bg-stone-900/80 border-2 border-stone-800 rounded-lg p-5 md:p-8 crt-container flex flex-col justify-between min-h-[580px] shadow-[0_0_30px_rgba(0,0,0,0.8)] relative overflow-hidden slide-fade" style="animation-delay: 0.2s;">
+            <div class="crt-scanline-animate" style="animation-delay: 4s;"></div>
+
+            <!-- Scene Screen Body -->
+            <div id="main-story-view" class="relative z-10 flex flex-col h-full">
+                <div class="flex justify-between items-center mb-6 border-b border-stone-700 pb-3">
+                    <span id="scene-tag" class="text-xs font-bold text-amber-950 bg-amber-500 uppercase tracking-widest px-3 py-1 rounded-sm shadow-[0_0_8px_rgba(245,158,11,0.4)]">
+                        PROLOGUE
+                    </span>
+                    <span id="scene-location" class="text-xs text-stone-400 mono-font flex items-center">
+                        <i class="fa-solid fa-location-crosshairs text-red-500 mr-2 animate-pulse"></i><span id="scene-location-text">赤の部族の集落</span>
+                    </span>
+                </div>
+
+                <!-- Main Text Body -->
+                <div id="story-container" class="space-y-5 mb-8 flex-grow">
+                    <h3 id="story-title" class="text-xl md:text-2xl font-bold text-stone-100 tracking-wide border-l-4 border-red-600 pl-4 drop-shadow-md">
+                        長老の語り
+                    </h3>
+                    <div id="story-body" class="text-sm md:text-base leading-relaxed text-stone-300 space-y-4 font-serif bg-black/20 p-4 rounded-md border border-white/5">
+                        <!-- Dynamic content injected -->
+                    </div>
+                </div>
+
+                <!-- Dynamic Choices Area -->
+                <div id="choices-area" class="space-y-3 pt-5 border-t border-stone-700 mt-auto">
+                    <p class="text-xs text-amber-500/90 uppercase tracking-widest font-bold mb-3 flex items-center">
+                        <i class="fa-solid fa-chevron-right mr-2 text-red-500 animate-pulse"></i>選択権限の移譲:
+                    </p>
+                    <div id="choices-list" class="space-y-3">
+                        <!-- Dynamic buttons injected -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ending View Container (Hidden initially) -->
+            <div id="ending-container" class="hidden flex-col items-center justify-center h-full text-center slide-fade relative z-10">
+                <div class="inline-flex items-center justify-center w-20 h-20 bg-amber-950/40 rounded-full border-2 border-amber-500/50 mb-6 shadow-[0_0_30px_rgba(245,158,11,0.2)]">
+                    <i class="fa-solid fa-biohazard text-4xl text-amber-500"></i>
+                </div>
+                <h2 id="ending-title" class="text-2xl md:text-3xl font-bold text-amber-400 tracking-widest mb-6 drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]">
+                    歴史の決着
+                </h2>
+                <div id="ending-body" class="text-sm md:text-base text-stone-300 leading-relaxed max-w-2xl w-full mx-auto space-y-4 bg-black/60 p-6 rounded-lg border border-stone-700 text-left mb-8">
+                    <!-- Ending slides generated dynamically -->
+                </div>
+                <button id="restart-ending-btn" class="px-8 py-3 bg-red-900/80 hover:bg-red-800 text-red-100 font-bold rounded shadow-[0_0_15px_rgba(185,28,28,0.4)] border border-red-500/50 transition-all transform hover:scale-105 cursor-pointer uppercase tracking-widest text-sm">
+                    <i class="fa-solid fa-power-off mr-2"></i>システム再起動
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <footer class="max-w-6xl mx-auto w-full mt-6 text-center text-[10px] text-stone-600 border-t border-stone-800/50 pt-4 mono-font tracking-widest">
+        ARCHEO-OS v3.04 &bull; POST-APOCALYPTIC NARRATIVE SIMULATION ENGINE &bull; ALL RIGHTS RESERVED
+    </footer>
+
+    <script>
+        // Web Audio Synthesizer for Retro UI SFX
+        class SoundFX {
+            constructor() {
+                this.enabled = true;
+                this.ctx = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playTone(freq, type, duration, vol) {
+                if (!this.enabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                
+                gain.gain.setValueAtTime(0, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(vol, this.ctx.currentTime + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            }
+
+            playClick() { this.playTone(600, 'square', 0.05, 0.05); }
+            playHover() { this.playTone(300, 'sine', 0.03, 0.02); }
+            playChoice() { this.playTone(220, 'triangle', 0.15, 0.1); }
+            playAlert() { 
+                this.playTone(150, 'sawtooth', 0.2, 0.08); 
+                setTimeout(() => this.playTone(200, 'sawtooth', 0.3, 0.08), 100);
+            }
+            playTypewriter() { this.playTone(800 + Math.random()*200, 'square', 0.02, 0.01); }
+        }
+
+        const sfx = new SoundFX();
+
+        // Game State Core
+        let gameState = {
+            stats: { str: 14, cha: 16, int: 12, dex: 10 },
+            reputation: { red: 50, blue: 20, earth: 10 },
+            inventory: [
+                { id: 'elder_key', name: '長老の古びた鍵', desc: '地下聖堂を開くための儀礼用キー' },
+                { id: 'stimpak', name: '医療用スティムパック', desc: '傷を癒やす旧世界の応急薬' }
+            ],
+            flags: { learnedTrueHistory: false },
+            history: ["システム起動。長老から真実の断片を聞いた。"]
+        };
+
+        // Story Nodes Tree
+        const storyNodes = {
+            prologue: {
+                tag: "PROLOGUE", location: "赤の部族の集落 - 焚き火の前", title: "長老の明かした『呪い』",
+                body: `
+                    <p>焚き火の爆ぜる音が、静まり返った夜の広場に響く。</p>
+                    <p>「……そう、わしたち『人間』とは、かつて地上人を滅ぼした天空人が、死に際の地上人にかけられた呪いの姿なのじゃよ。短き命と病に縛られた、哀れな姿にな」</p>
+                    <p>老人の言葉が終わると同時に、集落の見張り台から鋭い鐘の音が打ち鳴らされた！</p>
+                    <p class="text-red-400 font-bold">「長老！大変です！南より『青の部族』の武装大使が到着！さらに西の地下空洞から、異形と化した『地上人の残党』が這い出てきて集落を取り囲んでいます！」</p>
+                    <p>かつての天空人の遺産を巡り、歴史の選択が今あなたに委ねられた。</p>
+                `,
+                choices: [
+                    { text: "[弁舌/CHA 14] 青の部族の大使と面会し、共通の敵への共闘を提案する", reqSkill: { stat: 'cha', val: 14 }, next: 'diplomacy_blue', effect: (s) => { s.reputation.blue += 20; s.history.push("青の部族との緊急交渉を開始した"); } },
+                    { text: "[武力/STR 12] 武装集団を率い、包囲する地上人の残党を即座に襲撃する", reqSkill: { stat: 'str', val: 12 }, next: 'attack_earthbound', effect: (s) => { s.reputation.earth -= 20; s.reputation.red += 15; s.history.push("地上人の残党を武力で威圧した"); } },
+                    { text: "[知識/INT 12] 所持する『長老の古びた鍵』を使い、地下の古代遺跡へ赴く", reqItem: 'elder_key', reqSkill: { stat: 'int', val: 12 }, next: 'relic_investigation', effect: (s) => { s.history.push("長老の鍵を用いて古代天空遺跡の封印を開放した"); } },
+                    { text: "[システムアクセス] 古代ターミナルを起動し、過去の戦争記録を検索する", action: 'open-terminal' },
+                    { text: "[密偵/裏切り] 青の部族と裏で通じ、長老の首を『売り渡す』手筈を整える", next: 'betray_elder', effect: (s) => { s.reputation.red -= 40; s.reputation.blue += 35; s.history.push("同胞を裏切り、青の部族に寝返った"); } }
+                ]
+            },
+            diplomacy_blue: {
+                tag: "DIPLOMACY", location: "赤の部族 - 大天幕", title: "青の部族の大使との対峙",
+                body: `
+                    <p>青の部族の大使『ガルカ』は、冷ややかな視線であなたを見下ろす。</p>
+                    <p>「赤の部族の者よ。我らは地上人の怪物どもを掃除しに来たのではない。お前たちの集落の地下にある『天空のエンジン』を引き渡し、我らに服従せよ」</p>
+                    <p>彼は腰の古代レーザーピストルに手をかけている。だが、あなたの高い弁舌なら彼の野心を逆手に取ることができるかもしれない。</p>
+                `,
+                choices: [
+                    { text: "[弁舌/CHA 15] 「エンジンを動かすには長老の血統が必要だ。我らをと殺せば鉄くずになるぞ」と脅す", reqSkill: { stat: 'cha', val: 15 }, next: 'ending_diplomat', effect: (s) => { s.reputation.blue += 30; s.history.push("青の部族と対等な同盟関係を勝ち取った"); } },
+                    { text: "[武力/STR 14] 威圧的な態度にブチギレ、その場で青の大使の首を叩き斬る", reqSkill: { stat: 'str', val: 14 }, next: 'kill_blue_ambassador', effect: (s) => { s.reputation.blue = 0; s.history.push("青の部族の大使を即座に殺害した"); } },
+                    { text: "[提案] 「地上人の残党を挟み撃ちにして全滅させた後、エンジンは折半しよう」", next: 'attack_earthbound', effect: (s) => { s.reputation.blue += 10; s.reputation.earth -= 30; s.history.push("青の部族と協定を結び地上人を挟み撃ちにした"); } }
+                ]
+            },
+            kill_blue_ambassador: {
+                tag: "VIOLENCE", location: "大天幕の外 - 混乱の広場", title: "大使の討ち首と全面戦争",
+                body: `
+                    <p>一瞬の閃光とともに青の大使の首が落ちた！狂喜する赤の部族の戦士たち。</p>
+                    <p>「よし！青の部族の兵どもを押し返し、そのまま地下の地上人もまとめて討ち払うぞ！」</p>
+                    <p>血で血を洗う戦いの果てに、あなたは圧倒的な暴力によって集落の頂点に立った。</p>
+                `,
+                choices: [
+                    { text: "[覇道] 全ての反対派を武力で屈服させ、最強の武闘派部族として荒野に君臨する", next: 'ending_warrior', effect: (s) => { s.history.push("力こそ正義を体現し、覇者となった"); } }
+                ]
+            },
+            attack_earthbound: {
+                tag: "COMBAT", location: "集落の外郭 - 防壁前", title: "異形の叫びと血の雨",
+                body: `
+                    <p>あなたは戦士たちを鼓舞し、外郭へと打って出た！</p>
+                    <p>地上人の残党は、かつての呪いの代償で身体が岩のように硬質化し、目からは赤黒い光を放っている。彼らのリーダー『哀しみのルカ』が絞り出すような声で呟く。</p>
+                    <p>「……奪いし者……空の略奪者どもめ……我が祖先の無念……受け取るがいい……！」</p>
+                    <p>彼らは憎悪に狂っているが、高い知識と洞察力があれば対話の糸口も見出せるはずだ。</p>
+                `,
+                choices: [
+                    { text: "[知識/INT 12] 「我々も呪いに苦しむ『人間』だ！同じ星の被害者同士、手を取り合おう」", reqSkill: { stat: 'int', val: 12 }, next: 'ending_earth_harmony', effect: (s) => { s.reputation.earth += 40; s.history.push("地上人の残党と悲しみの和解を果たした"); } },
+                    { text: "[武力/STR 14] 容赦なく突撃し、プラズマライフルで地上人の残党を根絶やしにする", reqSkill: { stat: 'str', val: 14 }, next: 'ending_bloody_hero', effect: (s) => { s.reputation.earth = 0; s.history.push("地上人の残党を完全に絶滅させた"); } }
+                ]
+            },
+            relic_investigation: {
+                tag: "TECHNOLOGY", location: "地下深層 - 天空の古代祭壇", title: "天空人の遺産と真実の制御装置",
+                body: `
+                    <p>集落の地下深くに眠っていたのは、巨大な浮遊機関『天空コア』であった。</p>
+                    <p>古代のコンソールが眩い輝きを放ち、無機質な合成音声が響く。</p>
+                    <p class="text-cyan-400 font-mono text-sm bg-cyan-900/20 p-2 border-l-2 border-cyan-500 my-2">『ユーザー認証……天空の血族を確認。現在、地上浄化システムが待機中。実行すれば、地上全域の生命体を初期化（消滅）可能です』</p>
+                    <p>この装置を使えば地上人は消滅するが、人間にかけられた『短命の呪い』も解除され、かつての強大な天空人へ戻ることができる。</p>
+                `,
+                choices: [
+                    { text: "[知識/INT 14] プログラムをハッキングし、呪いだけを解除して全種族の寿命を正常化する", reqSkill: { stat: 'int', val: 14 }, next: 'ending_transcendence', effect: (s) => { s.history.push("天空の装置をハッキングし、呪いの連鎖を解いた"); } },
+                    { text: "[起動] 装置をそのまま起動し、地上人を消滅させて『強大なる天空の神』として君臨する", next: 'ending_sky_gods', effect: (s) => { s.history.push("地上人を消滅させ、天空人の栄光を取り戻した"); } },
+                    { text: "[破壊] こんな危険な兵器は完全に破壊し、弱く儚い『人間』として生きていく道を選ぶ", next: 'ending_mortal_peace', effect: (s) => { s.history.push("古代テクノロジーを破壊し、人間のまま生きる道を選んだ"); } }
+                ]
+            },
+            betray_elder: {
+                tag: "BETRAYAL", location: "青の部族の本陣", title: "同胞を売った代償",
+                body: `
+                    <p>あなたは赤の部族の長老を縛り上げ、青の部族の首領に差し出した。</p>
+                    <p>「くっくっ……見事な手際だ、裏切り者よ。これで赤の部族は我が配下となった。だが、お前のような同胞を売る奴を今後信用できると思うか？」</p>
+                    <p>青の部族の首領は冷笑しながら剣を抜く。後戻りはできない！</p>
+                `,
+                choices: [
+                    { text: "[密偵/DEX 12] 素早く首領の背後に回り込み、喉元を掻き切って青の部族の全権を奪う", reqSkill: { stat: 'dex', val: 12 }, next: 'ending_tyrant', effect: (s) => { s.history.push("青の首領を暗殺し、冷酷な暴君として君臨した"); } },
+                    { text: "[服従] 武器を捨て、命だけは助けてくれと惨めに命乞いをする", next: 'ending_slain', effect: (s) => { s.history.push("青の部族に捨て駒として扱われ、消え去った"); } }
+                ]
+            }
+        };
+
+        const endings = {
+            ending_diplomat: { title: "天空と青の和平条約", slides: ["あなたの卓越した弁舌により、赤の部族と青の部族は奇跡的な和平協定を結んだ。","共同で地下の異形を撃退した両部族は、古代のエネルギーを分け合い、新たな文明の礎を築いた。","後世の歴史家はあなたを『偉大なる調停者』と呼び讃えたのだった……。"] },
+            ending_warrior: { title: "血塗られた覇者", slides: ["力こそが全ての荒野において、あなたの暴力は絶対的な恐怖として君臨した。","青の部族も地上人の残党もあなたの足元にひざまずき、荒野には平穏ではなく沈黙が訪れた。","だが夜が訪れるたび、あなたは己の血で濡れた手に怯え、眠れぬ夜を過ごすことになる……。"] },
+            ending_earth_harmony: { title: "共存の夜明け", slides: ["天空の末裔と、地上の変異種。かつて殺し合った二つの種族は、互いの痛みを理解し手を取り合った。","呪いは消えなかったが、人々は支え合い、短くも温かい生を謳歌するようになった。","放射能と砂塵に覆われた地上に、初めて真の意味での『人間性』が芽生えたのである。"] },
+            ending_bloody_hero: { title: "残虐なる救世主", slides: ["地上人の残党は最後のひとりまで根絶やしにされ、部族に迫る脅威は去った。","赤の部族はあなたを英雄と称えたが、奪われた命の怨嗟は呪いとなって永遠に荒野を彷徨い続けるだろう……。"] },
+            ending_transcendence: { title: "呪いなき新世界", slides: ["古代プログラムの書き換えに成功したあなたにより、人間にかけられた短命の呪いは静かに解除された。","過ちを繰り返さぬよう古代兵器は永久に地中深く封印され、人々は長き寿の中で新たな平和を紡ぎ始めた。","これが、あなたが選び取った完璧なるハッピーエンドである。"] },
+            ending_sky_gods: { title: "旧文明の亡霊", slides: ["軌道上からの光線が全土を焼き尽くし、地上人の残党は一瞬で塵へと変わった。","かつての力を取り戻した天空人は再び天空へ浮遊城を築いたが、不毛の地上にはもう愛する者も存在しなかった……。"] },
+            ending_mortal_peace: { title: "人間として生きる", slides: ["あなたは過ちの元凶である古代装置を自らの手で破壊した。","寿命は100年足らず。病にも倒れ、傷つきもする。しかし、だからこそ人々は今この一瞬を愛おしく生きるのだ。","呪いを受け入れ、ただの『人間』として生きる道を選んだあなたを、荒野の風が優しく祝福していた。"] },
+            ending_tyrant: { title: "暗黒街の暴君", slides: ["同胞を売り、敵の首領を殺したあなたは、荒野で最も恐れられる暗黒の支配者となった。","誰もあなたを信頼せず、あなたも誰も信用しない。孤独な玉座で、あなたは毒殺に怯えながら次の刺客を待ち続ける……。"] },
+            ending_slain: { title: "裏切り者の末路", slides: ["信用を失った裏切り者に居場所はなかった。","青の部族の最下層の捨て駒として最前線に送られたあなたの名は、歴史の露となって誰にも記憶されずに消え去った……。"] }
+        };
+
+        function updateUI() {
+            document.getElementById('stat-str').textContent = gameState.stats.str;
+            document.getElementById('stat-cha').textContent = gameState.stats.cha;
+            document.getElementById('stat-int').textContent = gameState.stats.int;
+            document.getElementById('stat-dex').textContent = gameState.stats.dex;
+
+            gameState.reputation.red = Math.max(0, Math.min(100, gameState.reputation.red));
+            gameState.reputation.blue = Math.max(0, Math.min(100, gameState.reputation.blue));
+            gameState.reputation.earth = Math.max(0, Math.min(100, gameState.reputation.earth));
+
+            document.getElementById('rep-red-val').textContent = `${gameState.reputation.red}%`;
+            document.getElementById('rep-red-bar').style.width = `${gameState.reputation.red}%`;
+            document.getElementById('rep-blue-val').textContent = `${gameState.reputation.blue}%`;
+            document.getElementById('rep-blue-bar').style.width = `${gameState.reputation.blue}%`;
+            document.getElementById('rep-earth-val').textContent = `${gameState.reputation.earth}%`;
+            document.getElementById('rep-earth-bar').style.width = `${gameState.reputation.earth}%`;
+
+            // Render Inventory (NEW)
+            const invContainer = document.getElementById('inventory-list');
+            if (gameState.inventory.length === 0) {
+                invContainer.innerHTML = '<p class="text-stone-500 italic">アイテムなし</p>';
+            } else {
+                invContainer.innerHTML = gameState.inventory.map(item => `
+                    <div class="flex justify-between items-center bg-black/30 p-1.5 rounded border border-stone-800">
+                        <div>
+                            <span class="text-amber-400 font-bold block">${item.name}</span>
+                            <span class="text-[10px] text-stone-400">${item.desc}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            const logContainer = document.getElementById('world-flags-log');
+            logContainer.innerHTML = gameState.history.map(item => `<p class="flex items-start"><span class="text-amber-600 mr-2">></span><span>${item}</span></p>`).join('');
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function renderScene(nodeKey) {
+            const node = storyNodes[nodeKey];
+            if (!node) {
+                if (endings[nodeKey]) showEnding(endings[nodeKey]);
+                return;
+            }
+
+            const mainView = document.getElementById('main-story-view');
+            mainView.classList.remove('hidden');
+            mainView.classList.remove('slide-fade');
+            void mainView.offsetWidth; // Trigger reflow
+            mainView.classList.add('slide-fade');
+            
+            document.getElementById('ending-container').classList.add('hidden');
+
+            document.getElementById('scene-tag').textContent = node.tag;
+            document.getElementById('scene-location-text').textContent = node.location;
+            document.getElementById('story-title').textContent = node.title;
+            document.getElementById('story-body').innerHTML = node.body;
+
+            const choicesList = document.getElementById('choices-list');
+            choicesList.innerHTML = '';
+
+            node.choices.forEach(choice => {
+                const btn = document.createElement('button');
+                btn.className = 'choice-btn w-full p-3.5 rounded text-left text-sm border transition-all flex justify-between items-center group shadow-sm ';
+
+                let reqMet = true;
+                if (choice.reqSkill) {
+                    if (gameState.stats[choice.reqSkill.stat] < choice.reqSkill.val) reqMet = false;
+                }
+                if (choice.reqItem) {
+                    if (!gameState.inventory.some(item => item.id === choice.reqItem)) reqMet = false;
+                }
+
+                if (reqMet) {
+                    btn.className += 'bg-stone-800/80 hover:bg-stone-800 border-stone-600 text-stone-200 cursor-pointer';
+                    btn.innerHTML = `<span class="relative z-10 font-medium tracking-wide">${choice.text}</span><i class="fa-solid fa-arrow-right opacity-0 group-hover:opacity-100 transition-opacity text-amber-500 relative z-10"></i>`;
+                    
+                    btn.addEventListener('mouseenter', () => sfx.playHover());
+                    btn.addEventListener('click', () => {
+                        sfx.playChoice();
+                        if (choice.effect) choice.effect(gameState);
+                        updateUI();
+                        if (choice.action === 'open-terminal') openTerminalModal();
+                        else if (choice.next) renderScene(choice.next);
+                    });
+                } else {
+                    btn.className += 'bg-stone-900/50 border-stone-800 text-stone-600 cursor-not-allowed';
+                    btn.innerHTML = `<span class="line-through decoration-red-900/80">${choice.text}</span><i class="fa-solid fa-lock text-stone-700"></i>`;
+                    btn.disabled = true;
+                    btn.addEventListener('click', () => sfx.playAlert());
+                }
+                choicesList.appendChild(btn);
+            });
+        }
+
+        function showEnding(endingData) {
+            sfx.playAlert();
+            document.getElementById('main-story-view').classList.add('hidden');
+            const endingContainer = document.getElementById('ending-container');
+            endingContainer.classList.remove('hidden');
+            endingContainer.classList.remove('slide-fade');
+            void endingContainer.offsetWidth;
+            endingContainer.classList.add('slide-fade');
+
+            document.getElementById('ending-title').textContent = endingData.title;
+            document.getElementById('ending-body').innerHTML = endingData.slides
+                .map(slide => `<p class="border-l-2 border-amber-600 pl-4 py-2 font-serif text-stone-200">${slide}</p>`)
+                .join('');
+        }
+
+        function resetGame() {
+            sfx.playClick();
+            gameState = {
+                stats: { str: 14, cha: 16, int: 12, dex: 10 },
+                reputation: { red: 50, blue: 20, earth: 10 },
+                inventory: [
+                    { id: 'elder_key', name: '長老の古びた鍵', desc: '地下聖堂を開くための儀礼用キー' },
+                    { id: 'stimpak', name: '医療用スティムパック', desc: '傷を癒やす旧世界の応急薬' }
+                ],
+                flags: { learnedTrueHistory: false },
+                history: ["システム初期化。プロトコル再開。"]
+            };
+            updateUI();
+            renderScene('prologue');
+        }
+
+        let videoAnimId = null;
+        let miniGameAnimId = null;
+        let miniGameActive = false;
+        let typingTimeoutId = null;
+
+        function openTerminalModal() {
+            sfx.playAlert();
+            document.getElementById('terminal-modal').classList.remove('hidden');
+            handleTerminalCommand('reset');
+        }
+
+        function closeTerminalModal() {
+            sfx.playClick();
+            if (videoAnimId) cancelAnimationFrame(videoAnimId);
+            if (miniGameAnimId) cancelAnimationFrame(miniGameAnimId);
+            if (typingTimeoutId) clearTimeout(typingTimeoutId);
+            miniGameActive = false;
+            document.getElementById('terminal-modal').classList.add('hidden');
+        }
+
+        function typeWriterEffect(elementId, htmlContent, speed = 15) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = '';
+            if (typingTimeoutId) clearTimeout(typingTimeoutId);
+            
+            const temp = document.createElement('div');
+            temp.innerHTML = htmlContent;
+            
+            let textNodes = [];
+            const walker = document.createTreeWalker(temp, NodeFilter.SHOW_TEXT, null, false);
+            let node;
+            while (node = walker.nextNode()) {
+                if (node.nodeValue.trim() !== '') {
+                    const span = document.createElement('span');
+                    node.parentNode.replaceChild(span, node);
+                    textNodes.push({ element: span, text: node.nodeValue });
+                }
+            }
+            
+            el.appendChild(temp);
+            
+            let currentTextNodeIndex = 0;
+            let currentCharIndex = 0;
+            
+            const cursor = document.createElement('span');
+            cursor.className = 'cursor-blink';
+            el.appendChild(cursor);
+
+            function typeChar() {
+                if (currentTextNodeIndex < textNodes.length) {
+                    const currentObj = textNodes[currentTextNodeIndex];
+                    if (currentCharIndex < currentObj.text.length) {
+                        currentObj.element.textContent += currentObj.text.charAt(currentCharIndex);
+                        currentCharIndex++;
+                        if (currentCharIndex % 3 === 0) sfx.playTypewriter();
+                        typingTimeoutId = setTimeout(typeChar, speed);
+                    } else {
+                        currentTextNodeIndex++;
+                        currentCharIndex = 0;
+                        typingTimeoutId = setTimeout(typeChar, speed);
+                    }
+                } else {
+                    cursor.remove();
+                }
+            }
+            typeChar();
+        }
+
+        function handleTerminalCommand(action) {
+            sfx.playChoice();
+            const canvasContainer = document.getElementById('terminal-canvas-container');
+            const caption = document.getElementById('canvas-overlay-caption');
+            const canvas = document.getElementById('terminal-canvas');
+
+            if (videoAnimId) cancelAnimationFrame(videoAnimId);
+            if (miniGameAnimId) cancelAnimationFrame(miniGameAnimId);
+            miniGameActive = false;
+
+            if (action === 'reset') {
+                canvasContainer.classList.add('hidden');
+                typeWriterEffect('terminal-output', `<p class="text-emerald-500 font-bold">&gt; ARCHEO-OS READY.</p><p class="text-emerald-300">&gt; AWAITING USER INPUT...</p>`);
+                return;
+            }
+
+            if (action === 'read-truth') {
+                canvasContainer.classList.add('hidden');
+                if (!gameState.flags.learnedTrueHistory) {
+                    gameState.flags.learnedTrueHistory = true;
+                    gameState.history.push("コンソールから旧世界の真実を解読した");
+                    updateUI();
+                }
+
+                const txt = `
+                    <p class="text-emerald-500 mb-2">&gt; DECRYPTING SECTOR 0x09F4...</p>
+                    <div class="border-l-2 border-emerald-700 pl-3 my-2 space-y-1.5 text-emerald-100 font-serif bg-emerald-950/30 py-2 pr-2">
+                        <p class="font-bold text-amber-400 mono-font mb-2">++ TOP SECRET: THE FALL OF TERRA ++</p>
+                        <p>・資源枯渇期、貧困層は宇宙へ追放され、巨大コロニー群「ヘリオス」の建設に従事させられた。</p>
+                        <p>・地球に残った【特権階級（VIP）】は、コロニーからの資源搾取を継続。</p>
+                        <p>・耐えかねたコロニー市民は独立戦争を開始。軌道上からのレーザー爆撃と、地球からの報復核ミサイルが交差した。</p>
+                        <p>・結果、大気圏は汚染され双方は壊滅。</p>
+                        <p class="text-amber-300 font-bold mt-2">結論: 現在の「天空人」は墜落したコロニー市民の末裔。「地上人」は地下シェルターで被爆・変異したVIPの末裔である。</p>
+                    </div>
+                `;
+                typeWriterEffect('terminal-output', txt, 10);
+                return;
+            }
+
+            if (action === 'play-war') {
+                canvasContainer.classList.remove('hidden');
+                caption.textContent = "[ARCHIVE RECORD] COLONY HELIOS VS EARTH VIP - PLAYING";
+                typeWriterEffect('terminal-output', `<p class="text-emerald-400">&gt; LOADING VISUAL DATA...</p>`, 20);
+
+                if (!gameState.flags.learnedTrueHistory) {
+                    gameState.flags.learnedTrueHistory = true;
+                    gameState.history.push("過去の軌道戦争の映像記録を観測した");
+                    updateUI();
+                }
+
+                playWarVideoAnimation(canvas);
+                return;
+            }
+
+            if (action === 'play-game') {
+                canvasContainer.classList.remove('hidden');
+                caption.textContent = "[ORBITAL DEFENSE SIM] A/D or LEFT/RIGHT to move, SPACE to shoot.";
+                typeWriterEffect('terminal-output', `<p class="text-emerald-400">&gt; EXECUTING TRAINING PROGRAM...</p><p class="text-amber-300">&gt; 300PTS以上で戦術知識(INT)が向上します。</p>`, 20);
+                startColonyMiniGame(canvas);
+                return;
+            }
+        }
+
+        function playWarVideoAnimation(canvas) {
+            const ctx = canvas.getContext('2d');
+            let frame = 0;
+            canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight;
+
+            function animate() {
+                frame++;
+                const w = canvas.width, h = canvas.height;
+                
+                ctx.fillStyle = 'rgba(2, 5, 4, 0.3)';
+                ctx.fillRect(0, 0, w, h);
+
+                ctx.strokeStyle = 'rgba(16, 185, 129, 0.1)';
+                ctx.lineWidth = 1;
+                for (let x = 0; x < w; x += 30) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+                for (let y = 0; y < h; y += 30) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+
+                const earthX = w * 0.3, earthY = h * 0.6, earthR = h * 0.3;
+                
+                ctx.beginPath(); ctx.arc(earthX, earthY, earthR, 0, Math.PI*2);
+                ctx.fillStyle = '#0f172a'; ctx.fill();
+                ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2; ctx.stroke();
+                
+                const colX = w * 0.8, colY = h * 0.3 + Math.sin(frame * 0.05) * 10;
+                ctx.save(); ctx.translate(colX, colY); ctx.rotate(0.2);
+                ctx.strokeStyle = '#10b981'; ctx.lineWidth = 2; ctx.strokeRect(-40, -15, 80, 30);
+                ctx.beginPath(); ctx.moveTo(-50, 0); ctx.lineTo(-40, 0); ctx.moveTo(40, 0); ctx.lineTo(50, 0); ctx.stroke();
+                ctx.restore();
+
+                if (frame % 80 > 40) {
+                    ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 4 + Math.random()*2;
+                    ctx.beginPath(); ctx.moveTo(colX - 30, colY + 10); ctx.lineTo(earthX + 15, earthY - 15); ctx.stroke();
+                    ctx.fillStyle = '#f59e0b'; ctx.beginPath(); ctx.arc(earthX+15, earthY-15, 15+Math.random()*10, 0, Math.PI*2); ctx.fill();
+                }
+
+                ctx.fillStyle = '#10b981'; ctx.font = '12px "Share Tech Mono"';
+                ctx.fillText(`REC_FRAME: ${frame.toString().padStart(5,'0')}`, 10, 20);
+
+                videoAnimId = requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        let minigameKeyHandler = null;
+        let minigameTouchHandler = null;
+
+        function startColonyMiniGame(canvas) {
+            miniGameActive = true;
+            const ctx = canvas.getContext('2d');
+            let frame = 0, score = 0, gameOver = false;
+            canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight;
+            const w = canvas.width, h = canvas.height;
+
+            let playerX = w / 2;
+            let keys = { ArrowLeft: false, ArrowRight: false, a: false, d: false };
+            const missiles = [], bullets = [];
+
+            if (minigameKeyHandler) window.removeEventListener('keydown', minigameKeyHandler);
+            if (minigameKeyHandler) window.removeEventListener('keyup', minigameKeyHandler.up);
+            if (minigameTouchHandler) canvas.removeEventListener('touchstart', minigameTouchHandler);
+
+            minigameKeyHandler = (e) => {
+                if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
+                if ((e.key === ' ' || e.key === 'ArrowUp') && !gameOver && miniGameActive) {
+                    bullets.push({ x: playerX, y: h - 30 });
+                    sfx.playClick();
+                    e.preventDefault();
+                }
+            };
+            minigameKeyHandler.up = (e) => {
+                if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
+            };
+
+            minigameTouchHandler = (e) => {
+                if (!gameOver && miniGameActive) {
+                    const rect = canvas.getBoundingClientRect();
+                    playerX = e.touches[0].clientX - rect.left;
+                    bullets.push({ x: playerX, y: h - 30 });
+                    sfx.playClick();
+                }
+            };
+
+            window.addEventListener('keydown', minigameKeyHandler);
+            window.addEventListener('keyup', minigameKeyHandler.up);
+            canvas.addEventListener('touchstart', minigameTouchHandler, {passive: true});
+
+            function loop() {
+                if (!miniGameActive) return;
+                frame++;
+                ctx.fillStyle = 'rgba(0, 10, 5, 0.4)'; ctx.fillRect(0, 0, w, h);
+
+                if (!gameOver) {
+                    if (keys.ArrowLeft || keys.a) playerX = Math.max(20, playerX - 5);
+                    if (keys.ArrowRight || keys.d) playerX = Math.min(w - 20, playerX + 5);
+                    if (frame % 25 === 0) bullets.push({ x: playerX, y: h - 30 });
+                    if (frame % 30 === 0) missiles.push({ x: Math.random() * (w - 40) + 20, y: 0, speed: 1.5 + Math.random() * 2 });
+                }
+
+                ctx.fillStyle = '#34d399';
+                for (let i = bullets.length - 1; i >= 0; i--) {
+                    bullets[i].y -= 7;
+                    ctx.fillRect(bullets[i].x - 2, bullets[i].y, 4, 12);
+                    if (bullets[i].y < 0) bullets.splice(i, 1);
+                }
+
+                for (let i = missiles.length - 1; i >= 0; i--) {
+                    const m = missiles[i];
+                    m.y += m.speed;
+                    ctx.fillStyle = '#ef4444';
+                    ctx.beginPath(); ctx.arc(m.x, m.y, 6, 0, Math.PI * 2); ctx.fill();
+
+                    for (let j = bullets.length - 1; j >= 0; j--) {
+                        if (Math.hypot(m.x - bullets[j].x, m.y - bullets[j].y) < 15) {
+                            score += 100;
+                            sfx.playChoice();
+                            
+                            ctx.fillStyle = '#f59e0b';
+                            ctx.beginPath(); ctx.arc(m.x, m.y, 20, 0, Math.PI*2); ctx.fill();
+                            
+                            missiles.splice(i, 1);
+                            bullets.splice(j, 1);
+                            break;
+                        }
+                    }
+                    if (m.y >= h - 20) gameOver = true;
+                }
+
+                ctx.fillStyle = '#10b981';
+                ctx.fillRect(playerX - 15, h - 20, 30, 15);
+                ctx.fillRect(playerX - 4, h - 30, 8, 10);
+
+                ctx.fillStyle = '#10b981'; ctx.font = '14px "Share Tech Mono"';
+                ctx.fillText(`SCORE: ${score}`, 10, 20);
+
+                if (!gameOver) {
+                    miniGameAnimId = requestAnimationFrame(loop);
+                } else {
+                    ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(0, 0, w, h);
+                    ctx.fillStyle = '#ef4444'; ctx.textAlign = 'center'; ctx.font = 'bold 20px "Share Tech Mono"';
+                    ctx.fillText('SYSTEM FAILURE', w/2, h/2 - 10);
+                    ctx.fillStyle = '#10b981'; ctx.font = '14px "Share Tech Mono"';
+                    ctx.fillText(`FINAL SCORE: ${score}`, w/2, h/2 + 15);
+
+                    if (score >= 300 && gameState.stats.int < 18) {
+                        gameState.stats.int += 2;
+                        updateUI();
+                        const out = document.getElementById('terminal-output');
+                        out.innerHTML += `<p class="text-amber-400 font-bold mt-2">&gt; HIGHSCORE REACHED! [INT +2]</p>`;
+                    }
+                }
+            }
+            loop();
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('sound-toggle').addEventListener('click', () => {
+                sfx.enabled = !sfx.enabled;
+                document.getElementById('sound-text').textContent = sfx.enabled ? "SE: ON" : "SE: OFF";
+                sfx.playClick();
+            });
+
+            document.getElementById('restart-btn').addEventListener('click', resetGame);
+            document.getElementById('restart-ending-btn').addEventListener('click', resetGame);
+            document.getElementById('terminal-btn').addEventListener('click', openTerminalModal);
+            document.getElementById('close-terminal-btn').addEventListener('click', closeTerminalModal);
+
+            document.querySelectorAll('.term-cmd-btn').forEach(btn => {
+                btn.addEventListener('mouseenter', () => sfx.playHover());
+                btn.addEventListener('click', () => handleTerminalCommand(btn.getAttribute('data-action')));
+            });
+
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeTerminalModal();
+            });
+
+            resetGame();
+        });
+    </script>
+
+    <!--
+    [AI_DEV_CONTEXT_START]
+    VERSION: 1.4
+    PROJECT: "天空の呪い" (Curse of the Sky) - Post-Apocalyptic Narrative RPG
+    ARCHITECTURE_RULES: 
+      - STRICTLY 1 single index.html file.
+      - Use Tailwind CSS via CDN. Do not use external CSS/JS files.
+      - Vanilla JavaScript only.
+      - Code must not bloat; remove deprecated legacy code when updating.
+    CURRENT_FEATURES:
+      - State-based multi-branch narrative engine (`storyNodes`, `endings`).
+      - Faction Reputation System (Red, Blue, Earthbound) + Stat Checks (STR, CHA, INT, DEX).
+      - CRT Terminal Modal (Archival Texts, Canvas 2D Animations, Arcade Minigame).
+      - Dynamic History/Log tracking.
+      - Web Audio API retro synth sound effects (`SoundFX` class).
+      - **[NEW in v1.4]** Inventory / Item System (`gameState.inventory`, displayed in Pip-boy dashboard with item-restricted branch checks).
+    TODO_FOR_NEXT_CHAT_PROMPTS (Ideas for future continuation):
+      1. [ ] Add `localStorage` Save/Load feature so progress isn't lost on refresh.
+      2. [ ] Expand story: Add a new Map/Exploration phase (moving between nodes instead of linear text).
+      3. [ ] Enhance audio: Add simple procedurally generated ambient BGM using oscillator loops.
+    MAINTENANCE_NOTE: When a new AI generates the next iteration, keep this block at EOF, update VERSION, mark TODOs as done, and propose new ones to maintain seamless dev continuity. Keep text terse to save token context.
+    [AI_DEV_CONTEXT_END]
+    -->
+    <!-- AI-GAME-PORTFOLIO -->
+</body>
+</html>

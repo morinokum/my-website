@@ -1,0 +1,612 @@
+<!-- AI-GAME-PORTFOLIO -->
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-GAME-PORTFOLIO - Immersive Scene Experience</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            500: '#10b981',
+                            600: '#059669',
+                            900: '#064e3b',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js for 3D Background Effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- GSAP for Smooth Scene Transitions -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        #webgl-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            pointer-events: none;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .scene-transition {
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glow-effect {
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.25);
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-emerald-500 selection:text-white" data-ai-game-portfolio="true">
+
+    <canvas id="webgl-canvas"></canvas>
+
+    <header class="w-full fixed top-0 left-0 z-50 px-6 py-4 transition-all duration-300" id="navbar">
+        <div class="max-w-7xl mx-auto flex items-center justify-between glass-panel px-6 py-3 rounded-2xl shadow-2xl">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchScene('home')">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 font-extrabold text-xl shadow-lg glow-effect">
+                    <i class="fa-solid fa-cube"></i>
+                </div>
+                <div>
+                    <span class="text-xs uppercase tracking-widest text-emerald-400 font-semibold block">AI-GAME-PORTFOLIO</span>
+                    <h1 class="text-lg font-bold text-white tracking-tight">Nexus Studio</h1>
+                </div>
+            </div>
+            
+            <!-- Desktop Nav Items -->
+            <nav class="hidden md:flex items-center space-x-1 bg-slate-900/60 p-1.5 rounded-xl border border-slate-800">
+                <button onclick="switchScene('home')" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-800" data-target="home">
+                    <i class="fa-solid fa-house mr-2"></i>Home
+                </button>
+                <button onclick="switchScene('projects')" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-800" data-target="projects">
+                    <i class="fa-solid fa-gamepad mr-2"></i>Games & AI
+                </button>
+                <button onclick="switchScene('gallery')" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-800" data-target="gallery">
+                    <i class="fa-solid fa-images mr-2"></i>Visuals
+                </button>
+                <button onclick="switchScene('contact')" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-800" data-target="contact">
+                    <i class="fa-solid fa-envelope mr-2"></i>Contact
+                </button>
+            </nav>
+
+            <div class="flex items-center space-x-3">
+                <button onclick="triggerVibeMode()" class="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold text-sm rounded-xl transition-all shadow-lg glow-effect flex items-center space-x-2">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span class="hidden sm:inline">Vibe Sync</span>
+                </button>
+                <!-- Mobile Menu Toggle -->
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-slate-300 hover:text-white">
+                    <i class="fa-solid fa-bars text-xl" id="menu-icon"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu Dropdown -->
+        <div id="mobile-menu" class="hidden md:hidden max-w-7xl mx-auto mt-2 glass-panel p-4 rounded-2xl flex flex-col space-y-2">
+            <button onclick="switchScene('home'); toggleMobileMenu();" class="text-left px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-200 font-medium">Home</button>
+            <button onclick="switchScene('projects'); toggleMobileMenu();" class="text-left px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-200 font-medium">Games & AI</button>
+            <button onclick="switchScene('gallery'); toggleMobileMenu();" class="text-left px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-200 font-medium">Visuals</button>
+            <button onclick="switchScene('contact'); toggleMobileMenu();" class="text-left px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-200 font-medium">Contact</button>
+        </div>
+    </header>
+
+    <main class="flex-grow pt-32 pb-20 px-6 max-w-7xl mx-auto w-full relative z-10">
+
+        <!-- SCENE 1: HOME -->
+        <section id="scene-home" class="scene active-scene min-h-[70vh] flex flex-col justify-center items-center text-center scene-transition" data-ai-game-portfolio-scene="home">
+            <div class="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-6 animate-pulse">
+                <i class="fa-solid fa-sparkles"></i>
+                <span>AI-GAME-PORTFOLIO • Next-Gen Experience</span>
+            </div>
+            <h2 class="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight mb-6 max-w-4xl bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-emerald-400">
+                Immersive AI & Game Portfolio Scenes
+            </h2>
+            <p class="text-slate-400 text-lg sm:text-xl max-w-2xl mb-10 font-normal leading-relaxed">
+                Step into a seamless web realm powered by dynamic 3D visuals, cinematic scene transitions, and cutting-edge interactive game concepts.
+            </p>
+            <div class="flex flex-wrap items-center justify-center gap-4">
+                <button onclick="switchScene('projects')" class="px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-2xl shadow-xl hover:scale-105 transition-all duration-300 flex items-center space-x-3">
+                    <span>Explore Creations</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+                <button onclick="switchScene('gallery')" class="px-8 py-4 glass-panel hover:bg-slate-800/80 text-white font-bold rounded-2xl border border-slate-700 hover:scale-105 transition-all duration-300 flex items-center space-x-3">
+                    <span>View Visual Gallery</span>
+                    <i class="fa-solid fa-eye"></i>
+                </button>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mt-20 w-full max-w-4xl">
+                <div class="glass-panel p-6 rounded-2xl border border-slate-800/80 text-center">
+                    <h3 class="text-3xl font-extrabold text-emerald-400 mb-1">15+</h3>
+                    <p class="text-slate-400 text-sm">Interactive Games</p>
+                </div>
+                <div class="glass-panel p-6 rounded-2xl border border-slate-800/80 text-center">
+                    <h3 class="text-3xl font-extrabold text-teal-400 mb-1">99.9%</h3>
+                    <p class="text-slate-400 text-sm">Fluid Framerate</p>
+                </div>
+                <div class="glass-panel p-6 rounded-2xl border border-slate-800/80 text-center">
+                    <h3 class="text-3xl font-extrabold text-emerald-400 mb-1">4</h3>
+                    <p class="text-slate-400 text-sm">Dynamic Scenes</p>
+                </div>
+                <div class="glass-panel p-6 rounded-2xl border border-slate-800/80 text-center">
+                    <h3 class="text-3xl font-extrabold text-teal-400 mb-1">24/7</h3>
+                    <p class="text-slate-400 text-sm">AI Engine Active</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCENE 2: PROJECTS & GAMES -->
+        <section id="scene-projects" class="scene hidden opacity-0 translate-y-8 scene-transition" data-ai-game-portfolio-scene="projects">
+            <div class="flex flex-col md:flex-row md:items-end justify-between mb-12">
+                <div>
+                    <span class="text-xs uppercase tracking-widest text-emerald-400 font-semibold block mb-2">Portfolio Showcases</span>
+                    <h2 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">Featured Games & AI</h2>
+                </div>
+                <div class="mt-4 md:mt-0 flex space-x-2">
+                    <button onclick="filterProjects('all')" class="project-filter-btn px-4 py-2 rounded-xl text-sm font-semibold bg-emerald-500 text-slate-950 transition-all" data-filter="all">All</button>
+                    <button onclick="filterProjects('game')" class="project-filter-btn px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all" data-filter="game">Games</button>
+                    <button onclick="filterProjects('ai')" class="project-filter-btn px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all" data-filter="ai">AI Tooling</button>
+                </div>
+            </div>
+
+            <!-- Project Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="projects-grid">
+                
+                <!-- Project 1 -->
+                <div class="project-card glass-panel rounded-3xl overflow-hidden border border-slate-800 hover:border-emerald-500/50 transition-all duration-300 group flex flex-col justify-between" data-category="game">
+                    <div class="relative h-48 overflow-hidden bg-slate-900">
+                        <img src="https://placehold.co/600x400/0f172a/10b981?text=Cyber+Quest+3D" alt="Cyber Quest 3D" class="w-full h-full object-cover group-hover:scale-110 transition-all duration-500 opacity-90" onerror="this.src='https://placehold.co/600x400/0f172a/10b981?text=Fallback'">
+                        <div class="absolute top-4 right-4 bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-emerald-400 border border-emerald-500/30">
+                            Game Engine
+                        </div>
+                    </div>
+                    <div class="p-6 flex flex-col flex-grow justify-between">
+                        <div>
+                            <h3 class="text-xl font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">Cyber Quest RPG</h3>
+                            <p class="text-slate-400 text-sm mb-4 leading-relaxed">An immersive browser-based 3D cyberpunk adventure built with Three.js and real-time procedural shaders.</p>
+                        </div>
+                        <div class="flex items-center justify-between pt-4 border-t border-slate-800">
+                            <span class="text-xs text-slate-500 font-mono">WebGL / Three.js</span>
+                            <button onclick="openProjectModal('Cyber Quest RPG', 'An immersive browser-based 3D cyberpunk adventure featuring procedural neon shaders, responsive touch controls, and AI-driven enemy behaviors.')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-white font-medium text-xs transition-all flex items-center space-x-2">
+                                <span>Launch Preview</span>
+                                <i class="fa-solid fa-play text-[10px]"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Project 2 -->
+                <div class="project-card glass-panel rounded-3xl overflow-hidden border border-slate-800 hover:border-emerald-500/50 transition-all duration-300 group flex flex-col justify-between" data-category="ai">
+                    <div class="relative h-48 overflow-hidden bg-slate-900">
+                        <img src="https://placehold.co/600x400/0f172a/06b6d4?text=Neural+Vision+AI" alt="Neural Vision AI" class="w-full h-full object-cover group-hover:scale-110 transition-all duration-500 opacity-90" onerror="this.src='https://placehold.co/600x400/0f172a/06b6d4?text=Fallback'">
+                        <div class="absolute top-4 right-4 bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-teal-400 border border-teal-500/30">
+                            AI Suite
+                        </div>
+                    </div>
+                    <div class="p-6 flex flex-col flex-grow justify-between">
+                        <div>
+                            <h3 class="text-xl font-bold text-white mb-2 group-hover:text-teal-400 transition-colors">Neural Vision Studio</h3>
+                            <p class="text-slate-400 text-sm mb-4 leading-relaxed">Generative AI assistant interface for rapid concept art creation, prompt tuning, and asset pipeline automation.</p>
+                        </div>
+                        <div class="flex items-center justify-between pt-4 border-t border-slate-800">
+                            <span class="text-xs text-slate-500 font-mono">TensorFlow.js / React</span>
+                            <button onclick="openProjectModal('Neural Vision Studio', 'Generative AI assistant interface designed for game studios to rapidly prototype concept art and optimize asset loading textures in real-time.')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-teal-500 hover:text-slate-950 text-white font-medium text-xs transition-all flex items-center space-x-2">
+                                <span>Launch Preview</span>
+                                <i class="fa-solid fa-play text-[10px]"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Project 3 -->
+                <div class="project-card glass-panel rounded-3xl overflow-hidden border border-slate-800 hover:border-emerald-500/50 transition-all duration-300 group flex flex-col justify-between" data-category="game">
+                    <div class="relative h-48 overflow-hidden bg-slate-900">
+                        <img src="https://placehold.co/600x400/0f172a/10b981?text=Quantum+Puzzle" alt="Quantum Puzzle" class="w-full h-full object-cover group-hover:scale-110 transition-all duration-500 opacity-90" onerror="this.src='https://placehold.co/600x400/0f172a/10b981?text=Fallback'">
+                        <div class="absolute top-4 right-4 bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-emerald-400 border border-emerald-500/30">
+                            Puzzle Game
+                        </div>
+                    </div>
+                    <div class="p-6 flex flex-col flex-grow justify-between">
+                        <div>
+                            <h3 class="text-xl font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">Quantum Flux Puzzle</h3>
+                            <p class="text-slate-400 text-sm mb-4 leading-relaxed">A mind-bending physics puzzle game featuring quantum entanglement mechanics and gorgeous audio-visual feedback.</p>
+                        </div>
+                        <div class="flex items-center justify-between pt-4 border-t border-slate-800">
+                            <span class="text-xs text-slate-500 font-mono">Canvas / Tone.js</span>
+                            <button onclick="openProjectModal('Quantum Flux Puzzle', 'A mind-bending physics puzzle game featuring quantum entanglement mechanics, responsive particle collisions, and custom synth audio landscapes.')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-white font-medium text-xs transition-all flex items-center space-x-2">
+                                <span>Launch Preview</span>
+                                <i class="fa-solid fa-play text-[10px]"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SCENE 3: VISUAL GALLERY -->
+        <section id="scene-gallery" class="scene hidden opacity-0 translate-y-8 scene-transition" data-ai-game-portfolio-scene="gallery">
+            <div class="mb-12 text-center">
+                <span class="text-xs uppercase tracking-widest text-emerald-400 font-semibold block mb-2">Immersive Assets</span>
+                <h2 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white mb-4">Scene Visuals & Shaders</h2>
+                <p class="text-slate-400 max-w-xl mx-auto text-sm sm:text-base">Explore high-fidelity renders, procedural node networks, and real-time environment concepts.</p>
+            </div>
+
+            <!-- Gallery Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="glass-panel p-3 rounded-3xl border border-slate-800 group overflow-hidden">
+                    <div class="rounded-2xl overflow-hidden relative h-64 bg-slate-900">
+                        <img src="https://placehold.co/800x600/0f172a/10b981?text=Neon+Cityscape" alt="Gallery 1" class="w-full h-full object-cover group-hover:scale-105 transition-all duration-500">
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
+                            <div>
+                                <h4 class="font-bold text-white text-lg">Neon Metropolis</h4>
+                                <p class="text-emerald-400 text-xs">Procedural City Grid Shader</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-3 rounded-3xl border border-slate-800 group overflow-hidden">
+                    <div class="rounded-2xl overflow-hidden relative h-64 bg-slate-900">
+                        <img src="https://placehold.co/800x600/0f172a/06b6d4?text=Particle+Singularity" alt="Gallery 2" class="w-full h-full object-cover group-hover:scale-105 transition-all duration-500">
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
+                            <div>
+                                <h4 class="font-bold text-white text-lg">Particle Singularity</h4>
+                                <p class="text-teal-400 text-xs">Three.js GPU Simulation</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-3 rounded-3xl border border-slate-800 group overflow-hidden">
+                    <div class="rounded-2xl overflow-hidden relative h-64 bg-slate-900">
+                        <img src="https://placehold.co/800x600/0f172a/3b82f6?text=Quantum+Matrix" alt="Gallery 3" class="w-full h-full object-cover group-hover:scale-105 transition-all duration-500">
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
+                            <div>
+                                <h4 class="font-bold text-white text-lg">Quantum Matrix</h4>
+                                <p class="text-blue-400 text-xs">Holographic UI Elements</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCENE 4: CONTACT -->
+        <section id="scene-contact" class="scene hidden opacity-0 translate-y-8 scene-transition max-w-2xl mx-auto" data-ai-game-portfolio-scene="contact">
+            <div class="glass-panel p-8 sm:p-12 rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden">
+                <div class="absolute -right-20 -top-20 w-60 h-60 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="text-center mb-8">
+                    <span class="text-xs uppercase tracking-widest text-emerald-400 font-semibold block mb-2">Get in Touch</span>
+                    <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-2">Start a Collaboration</h2>
+                    <p class="text-slate-400 text-sm">Have a game or AI concept in mind? Let's bring it to life.</p>
+                </div>
+
+                <form onsubmit="handleContactSubmit(event)" class="space-y-6">
+                    <div>
+                        <label class="block text-xs uppercase tracking-wider text-slate-300 font-semibold mb-2">Your Name</label>
+                        <input type="text" required class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors" placeholder="Alex Mercer">
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase tracking-wider text-slate-300 font-semibold mb-2">Email Address</label>
+                        <input type="email" required class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors" placeholder="alex@nexusstudio.io">
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase tracking-wider text-slate-300 font-semibold mb-2">Message</label>
+                        <textarea rows="4" required class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors" placeholder="Tell us about your project..."></textarea>
+                    </div>
+                    <button type="submit" class="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold rounded-xl shadow-lg glow-effect transition-all flex items-center justify-center space-x-2">
+                        <span>Send Transmission</span>
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Preview Overlay -->
+    <div id="project-modal" class="fixed inset-0 z-50 flex items-center justify-center px-4 bg-slate-950/80 backdrop-blur-md hidden opacity-0 transition-opacity duration-300">
+        <div class="glass-panel p-8 rounded-3xl border border-slate-700 max-w-lg w-full relative shadow-2xl transform scale-95 transition-transform duration-300" id="modal-content-box">
+            <button onclick="closeProjectModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white p-2">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            <div class="inline-block px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-4">
+                AI-GAME-PORTFOLIO Sandbox
+            </div>
+            <h3 id="modal-title" class="text-2xl font-bold text-white mb-3">Project Title</h3>
+            <p id="modal-desc" class="text-slate-300 text-sm leading-relaxed mb-6">Detailed description goes here.</p>
+            <div class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 mb-6 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-3 h-3 rounded-full bg-emerald-500 animate-ping"></div>
+                    <span class="text-xs text-slate-300 font-mono">Simulation Sandbox Ready</span>
+                </div>
+                <span class="text-xs text-emerald-400 font-bold">60 FPS</span>
+            </div>
+            <div class="flex space-x-3">
+                <button onclick="closeProjectModal(); showToast('Launching interactive sandbox instance...');" class="flex-grow py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-sm transition-all flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-play"></i>
+                    <span>Run Full Sandbox</span>
+                </button>
+                <button onclick="closeProjectModal()" class="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl text-sm transition-all">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 glass-panel border border-emerald-500/30 px-6 py-4 rounded-2xl shadow-2xl flex items-center space-x-3 transform translate-y-24 opacity-0 transition-all duration-300">
+        <div class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+            <i class="fa-solid fa-bell"></i>
+        </div>
+        <div>
+            <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-widest">AI-GAME-PORTFOLIO Notice</h4>
+            <p id="toast-msg" class="text-sm text-slate-200">Action completed successfully.</p>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="w-full border-t border-slate-800/80 py-8 px-6 text-center text-slate-500 text-xs relative z-10">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p>&copy; 2026 AI-GAME-PORTFOLIO. All rights reserved.</p>
+            <div class="flex space-x-6 text-slate-400">
+                <a href="#" class="hover:text-emerald-400 transition-colors"><i class="fa-brands fa-github text-lg"></i></a>
+                <a href="#" class="hover:text-emerald-400 transition-colors"><i class="fa-brands fa-x-twitter text-lg"></i></a>
+                <a href="#" class="hover:text-emerald-400 transition-colors"><i class="fa-brands fa-discord text-lg"></i></a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        let scene, camera, renderer, particles;
+        let webglSupported = true;
+
+        function initThreeBackground() {
+            try {
+                const canvas = document.getElementById('webgl-canvas');
+                if (!canvas) return;
+
+                renderer = new THREE.WebGLRenderer({ 
+                    canvas: canvas, 
+                    alpha: true, 
+                    antialias: true,
+                    powerPreference: "high-performance"
+                });
+
+                if (!renderer || !renderer.getContext()) {
+                    throw new Error("WebGL context not available");
+                }
+
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+                const particleCount = 700;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+
+                for (let i = 0; i < particleCount * 3; i++) {
+                    positions[i] = (Math.random() - 0.5) * 40;
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+                const material = new THREE.PointsMaterial({
+                    size: 0.08,
+                    color: 0x10b981,
+                    transparent: true,
+                    opacity: 0.7,
+                });
+
+                particles = new THREE.Points(geometry, material);
+                scene.add(particles);
+
+                camera.position.z = 15;
+
+                window.addEventListener('resize', onWindowResize);
+            } catch (e) {
+                console.warn("WebGL initialization skipped or failed, falling back to CSS background:", e);
+                webglSupported = false;
+                const canvasEl = document.getElementById('webgl-canvas');
+                if (canvasEl) canvasEl.style.display = 'none';
+                document.body.style.background = 'radial-gradient(circle at center, #0f172a 0%, #020617 100%)';
+            }
+        }
+
+        function onWindowResize() {
+            if (!webglSupported || !renderer || !camera) return;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        let mouseX = 0, mouseY = 0;
+        document.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX - window.innerWidth / 2) * 0.0005;
+            mouseY = (e.clientY - window.innerHeight / 2) * 0.0005;
+        });
+
+        function animateThree() {
+            requestAnimationFrame(animateThree);
+            if (webglSupported && renderer && scene && camera) {
+                if (particles) {
+                    particles.rotation.x += 0.001 + mouseY * 0.1;
+                    particles.rotation.y += 0.0015 + mouseX * 0.1;
+                }
+                renderer.render(scene, camera);
+            }
+        }
+
+        let currentSceneId = 'home';
+
+        function switchScene(targetId) {
+            if (currentSceneId === targetId) return;
+
+            const currentElement = document.getElementById(`scene-${currentSceneId}`);
+            const targetElement = document.getElementById(`scene-${targetId}`);
+
+            if (!targetElement) return;
+
+            gsap.to(currentElement, {
+                opacity: 0,
+                y: -20,
+                duration: 0.3,
+                onComplete: () => {
+                    currentElement.classList.add('hidden');
+                    targetElement.classList.remove('hidden');
+                    
+                    gsap.fromTo(targetElement, 
+                        { opacity: 0, y: 30 },
+                        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }
+                    );
+                    currentSceneId = targetId;
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            });
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if (btn.getAttribute('data-target') === targetId) {
+                    btn.classList.add('bg-slate-800', 'text-white', 'shadow');
+                    btn.classList.remove('text-slate-300');
+                } else {
+                    btn.classList.remove('bg-slate-800', 'text-white', 'shadow');
+                    btn.classList.add('text-slate-300');
+                }
+            });
+        }
+
+        function filterProjects(category) {
+            document.querySelectorAll('.project-filter-btn').forEach(btn => {
+                if (btn.getAttribute('data-filter') === category) {
+                    btn.classList.add('bg-emerald-500', 'text-slate-950');
+                    btn.classList.remove('bg-slate-800', 'text-slate-300');
+                } else {
+                    btn.classList.remove('bg-emerald-500', 'text-slate-950');
+                    btn.classList.add('bg-slate-800', 'text-slate-300');
+                }
+            });
+
+            document.querySelectorAll('.project-card').forEach(card => {
+                if (category === 'all' || card.getAttribute('data-category') === category) {
+                    card.style.display = 'flex';
+                    gsap.fromTo(card, { opacity: 0, scale: 0.95 }, { opacity: 1, scale: 1, duration: 0.3 });
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function openProjectModal(title, desc) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-desc').innerText = desc;
+            const modal = document.getElementById('project-modal');
+            const content = document.getElementById('modal-content-box');
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeProjectModal() {
+            const modal = document.getElementById('project-modal');
+            const content = document.getElementById('modal-content-box');
+            
+            modal.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-24', 'opacity-0');
+            }, 3500);
+        }
+
+        let vibeState = false;
+        function triggerVibeMode() {
+            vibeState = !vibeState;
+            if (webglSupported && particles) {
+                particles.material.color.setHex(vibeState ? 0x06b6d4 : 0x10b981);
+            }
+            showToast(vibeState ? "AI-GAME-PORTFOLIO: Cyan Frequency Activated!" : "AI-GAME-PORTFOLIO: Emerald Protocol Restored!");
+        }
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            const icon = document.getElementById('menu-icon');
+            menu.classList.toggle('hidden');
+            icon.classList.toggle('fa-bars');
+            icon.classList.toggle('fa-xmark');
+        }
+
+        function handleContactSubmit(e) {
+            e.preventDefault();
+            showToast('Transmission received successfully! We will connect soon.');
+            e.target.reset();
+        }
+
+        window.onload = function() {
+            initThreeBackground();
+            animateThree();
+            const homeBtn = document.querySelector('.nav-btn[data-target="home"]');
+            if (homeBtn) {
+                homeBtn.classList.add('bg-slate-800', 'text-white', 'shadow');
+            }
+        };
+    </script>
+</body>
+</html>

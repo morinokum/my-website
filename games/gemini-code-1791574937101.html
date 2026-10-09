@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- 先ほどのスクリプトが読み取るためのメタタグ -->
+  <meta name="description" content="画面内を飛び交う光の粒を1回のクリックで連鎖爆発させてノルマ達成を目指す、爽快チェーンリアクションゲーム">
+  <title>Neon Chain: Cascade | AI-GAME-PORTFOLIO</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #050510;
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+    canvas {
+      display: block;
+    }
+    #ui-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    #header {
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      text-shadow: 0 0 10px rgba(255,255,255,0.5);
+    }
+    .stat-box {
+      font-size: 1.2rem;
+      background: rgba(0,0,0,0.5);
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: 1px solid #333;
+    }
+    #score-display {
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+    #message-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 40px;
+      border-radius: 15px;
+      border: 1px solid #555;
+      pointer-events: auto;
+      box-shadow: 0 0 30px rgba(0,120,255,0.3);
+    }
+    #message-title {
+      font-size: 3rem;
+      margin: 0 0 10px 0;
+      background: linear-gradient(45deg, #00f0ff, #ff007f);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    #message-text {
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+      color: #ccc;
+    }
+    button {
+      background: #007acc;
+      color: #fff;
+      border: none;
+      padding: 12px 30px;
+      font-size: 1.2rem;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    button:hover {
+      background: #0099ff;
+      transform: scale(1.05);
+    }
+    button:active {
+      transform: scale(0.95);
+    }
+    #footer {
+      text-align: center;
+      padding: 10px;
+      font-size: 0.8rem;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="ui-layer">
+    <div id="header">
+      <div class="stat-box">Level: <span id="level">1</span></div>
+      <div class="stat-box" id="score-display">0 / 0</div>
+    </div>
+    
+    <div id="footer">
+      AI-GAME-PORTFOLIO
+    </div>
+  </div>
+
+  <div id="message-overlay">
+    <h1 id="message-title">Neon Chain</h1>
+    <p id="message-text">画面内を1回だけクリックして、連鎖爆発を起こそう！<br>規定数の光を巻き込めばクリア。</p>
+    <button id="action-button">START</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    const uiLevel = document.getElementById('level');
+    const uiScore = document.getElementById('score-display');
+    const overlay = document.getElementById('message-overlay');
+    const msgTitle = document.getElementById('message-title');
+    const msgText = document.getElementById('message-text');
+    const actionBtn = document.getElementById('action-button');
+
+    // Canvasサイズ調整
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // ネオンカラーのパレット
+    const colors = ['#ff0055', '#00ffaa', '#00aaff', '#ffaa00', '#ee00ff'];
+
+    // ゲーム状態
+    let level = 1;
+    let particles = [];
+    let state = 'menu'; // menu, playing, resolving, gameover, clear
+    let clicked = false;
+    let targetCount = 0;
+    let explodedCount = 0;
+    let totalParticles = 0;
+
+    class Particle {
+      constructor(x, y, isStarter = false) {
+        this.x = x;
+        this.y = y;
+        this.vx = (Math.random() - 0.5) * 3;
+        this.vy = (Math.random() - 0.5) * 3;
+        this.radius = 4;
+        this.maxRadius = 45;
+        this.color = colors[Math.floor(Math.random() * colors.length)];
+        this.state = isStarter ? 'expanding' : 'moving'; // moving, expanding, holding, shrinking, dead
+        this.timer = 0;
+      }
+
+      update() {
+        if (this.state === 'moving') {
+          this.x += this.vx;
+          this.y += this.vy;
+          // 壁でバウンド
+          if (this.x < this.radius || this.x > canvas.width - this.radius) this.vx *= -1;
+          if (this.y < this.radius || this.y > canvas.height - this.radius) this.vy *= -1;
+        } 
+        else if (this.state === 'expanding') {
+          this.radius += 2;
+          if (this.radius >= this.maxRadius) {
+            this.radius = this.maxRadius;
+            this.state = 'holding';
+            this.timer = 60; // 爆発を維持するフレーム数
+          }
+        } 
+        else if (this.state === 'holding') {
+          this.timer--;
+          if (this.timer <= 0) this.state = 'shrinking';
+        } 
+        else if (this.state === 'shrinking') {
+          this.radius -= 1.5;
+          if (this.radius <= 0) this.state = 'dead';
+        }
+      }
+
+      draw() {
+        if (this.state === 'dead') return;
+        
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, Math.max(0.1, this.radius), 0, Math.PI * 2);
+        
+        if (this.state === 'moving') {
+          ctx.fillStyle = this.color;
+          ctx.fill();
+        } else {
+          // 爆発時はネオンのように光る
+          ctx.globalAlpha = 0.6;
+          ctx.fillStyle = this.color;
+          ctx.fill();
+          ctx.globalAlpha = 1.0;
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      }
+    }
+
+    function initLevel() {
+      // レベルごとの難易度計算
+      totalParticles = 10 + (level * 5);
+      // ノルマは全体の40%から始まり、レベルが上がるごとに割合が増える
+      let ratio = 0.4 + (level * 0.05);
+      if (ratio > 0.9) ratio = 0.9;
+      targetCount = Math.floor(totalParticles * ratio);
+      
+      explodedCount = 0;
+      clicked = false;
+      particles = [];
+      state = 'playing';
+
+      for (let i = 0; i < totalParticles; i++) {
+        let px = Math.random() * (canvas.width - 20) + 10;
+        let py = Math.random() * (canvas.height - 20) + 10;
+        particles.push(new Particle(px, py));
+      }
+
+      uiLevel.innerText = level;
+      updateScore();
+      overlay.style.display = 'none';
+    }
+
+    function updateScore() {
+      uiScore.innerText = `${explodedCount} / ${targetCount}`;
+      if (explodedCount >= targetCount) {
+        uiScore.style.color = '#00ffaa';
+      } else {
+        uiScore.style.color = '#fff';
+      }
+    }
+
+    // マウスクリック/タップで連鎖スタート
+    canvas.addEventListener('mousedown', (e) => {
+      if (state === 'playing' && !clicked) {
+        clicked = true;
+        state = 'resolving';
+        particles.push(new Particle(e.clientX, e.clientY, true));
+      }
+    });
+
+    // 衝突判定
+    function checkCollisions() {
+      const activeExplosions = particles.filter(p => ['expanding', 'holding', 'shrinking'].includes(p.state));
+      const movingParticles = particles.filter(p => p.state === 'moving');
+
+      activeExplosions.forEach(exp => {
+        movingParticles.forEach(p => {
+          const dx = exp.x - p.x;
+          const dy = exp.y - p.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          
+          if (dist < exp.radius + p.radius) {
+            p.state = 'expanding'; // 誘爆
+            p.color = exp.color;   // 親の爆発カラーを受け継ぐ
+            explodedCount++;
+            updateScore();
+          }
+        });
+      });
+    }
+
+    // ゲームループ
+    function loop() {
+      // 画面のクリア（少し軌跡を残す演出）
+      ctx.fillStyle = 'rgba(5, 5, 16, 0.3)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.globalCompositeOperation = 'lighter'; // 光るブレンドモード
+
+      particles.forEach(p => {
+        p.update();
+        p.draw();
+      });
+      ctx.globalCompositeOperation = 'source-over';
+
+      if (state === 'resolving') {
+        checkCollisions();
+        
+        // 爆発中のパーティクルが0になったら結果判定
+        const hasActive = particles.some(p => ['expanding', 'holding', 'shrinking'].includes(p.state));
+        if (!hasActive) {
+          if (explodedCount >= targetCount) {
+            state = 'clear';
+            showOverlay('STAGE CLEAR!', '見事な連鎖でした！', 'NEXT LEVEL', () => {
+              level++;
+              initLevel();
+            });
+          } else {
+            state = 'gameover';
+            showOverlay('GAME OVER...', '規定数に届きませんでした。', 'RETRY', () => {
+              initLevel();
+            });
+          }
+        }
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+    function showOverlay(title, text, btnText, callback) {
+      overlay.style.display = 'block';
+      msgTitle.innerText = title;
+      msgText.innerText = text;
+      actionBtn.innerText = btnText;
+      actionBtn.onclick = callback;
+    }
+
+    // 初期化
+    actionBtn.onclick = () => initLevel();
+    loop();
+  </script>
+</body>
+</html>

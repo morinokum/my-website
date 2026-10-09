@@ -1,0 +1,460 @@
+<!-- AI-GAME-PORTFOLIO -->
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI-GAME-PORTFOLIO - Short Video Reels</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            500: '#10b981',
+                            600: '#059669',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000000;
+            color: #ffffff;
+            overflow: hidden;
+            touch-action: pan-y;
+        }
+        /* Hide scrollbars for clean vertical feed */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+        .reel-container {
+            scroll-snap-type: y mandatory;
+            overflow-y: scroll;
+            height: 100vh;
+            width: 100vw;
+            scroll-behavior: smooth;
+        }
+        .reel-item {
+            scroll-snap-align: start;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+        }
+        .glass-overlay {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+        .animate-glow {
+            animation: pulseGlow 3s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-black text-white select-none">
+
+    <header class="fixed top-0 left-0 w-full z-50 px-6 py-4 flex justify-between items-center pointer-events-none">
+        <div class="pointer-events-auto flex items-center space-x-2 bg-black/50 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 shadow-lg">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+            <span class="text-xs font-bold uppercase tracking-wider text-white">AI-GAME-PORTFOLIO</span>
+        </div>
+        <div class="pointer-events-auto flex space-x-4 bg-black/30 backdrop-blur-md px-4 py-1 rounded-full border border-white/10">
+            <button onclick="switchTab('following')" id="tab-following" class="text-xs font-semibold text-white/60 transition-colors">フォロー中</button>
+            <span class="text-white/20">|</span>
+            <button onclick="switchTab('forYou')" id="tab-forYou" class="text-xs font-extrabold text-white underline underline-offset-8 decoration-emerald-500">おすすめ</button>
+        </div>
+        <div class="pointer-events-auto">
+            <button onclick="openSearchModal()" class="w-10 h-10 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-all shadow-lg">
+                <i class="fa-solid fa-magnifying-glass text-sm"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="reel-container" id="feed-container">
+        
+        <!-- Reel 1: Cyberpunk RPG Game -->
+        <div class="reel-item relative flex flex-col justify-end p-6 bg-slate-950">
+            <div class="absolute inset-0 z-0 overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-tr from-purple-900/40 via-slate-950 to-emerald-950/40 z-10"></div>
+                <img src="https://placehold.co/1080x1920/0f172a/10b981?text=Cyber+Quest+RPG+Engine" alt="Cyber Quest" class="w-full h-full object-cover opacity-80 scale-105 transition-transform duration-1000" onerror="this.src='https://placehold.co/1080x1920/111827/ffffff?text=Video+Fallback'">
+                <div class="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-10"></div>
+            </div>
+
+            <!-- Interactive Play/Pause Overlay Touch Target -->
+            <div onclick="togglePlayState(this)" class="absolute inset-0 z-10 flex items-center justify-center cursor-pointer group">
+                <div class="w-20 h-20 rounded-full bg-black/40 backdrop-blur-md border border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <i class="fa-solid fa-play text-2xl text-white ml-1"></i>
+                </div>
+            </div>
+
+            <!-- Right Action Sidebar -->
+            <div class="absolute right-4 bottom-24 z-20 flex flex-col items-center space-y-6">
+                <div class="flex flex-col items-center">
+                    <button onclick="toggleLike(this)" class="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:scale-110 transition-transform shadow-xl">
+                        <i class="fa-solid fa-heart text-xl text-white"></i>
+                    </button>
+                    <span class="text-xs font-bold mt-1 text-white drop-shadow">24.5K</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <button onclick="openComments('Cyber Quest RPG', '24.5K')" class="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:scale-110 transition-transform shadow-xl">
+                        <i class="fa-solid fa-comment-dots text-xl"></i>
+                    </button>
+                    <span class="text-xs font-bold mt-1 text-white drop-shadow">1,420</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <button onclick="bookmarkReel(this)" class="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:scale-110 transition-transform shadow-xl">
+                        <i class="fa-solid fa-bookmark text-xl"></i>
+                    </button>
+                    <span class="text-xs font-bold mt-1 text-white drop-shadow">保存</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <button onclick="shareReel()" class="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:scale-110 transition-transform shadow-xl">
+                        <i class="fa-solid fa-share text-xl"></i>
+                    </button>
+                    <span class="text-xs font-bold mt-1 text-white drop-shadow">共有</span>
+                </div>
+                <div class="w-10 h-10 rounded-full border-2 border-emerald-500 overflow-hidden animate-spin shadow-lg" style="animation-duration: 8s;">
+                    <img src="https://placehold.co/100x100/10b981/ffffff?text=AI" alt="Avatar">
+                </div>
+            </div>
+
+            <!-- Bottom Content Info -->
+            <div class="relative z-20 max-w-[78%] pb-6 pointer-events-auto">
+                <div class="flex items-center space-x-3 mb-2">
+                    <h3 class="font-bold text-base text-white drop-shadow-md">@cyber_dev_ai</h3>
+                    <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-wider border border-emerald-500/30">Game Dev</span>
+                </div>
+                <p class="text-sm text-slate-100 mb-3 leading-relaxed drop-shadow">新作サイバーパンクRPGのリアルタイムプロシージャルシェーダー演出！スマホでどこまで動くか検証中🔥 #AIgame #ThreeJS #IndieGame</p>
+                <div class="inline-flex items-center space-x-2 text-xs text-emerald-400 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 shadow-lg">
+                    <i class="fa-solid fa-music"></i>
+                    <span>Original Synthwave Beat - AI Studio</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reel 2: Neural Vision AI -->
+        <div class="reel-item relative flex flex-col justify-end p-6 bg-slate-950">
+            <div class="absolute inset-0 z-0 overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-tr from-cyan-900/40 via-slate-950 to-blue-950/40 z-10"></div>
+                <img src="https://placehold.co/1080x1920/0f172a/06b6d4?text=Neural+Vision+AI+Engine" alt="Neural Vision" class="w-full h-full object-cover opacity-80 scale-105 transition-transform duration-1000" onerror="this.src='https://placehold.co/1080x1920/111827/ffffff?text=Video+Fallback'">
+                <div class="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-10"></div>
+            </div>
+
+            <!-- Interactive Play/Pause Overlay Touch Target -->
+            <div onclick="togglePlayState(this)" class="absolute inset-0 z-10 flex items-center justify-center cursor-pointer group">
+                <div class="w-20 h-20 rounded-full bg-black/40 backdrop-blur-md border border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <i class="fa-solid fa-play text-2xl text-white ml-1"></i>
+                </div>
+            </div>
+
+            <!-- Right Action Sidebar -->
+            <div class="absolute right-4 bottom-24 z-20 flex flex-col items-center space-y-6">
+                <div class="flex flex-col items-center">
+                    <button onclick="toggleLike(this)" class="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:scale-110 transition-transform shadow-xl">
+                        <i class="fa-solid fa-heart text-xl text-white"></i>
+                    </button>
+                    <span class="text-xs font-bold mt-1 text-white drop-shadow">48.2K</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <button onclick="openComments('Neural Vision AI', '48.2K')" class="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:scale-110 transition-transform shadow-xl">
+                        <i class="fa-solid fa-comment-dots text-xl"></i>
+                    </button>
+                    <span class="text-xs font-bold mt-1 text-white drop-shadow">3,105</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <button onclick="bookmarkReel(this)" class="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:scale-110 transition-transform shadow-xl">
+                        <i class="fa-solid fa-bookmark text-xl"></i>
+                    </button>
+                    <span class="text-xs font-bold mt-1 text-white drop-shadow">保存</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <button onclick="shareReel()" class="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:scale-110 transition-transform shadow-xl">
+                        <i class="fa-solid fa-share text-xl"></i>
+                    </button>
+                    <span class="text-xs font-bold mt-1 text-white drop-shadow">共有</span>
+                </div>
+                <div class="w-10 h-10 rounded-full border-2 border-teal-500 overflow-hidden animate-spin shadow-lg" style="animation-duration: 8s;">
+                    <img src="https://placehold.co/100x100/06b6d4/ffffff?text=AI" alt="Avatar">
+                </div>
+            </div>
+
+            <!-- Bottom Content Info -->
+            <div class="relative z-20 max-w-[78%] pb-6 pointer-events-auto">
+                <div class="flex items-center space-x-3 mb-2">
+                    <h3 class="font-bold text-base text-white drop-shadow-md">@neural_vision_lab</h3>
+                    <span class="px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-400 text-[10px] font-bold uppercase tracking-wider border border-teal-500/30">AI Art</span>
+                </div>
+                <p class="text-sm text-slate-100 mb-3 leading-relaxed drop-shadow">一瞬でゲームのアセット背景を生成するAIツール作ってみた。プロンプト1発で世界観が変わる✨ #GenerativeAI #TensorFlow</p>
+                <div class="inline-flex items-center space-x-2 text-xs text-teal-400 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 shadow-lg">
+                    <i class="fa-solid fa-music"></i>
+                    <span>Cyberpunk Ambient - Neural Audio</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reel 3: Quantum Physics Puzzle -->
+        <div class="reel-item relative flex flex-col justify-end p-6 bg-slate-950">
+            <div class="absolute inset-0 z-0 overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-tr from-blue-900/40 via-slate-950 to-indigo-950/40 z-10"></div>
+                <img src="https://placehold.co/1080x1920/0f172a/3b82f6?text=Quantum+Flux+Puzzle" alt="Quantum Flux" class="w-full h-full object-cover opacity-80 scale-105 transition-transform duration-1000" onerror="this.src='https://placehold.co/1080x1920/111827/ffffff?text=Video+Fallback'">
+                <div class="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-10"></div>
+            </div>
+
+            <!-- Interactive Play/Pause Overlay Touch Target -->
+            <div onclick="togglePlayState(this)" class="absolute inset-0 z-10 flex items-center justify-center cursor-pointer group">
+                <div class="w-20 h-20 rounded-full bg-black/40 backdrop-blur-md border border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <i class="fa-solid fa-play text-2xl text-white ml-1"></i>
+                </div>
+            </div>
+
+            <!-- Right Action Sidebar -->
+            <div class="absolute right-4 bottom-24 z-20 flex flex-col items-center space-y-6">
+                <div class="flex flex-col items-center">
+                    <button onclick="toggleLike(this)" class="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:scale-110 transition-transform shadow-xl">
+                        <i class="fa-solid fa-heart text-xl text-white"></i>
+                    </button>
+                    <span class="text-xs font-bold mt-1 text-white drop-shadow">12.9K</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <button onclick="openComments('Quantum Flux Puzzle', '12.9K')" class="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:scale-110 transition-transform shadow-xl">
+                        <i class="fa-solid fa-comment-dots text-xl"></i>
+                    </button>
+                    <span class="text-xs font-bold mt-1 text-white drop-shadow">840</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <button onclick="bookmarkReel(this)" class="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:scale-110 transition-transform shadow-xl">
+                        <i class="fa-solid fa-bookmark text-xl"></i>
+                    </button>
+                    <span class="text-xs font-bold mt-1 text-white drop-shadow">保存</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <button onclick="shareReel()" class="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:scale-110 transition-transform shadow-xl">
+                        <i class="fa-solid fa-share text-xl"></i>
+                    </button>
+                    <span class="text-xs font-bold mt-1 text-white drop-shadow">共有</span>
+                </div>
+                <div class="w-10 h-10 rounded-full border-2 border-blue-500 overflow-hidden animate-spin shadow-lg" style="animation-duration: 8s;">
+                    <img src="https://placehold.co/100x100/3b82f6/ffffff?text=AI" alt="Avatar">
+                </div>
+            </div>
+
+            <!-- Bottom Content Info -->
+            <div class="relative z-20 max-w-[78%] pb-6 pointer-events-auto">
+                <div class="flex items-center space-x-3 mb-2">
+                    <h3 class="font-bold text-base text-white drop-shadow-md">@quantum_puzzle</h3>
+                    <span class="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-wider border border-blue-500/30">Puzzle</span>
+                </div>
+                <p class="text-sm text-slate-100 mb-3 leading-relaxed drop-shadow">量子もつれをモチーフにした物理パズルゲームのステージ10。クリアできる人何人いる？🧩 #BrowserGame #Physics</p>
+                <div class="inline-flex items-center space-x-2 text-xs text-blue-400 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 shadow-lg">
+                    <i class="fa-solid fa-music"></i>
+                    <span>Lo-Fi Chill Beats - AI Game Music</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <nav class="fixed bottom-0 left-0 w-full z-50 bg-black/90 backdrop-blur-2xl border-t border-white/10 px-6 py-3 flex justify-around items-center">
+        <button onclick="switchNav(this)" class="flex flex-col items-center text-emerald-400">
+            <i class="fa-solid fa-house text-xl mb-1"></i>
+            <span class="text-[10px] font-semibold">ホーム</span>
+        </button>
+        <button onclick="switchNav(this)" class="flex flex-col items-center text-white/50 hover:text-white transition-colors">
+            <i class="fa-solid fa-compass text-xl mb-1"></i>
+            <span class="text-[10px] font-semibold">トレンド</span>
+        </button>
+        <button onclick="openCreateModal()" class="w-12 h-10 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center text-black font-bold shadow-lg hover:scale-105 transition-transform">
+            <i class="fa-solid fa-plus text-lg"></i>
+        </button>
+        <button onclick="switchNav(this)" class="flex flex-col items-center text-white/50 hover:text-white transition-colors">
+            <i class="fa-solid fa-message text-xl mb-1"></i>
+            <span class="text-[10px] font-semibold">受信箱</span>
+        </button>
+        <button onclick="switchNav(this)" class="flex flex-col items-center text-white/50 hover:text-white transition-colors">
+            <i class="fa-solid fa-user text-xl mb-1"></i>
+            <span class="text-[10px] font-semibold">マイページ</span>
+        </button>
+    </nav>
+
+    <div id="comments-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-end transition-opacity duration-300">
+        <div class="bg-slate-900 w-full max-h-[70vh] rounded-t-3xl border-t border-white/10 p-6 flex flex-col shadow-2xl">
+            <div class="flex justify-between items-center pb-4 border-b border-white/10 mb-4">
+                <h3 id="comment-title" class="font-bold text-sm">コメント (1,420)</h3>
+                <button onclick="closeComments()" class="text-white/60 hover:text-white text-lg px-2"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="overflow-y-auto space-y-4 flex-grow mb-4 pr-1">
+                <div class="flex items-start space-x-3">
+                    <div class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-xs border border-emerald-500/30">K</div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs font-bold text-white/90">Kenji_Dev</span>
+                            <span class="text-[10px] text-white/40">2日前</span>
+                        </div>
+                        <p class="text-xs text-slate-300 mt-1 leading-relaxed">このシェーダーめちゃくちゃ滑らかですね！ソースコードやプロンプトの共有予定ありますか？🔥</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-3">
+                    <div class="w-8 h-8 rounded-full bg-teal-500/20 text-teal-400 font-bold flex items-center justify-center text-xs border border-teal-500/30">Y</div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs font-bold text-white/90">Yuki_AI</span>
+                            <span class="text-[10px] text-white/40">1日前</span>
+                        </div>
+                        <p class="text-xs text-slate-300 mt-1 leading-relaxed">スマホのブラウザでこんなにリッチに動いてるの凄すぎる…✨</p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2 pt-2 border-t border-white/10">
+                <input id="comment-input" type="text" placeholder="コメントを入力..." class="flex-grow bg-black/50 border border-white/10 rounded-full px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+                <button onclick="submitComment()" class="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs rounded-full transition-colors shadow-lg">送信</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="create-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-6 transition-opacity">
+        <div class="bg-slate-900 border border-white/10 rounded-3xl w-full max-w-md p-6 flex flex-col space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center pb-3 border-b border-white/10">
+                <h3 class="font-bold text-sm text-emerald-400"><i class="fa-solid fa-video mr-2"></i>AIゲームクリップ・動画を投稿</h3>
+                <button onclick="closeCreateModal()" class="text-white/60 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="border-2 border-dashed border-white/20 rounded-2xl p-6 text-center flex flex-col items-center justify-center space-y-2 bg-black/40 hover:border-emerald-500 transition-colors cursor-pointer">
+                <i class="fa-solid fa-cloud-arrow-up text-3xl text-emerald-400 mb-1"></i>
+                <p class="text-xs font-bold text-white">動画ファイルまたはゲーム画面録画をドロップ</p>
+                <p class="text-[10px] text-white/50">MP4, WebM (最大 50MB)</p>
+            </div>
+            <div>
+                <label class="text-[11px] font-semibold text-white/70 block mb-1">キャプション・ハッシュタグ</label>
+                <textarea rows="3" placeholder="新作ゲームの進捗やAI生成のコツをシェアしよう！ #AIgame #ThreeJS" class="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-emerald-500"></textarea>
+            </div>
+            <button onclick="publishPost()" class="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-black font-extrabold text-xs rounded-xl shadow-xl hover:opacity-95 transition-opacity">
+                ショート動画を投稿する
+            </button>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-black/90 backdrop-blur-md border border-white/10 px-6 py-3 rounded-full text-xs font-bold text-emerald-400 shadow-2xl transition-all duration-300 opacity-0 pointer-events-none">
+        クリップボードにリンクをコピーしました！
+    </div>
+
+    <script>
+        function toggleLike(btn) {
+            const icon = btn.querySelector('i');
+            const isLiked = icon.classList.contains('text-rose-500');
+            if (isLiked) {
+                icon.classList.remove('text-rose-500');
+                icon.classList.add('text-white');
+            } else {
+                icon.classList.remove('text-white');
+                icon.classList.add('text-rose-500');
+                btn.style.transform = 'scale(1.25)';
+                setTimeout(() => btn.style.transform = 'scale(1)', 200);
+            }
+        }
+
+        function bookmarkReel(btn) {
+            const icon = btn.querySelector('i');
+            const isSaved = icon.classList.contains('text-amber-400');
+            if (isSaved) {
+                icon.classList.remove('text-amber-400');
+                icon.classList.add('text-white');
+                showToast("保存を解除しました");
+            } else {
+                icon.classList.remove('text-white');
+                icon.classList.add('text-amber-400');
+                showToast("マイリストに保存しました ⭐");
+            }
+        }
+
+        function togglePlayState(target) {
+            const overlay = target.querySelector('div');
+            overlay.style.opacity = '1';
+            setTimeout(() => {
+                overlay.style.opacity = '0';
+            }, 600);
+        }
+
+        function openComments(title, count) {
+            document.getElementById('comment-title').innerText = `${title} のコメント (${count})`;
+            document.getElementById('comments-modal').classList.remove('hidden');
+        }
+
+        function closeComments() {
+            document.getElementById('comments-modal').classList.add('hidden');
+        }
+
+        function submitComment() {
+            const input = document.getElementById('comment-input');
+            if (input.value.trim() !== '') {
+                showToast("コメントを投稿しました！");
+                input.value = '';
+                closeComments();
+            }
+        }
+
+        function shareReel() {
+            showToast("クリップボードにリンクをコピーしました！");
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            toast.classList.remove('opacity-0');
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+            }, 2500);
+        }
+
+        function switchTab(tab) {
+            const followingBtn = document.getElementById('tab-following');
+            const forYouBtn = document.getElementById('tab-forYou');
+            if (tab === 'following') {
+                followingBtn.className = "text-xs font-extrabold text-white underline underline-offset-8 decoration-emerald-500";
+                forYouBtn.className = "text-xs font-semibold text-white/60 transition-colors";
+                showToast("「フォロー中」のフィードに切り替えました");
+            } else {
+                forYouBtn.className = "text-xs font-extrabold text-white underline underline-offset-8 decoration-emerald-500";
+                followingBtn.className = "text-xs font-semibold text-white/60 transition-colors";
+                showToast("「おすすめ」のフィードに切り替えました");
+            }
+        }
+
+        function switchNav(btn) {
+            // Visual feedback for nav buttons
+        }
+
+        function openCreateModal() {
+            document.getElementById('create-modal').classList.remove('hidden');
+        }
+
+        function closeCreateModal() {
+            document.getElementById('create-modal').classList.add('hidden');
+        }
+
+        function publishPost() {
+            closeCreateModal();
+            showToast("✨ ショート動画の投稿が完了しました！");
+        }
+
+        function openSearchModal() {
+            showToast("🔍 AI-GAME-PORTFOLIO 検索フィルター");
+        }
+    </script>
+</body>
+</html>

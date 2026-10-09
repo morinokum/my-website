@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Echoes of Frequency | AI-GAME-PORTFOLIO</title>
+    <style>
+        :root {
+            --bg-color: #050510;
+            --text-color: #00ffff;
+            --target-color: #ff0055;
+            --player-color: #00ffaa;
+            --ui-bg: rgba(0, 20, 40, 0.8);
+            --border-glow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 90vw;
+            max-width: 800px;
+            height: 85vh;
+            background: radial-gradient(circle at center, #0a0a2a 0%, #000 100%);
+            border: 2px solid #005555;
+            border-radius: 15px;
+            box-shadow: var(--border-glow);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 背景のウォーターマーク */
+        .portfolio-watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4rem;
+            font-weight: bold;
+            color: rgba(0, 255, 255, 0.03);
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 0;
+            animation: pulse-watermark 4s infinite alternate;
+        }
+
+        @keyframes pulse-watermark {
+            0% { opacity: 0.02; text-shadow: 0 0 10px rgba(0,255,255,0); }
+            100% { opacity: 0.06; text-shadow: 0 0 20px rgba(0,255,255,0.1); }
+        }
+
+        #header {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 20px;
+            background: var(--ui-bg);
+            border-bottom: 1px solid #005555;
+            z-index: 10;
+        }
+
+        .stat {
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 5px var(--text-color);
+        }
+
+        #canvas-container {
+            flex-grow: 1;
+            position: relative;
+            width: 100%;
+            z-index: 5;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #controls {
+            padding: 20px;
+            background: var(--ui-bg);
+            border-top: 1px solid #005555;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 10;
+        }
+
+        .oscillator-control {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #004444;
+            border-radius: 8px;
+        }
+
+        .osc-label {
+            width: 80px;
+            font-weight: bold;
+            color: #aaa;
+        }
+
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            gap: 5px;
+        }
+
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider-label {
+            font-size: 0.8rem;
+            width: 40px;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: var(--player-color);
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 0 10px var(--player-color);
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #004444;
+            border-radius: 2px;
+        }
+        
+        input[type=range]:focus {
+            outline: none;
+        }
+
+        #screens {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .screen {
+            background: rgba(0, 10, 20, 0.95);
+            padding: 40px;
+            border: 2px solid var(--text-color);
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 0 30px var(--text-color);
+            pointer-events: auto;
+            display: none;
+            max-width: 80%;
+        }
+
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            color: var(--text-color);
+            text-shadow: 0 0 15px var(--text-color);
+        }
+
+        p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .btn {
+            background: transparent;
+            color: var(--text-color);
+            border: 2px solid var(--text-color);
+            padding: 10px 30px;
+            font-size: 1.2rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background: var(--text-color);
+            color: var(--bg-color);
+            box-shadow: 0 0 20px var(--text-color);
+        }
+
+        /* 視覚的フィードバック */
+        #match-indicator {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.5rem;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 15;
+            text-shadow: 0 0 10px;
+        }
+
+        .match-perfect { color: #00ff00; text-shadow: 0 0 15px #00ff00; }
+        .match-good { color: #ffff00; text-shadow: 0 0 10px #ffff00; }
+        
+        #progress-bar-container {
+            width: 100%;
+            height: 5px;
+            background: #222;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+        }
+        
+        #progress-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--player-color);
+            box-shadow: 0 0 10px var(--player-color);
+            transition: width 0.1s linear;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- AI-GAME-PORTFOLIO 必須要件 -->
+        <div class="portfolio-watermark">AI-GAME-PORTFOLIO</div>
+
+        <div id="header">
+            <div class="stat" id="score-display">Score: 0</div>
+            <div class="stat" id="level-display">Phase: 1</div>
+            <div class="stat" id="time-display">Time: 30</div>
+        </div>
+
+        <div id="canvas-container">
+            <canvas id="waveCanvas"></canvas>
+            <div id="match-indicator">SYNCING...</div>
+            <div id="progress-bar-container">
+                <div id="progress-bar"></div>
+            </div>
+        </div>
+
+        <div id="controls">
+            <!-- Oscillator 1 -->
+            <div class="oscillator-control">
+                <div class="osc-label">OSC 1<br><span style="font-size:0.7em;color:var(--player-color)">Base</span></div>
+                <div class="slider-group">
+                    <div class="slider-row">
+                        <span class="slider-label">AMP</span>
+                        <input type="range" id="amp1" min="0" max="100" value="50">
+                    </div>
+                    <div class="slider-row">
+                        <span class="slider-label">FREQ</span>
+                        <input type="range" id="freq1" min="1" max="10" value="1" step="0.1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Oscillator 2 -->
+            <div class="oscillator-control">
+                <div class="osc-label">OSC 2<br><span style="font-size:0.7em;color:var(--player-color)">Mod</span></div>
+                <div class="slider-group">
+                    <div class="slider-row">
+                        <span class="slider-label">AMP</span>
+                        <input type="range" id="amp2" min="0" max="100" value="0">
+                    </div>
+                    <div class="slider-row">
+                        <span class="slider-label">FREQ</span>
+                        <input type="range" id="freq2" min="1" max="20" value="5" step="0.5">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screens -->
+        <div id="screens">
+            <div id="start-screen" class="screen active">
+                <h1>Echoes of Frequency</h1>
+                <p>
+                    ターゲットの赤い波形（ノイズ）に合わせて<br>
+                    下のスライダー（緑の波形）を調整し、<br>
+                    周波数を同期（SYNC）させろ。<br><br>
+                    振幅（AMP）と周波数（FREQ）を一致させ、<br>
+                    一定時間シンクロ状態を保てばクリアだ。
+                </p>
+                <button class="btn" id="start-btn">INITIALIZE</button>
+            </div>
+
+            <div id="game-over-screen" class="screen">
+                <h1 style="color: #ff0055; text-shadow: 0 0 15px #ff0055;">SIGNAL LOST</h1>
+                <p id="final-score">Final Score: 0</p>
+                <p id="final-level">Reached Phase: 1</p>
+                <button class="btn" id="restart-btn">REBOOT</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const canvas = document.getElementById('waveCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // UI Elements
+        const scoreDisplay = document.getElementById('score-display');
+        const levelDisplay = document.getElementById('level-display');
+        const timeDisplay = document.getElementById('time-display');
+        const matchIndicator = document.getElementById('match-indicator');
+        const progressBar = document.getElementById('progress-bar');
+        
+        // Screens
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+
+        // Sliders
+        const amp1Input = document.getElementById('amp1');
+        const freq1Input = document.getElementById('freq1');
+        const amp2Input = document.getElementById('amp2');
+        const freq2Input = document.getElementById('freq2');
+
+        // Game State
+        let isPlaying = false;
+        let animationId;
+        let time = 0; // x-axis time for sine wave
+        let lastTime = 0;
+        
+        let score = 0;
+        let level = 1;
+        let timeLeft = 30;
+        let timerInterval;
+
+        let syncProgress = 0; // 0 to 100
+        const SYNC_THRESHOLD = 15; // 許容誤差
+        const REQUIRED_SYNC_TIME = 100; // シンクロ完了に必要なフレーム数
+        
+        // Resize canvas
+        function resize() {
+            const container = document.getElementById('canvas-container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Target Wave Data
+        let targetWave = {
+            osc1: { amp: 50, freq: 2 },
+            osc2: { amp: 0, freq: 5 },
+            offset: 0
+        };
+
+        // Player Wave Data (from sliders)
+        let playerWave = {
+            osc1: { amp: 50, freq: 1 },
+            osc2: { amp: 0, freq: 5 }
+        };
+
+        // Update player wave based on inputs
+        function updatePlayerWave() {
+            playerWave.osc1.amp = parseFloat(amp1Input.value);
+            playerWave.osc1.freq = parseFloat(freq1Input.value);
+            playerWave.osc2.amp = parseFloat(amp2Input.value);
+            playerWave.osc2.freq = parseFloat(freq2Input.value);
+        }
+
+        // Add event listeners to sliders for real-time update
+        [amp1Input, freq1Input, amp2Input, freq2Input].forEach(input => {
+            input.addEventListener('input', updatePlayerWave);
+        });
+
+        // Generate new target for the level
+        function generateTarget() {
+            // Level difficulty scaling
+            const maxAmp = 80;
+            const minFreq = 1;
+            
+            // OSC1 is always active
+            targetWave.osc1.amp = Math.floor(Math.random() * 60) + 20; // 20-80
+            // Make freq slightly jagged based on level, snapping to 0.5 increments for playability
+            let rawFreq1 = (Math.random() * 3 + 1) + (level * 0.2);
+            targetWave.osc1.freq = Math.round(rawFreq1 * 2) / 2; 
+
+            // OSC2 becomes active after level 3
+            if (level >= 3) {
+                targetWave.osc2.amp = Math.floor(Math.random() * 40) + 10;
+                let rawFreq2 = (Math.random() * 5 + 3) + (level * 0.3);
+                targetWave.osc2.freq = Math.round(rawFreq2 * 2) / 2;
+                
+                // Unhide OSC2 controls visually if it was hidden (it's always visible in this design, but good for progression)
+                amp2Input.parentElement.parentElement.style.opacity = "1";
+            } else {
+                targetWave.osc2.amp = 0;
+                targetWave.osc2.freq = 5;
+                amp2Input.value = 0;
+            }
+
+            // Reset player inputs to center/defaults to avoid instant match
+            amp1Input.value = 50;
+            freq1Input.value = 1;
+            if(level < 3) amp2Input.value = 0;
+            updatePlayerWave();
+            
+            syncProgress = 0;
+            progressBar.style.width = '0%';
+            targetWave.offset = 0; // Reset visual offset
+        }
+
+        function drawWave(ctx, waveData, color, lineWidth, timeOffset, isTarget) {
+            ctx.beginPath();
+            ctx.lineWidth = lineWidth;
+            ctx.strokeStyle = color;
+
+            const height = canvas.height;
+            const width = canvas.width;
+            const centerY = height / 2;
+            
+            // Draw center line
+            if(isTarget) {
+                ctx.moveTo(0, centerY);
+                ctx.lineTo(width, centerY);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.strokeStyle = color;
+            }
+
+            // Draw the actual wave
+            for (let x = 0; x < width; x++) {
+                // Map x to a time domain suitable for sine waves
+                let t = (x / width) * Math.PI * 4; // Display 2 full cycles fundamentally
+                
+                // Calculate y based on oscillators
+                let y1 = (waveData.osc1.amp / 100) * (height / 2.5) * Math.sin(t * waveData.osc1.freq + timeOffset);
+                let y2 = (waveData.osc2.amp / 100) * (height / 4) * Math.sin(t * waveData.osc2.freq + timeOffset);
+                
+                let y = centerY - (y1 + y2);
+
+                if (x === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            
+            if(isTarget) {
+                ctx.setLineDash([5, 5]);
+            } else {
+                ctx.setLineDash([]);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset
+        }
+
+        function calculateDifference() {
+            // 振幅と周波数の差を計算
+            let diffAmp1 = Math.abs(targetWave.osc1.amp - playerWave.osc1.amp);
+            let diffFreq1 = Math.abs(targetWave.osc1.freq - playerWave.osc1.freq) * 10; // Freq difference is more sensitive
+            
+            let diffAmp2 = Math.abs(targetWave.osc2.amp - playerWave.osc2.amp);
+            let diffFreq2 = Math.abs(targetWave.osc2.freq - playerWave.osc2.freq) * 5;
+
+            // 総誤差
+            let totalDiff = diffAmp1 + diffFreq1 + diffAmp2 + diffFreq2;
+            return totalDiff;
+        }
+
+        function gameLoop(timestamp) {
+            if (!isPlaying) return;
+
+            // Time delta
+            let dt = timestamp - lastTime;
+            lastTime = timestamp;
+            
+            // Move wave horizontally
+            time += 0.05;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw waves
+            drawWave(ctx, targetWave, 'var(--target-color)', 3, time, true);
+            drawWave(ctx, playerWave, 'var(--player-color)', 4, time, false);
+
+            // Check match logic
+            let diff = calculateDifference();
+            
+            if (diff < SYNC_THRESHOLD) {
+                // Syncing
+                syncProgress += 1; // Increase progress
+                
+                // Visual feedback
+                matchIndicator.style.opacity = 1;
+                if(diff < SYNC_THRESHOLD / 2) {
+                    matchIndicator.textContent = "PERFECT SYNC";
+                    matchIndicator.className = "match-perfect";
+                } else {
+                    matchIndicator.textContent = "SYNCING...";
+                    matchIndicator.className = "match-good";
+                }
+                
+                // Add minor screen shake effect for feedback
+                if(syncProgress % 10 === 0) {
+                    canvas.style.transform = `translate(${Math.random()*2-1}px, ${Math.random()*2-1}px)`;
+                }
+                
+            } else {
+                // Not syncing
+                syncProgress = Math.max(0, syncProgress - 2); // Decay progress
+                matchIndicator.style.opacity = 0;
+                canvas.style.transform = `translate(0, 0)`;
+            }
+
+            // Update Progress Bar
+            let progressPct = Math.min(100, (syncProgress / REQUIRED_SYNC_TIME) * 100);
+            progressBar.style.width = `${progressPct}%`;
+            
+            // Change progress bar color based on progress
+            if(progressPct > 80) {
+                progressBar.style.background = '#00ff00';
+                progressBar.style.boxShadow = '0 0 15px #00ff00';
+            } else {
+                progressBar.style.background = 'var(--player-color)';
+                progressBar.style.boxShadow = '0 0 10px var(--player-color)';
+            }
+
+            // Check Level Complete
+            if (syncProgress >= REQUIRED_SYNC_TIME) {
+                levelComplete();
+            }
+
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function updateTimer() {
+            if(!isPlaying) return;
+            timeLeft--;
+            timeDisplay.textContent = `Time: ${timeLeft}`;
+            
+            if(timeLeft <= 0) {
+                gameOver();
+            }
+        }
+
+        function levelComplete() {
+            // Visual burst effect
+            ctx.fillStyle = 'rgba(0, 255, 170, 0.5)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            canvas.style.transform = `translate(0, 0)`;
+            
+            // Update stats
+            score += 100 * level + timeLeft * 10;
+            level++;
+            timeLeft += Math.max(5, 15 - Math.floor(level/2)); // Add time, less on higher levels
+            
+            scoreDisplay.textContent = `Score: ${score}`;
+            levelDisplay.textContent = `Phase: ${level}`;
+            timeDisplay.textContent = `Time: ${timeLeft}`;
+            
+            matchIndicator.style.opacity = 0;
+            generateTarget();
+        }
+
+        function startGame() {
+            startScreen.classList.remove('active');
+            gameOverScreen.classList.remove('active');
+            
+            score = 0;
+            level = 1;
+            timeLeft = 30; // Initial time
+            
+            scoreDisplay.textContent = `Score: ${score}`;
+            levelDisplay.textContent = `Phase: ${level}`;
+            timeDisplay.textContent = `Time: ${timeLeft}`;
+            
+            // Reset Sliders visually
+            amp1Input.value = 50;
+            freq1Input.value = 1;
+            amp2Input.value = 0;
+            freq2Input.value = 5;
+            updatePlayerWave();
+
+            generateTarget();
+            
+            isPlaying = true;
+            lastTime = performance.now();
+            
+            if(timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(updateTimer, 1000);
+            
+            resize(); // Ensure canvas is correct size before starting loop
+            gameLoop(lastTime);
+        }
+
+        function gameOver() {
+            isPlaying = false;
+            cancelAnimationFrame(animationId);
+            clearInterval(timerInterval);
+            
+            canvas.style.transform = `translate(0, 0)`;
+            matchIndicator.style.opacity = 0;
+            
+            document.getElementById('final-score').textContent = `Final Score: ${score}`;
+            document.getElementById('final-level').textContent = `Reached Phase: ${level}`;
+            
+            gameOverScreen.classList.add('active');
+        }
+
+        // Event Listeners for buttons
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', startGame);
+
+        // Initial draw just to show something behind the start screen
+        resize();
+        updatePlayerWave();
+        drawWave(ctx, playerWave, 'rgba(0, 255, 170, 0.3)', 2, 0, false);
+        
+    </script>
+</body>
+</html>

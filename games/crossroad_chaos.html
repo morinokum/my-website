@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CROSSROAD CHAOS | AI-GAME-PORTFOLIO</title>
+    <style>
+        :root {
+            --bg-color: #0b0b0e;
+            --ui-accent: #00e5ff;
+            --text-main: #ffffff;
+            --danger: #ff3366;
+        }
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vmin;
+            height: 100vmin;
+            max-width: 800px;
+            max-height: 800px;
+            background: #000;
+            box-shadow: 0 0 40px rgba(0, 229, 255, 0.1);
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            padding: 20px 30px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+        .branding {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 1rem;
+            letter-spacing: 1px;
+        }
+        .score-display {
+            color: var(--ui-accent);
+            font-size: 1.8rem;
+        }
+
+        .screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(11, 11, 14, 0.85);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            pointer-events: auto;
+            transition: opacity 0.3s ease;
+            z-index: 20;
+        }
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        h1 {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            margin: 0 0 15px 0;
+            color: var(--text-main);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 0 15px var(--ui-accent);
+        }
+        p {
+            font-size: clamp(1rem, 2.5vw, 1.2rem);
+            margin: 8px 0;
+            color: #b3b3b3;
+            max-width: 80%;
+            line-height: 1.5;
+        }
+        .highlight {
+            color: var(--danger);
+            font-weight: bold;
+        }
+
+        button {
+            margin-top: 40px;
+            padding: 16px 50px;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #000;
+            background: var(--ui-accent);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-transform: uppercase;
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+        }
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(0, 229, 255, 0.7);
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="800"></canvas>
+        
+        <div class="overlay">
+            <div class="hud">
+                <div class="branding">AI-GAME-PORTFOLIO</div>
+                <div class="score-display">SCORE: <span id="score-value">0</span></div>
+            </div>
+            
+            <div id="start-screen" class="screen">
+                <h1>Crossroad<br>Chaos</h1>
+                <p>画面をタップして信号を一斉切り替え！</p>
+                <p>交差点内の衝突を防ぎ、車を誘導せよ。</p>
+                <p>※待たせすぎると<span class="highlight">怒って信号無視</span>するので注意！</p>
+                <button id="start-btn">GAME START</button>
+            </div>
+            
+            <div id="game-over-screen" class="screen hidden">
+                <h1 style="color: var(--danger); text-shadow: 0 0 15px var(--danger);">CRASH!</h1>
+                <p style="font-size: 1.8rem; color: #fff; margin-bottom: 20px;">最終スコア: <span id="final-score" style="color: var(--ui-accent); font-weight: bold;">0</span></p>
+                <p>AI-GAME-PORTFOLIO</p>
+                <button id="restart-btn">RETRY</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score-value');
+        const finalScoreEl = document.getElementById('final-score');
+        
+        // Game State
+        let gameState = 'START'; // START, PLAYING, GAMEOVER
+        let score = 0;
+        let lastTime = 0;
+        let spawnTimer = 0;
+        let spawnInterval = 1500;
+        let verticalGreen = true; // True = North/South Green. False = East/West Green.
+        let shakeAmount = 0;
+        
+        // Entities arrays
+        let lanes = { N: [], S: [], W: [], E: [] };
+        let particles = [];
+        
+        const carColors = ['#00e5ff', '#ff3366', '#00ff66', '#ffcc00', '#b266ff', '#ffffff'];
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 15;
+                this.vy = (Math.random() - 0.5) * 15;
+                this.life = 1.0;
+                this.decay = 0.015 + Math.random() * 0.02;
+                this.color = color;
+                this.size = Math.random() * 8 + 4;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+            }
+            draw(ctx) {
+                if (this.life <= 0) return;
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x - this.size/2, this.y - this.size/2, this.size, this.size);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        class Car {
+            constructor(lane) {
+                this.lane = lane;
+                // Vertical lanes (N,S) cars are tall, Horizontal lanes (W,E) cars are wide
+                this.width = (lane === 'N' || lane === 'S') ? 24 : 46;
+                this.height = (lane === 'N' || lane === 'S') ? 46 : 24;
+                
+                // Keep-right traffic system setup
+                if (lane === 'N') { this.x = 370; this.y = -30; } // Moving Down
+                if (lane === 'S') { this.x = 430; this.y = 830; } // Moving Up
+                if (lane === 'W') { this.x = -30; this.y = 430; } // Moving Right
+                if (lane === 'E') { this.x = 830; this.y = 370; } // Moving Left
+
+                this.speed = 3 + Math.random() * 1.5;
+                this.maxSpeed = this.speed;
+                this.accel = 0.15;
+                this.frustration = 0;
+                this.angry = false;
+                this.color = carColors[Math.floor(Math.random() * carColors.length)];
+                this.markedForDeletion = false;
+                this.gap = 12; // Safe distance between cars
+            }
+
+            update(carAhead, isGreen) {
+                let front, stopLine;
+
+                if (this.lane === 'N') {
+                    front = this.y + this.height/2;
+                    stopLine = 340;
+                    let targetY = Infinity; // Where the car is forced to stop
+
+                    if (carAhead) targetY = carAhead.y - carAhead.height/2 - this.gap;
+                    if (!isGreen && !this.angry && front <= stopLine) {
+                        targetY = Math.min(targetY, stopLine);
+                    }
+
+                    if (this.y + this.height/2 + this.speed > targetY) {
+                        this.y = targetY - this.height/2;
+                        this.speed = 0;
+                    } else {
+                        this.y += this.speed;
+                        this.speed = Math.min(this.speed + this.accel, this.maxSpeed);
+                    }
+                    if (this.y > 850) this.markedForDeletion = true;
+                }
+                else if (this.lane === 'S') {
+                    front = this.y - this.height/2;
+                    stopLine = 460;
+                    let targetY = -Infinity;
+
+                    if (carAhead) targetY = carAhead.y + carAhead.height/2 + this.gap;
+                    if (!isGreen && !this.angry && front >= stopLine) {
+                        targetY = Math.max(targetY, stopLine);
+                    }
+
+                    if (this.y - this.height/2 - this.speed < targetY) {
+                        this.y = targetY + this.height/2;
+                        this.speed = 0;
+                    } else {
+                        this.y -= this.speed;
+                        this.speed = Math.min(this.speed + this.accel, this.maxSpeed);
+                    }
+                    if (this.y < -50) this.markedForDeletion = true;
+                }
+                
+                else if (this.lane === 'W') {
+                    front = this.x + this.width/2;
+                    stopLine = 340;
+                    let targetX = Infinity;
+
+                    if (carAhead) targetX = carAhead.x - carAhead.width/2 - this.gap;
+                    if (!isGreen && !this.angry && front <= stopLine) {
+                        targetX = Math.min(targetX, stopLine);
+                    }
+
+                    if (this.x + this.width/2 + this.speed > targetX) {
+                        this.x = targetX - this.width/2;
+                        this.speed = 0;
+                    } else {
+                        this.x += this.speed;
+                        this.speed = Math.min(this.speed + this.accel, this.maxSpeed);
+                    }
+                    if (this.x > 850) this.markedForDeletion = true;
+                }
+                else if (this.lane === 'E') {
+                    front = this.x - this.width/2;
+                    stopLine = 460;
+                    let targetX = -Infinity;
+
+                    if (carAhead) targetX = carAhead.x + carAhead.width/2 + this.gap;
+                    if (!isGreen && !this.angry && front >= stopLine) {
+                        targetX = Math.max(targetX, stopLine);
+                    }
+
+                    if (this.x - this.width/2 - this.speed < targetX) {
+                        this.x = targetX + this.width/2;
+                        this.speed = 0;
+                    } else {
+                        this.x -= this.speed;
+                        this.speed = Math.min(this.speed + this.accel, this.maxSpeed);
+                    }
+                    if (this.x < -50) this.markedForDeletion = true;
+                }
+
+                if (this.speed < 0.2) {
+                    this.frustration += 0.4; 
+                    if (this.frustration >= 100) {
+                        this.angry = true;
+                        this.frustration = 100;
+                    }
+                } else {
+                    this.frustration = Math.max(0, this.frustration - 0.2);
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // Flash red if angry
+                if (this.angry && Math.floor(Date.now() / 100) % 2 === 0) {
+                    ctx.fillStyle = '#ff0000';
+                } else {
+                    ctx.fillStyle = this.color;
+                }
+
+                // Draw Car Body (Rounded rectangle via standard methods)
+                ctx.beginPath();
+                ctx.roundRect ? ctx.roundRect(-this.width/2, -this.height/2, this.width, this.height, 4) : ctx.rect(-this.width/2, -this.height/2, this.width, this.height);
+                ctx.fill();
+
+                // Headlights & Taillights
+                ctx.fillStyle = '#ffffe0'; 
+                const hSize = 4;
+                if (this.lane === 'N') {
+                    ctx.fillRect(-this.width/2 + 2, this.height/2 - hSize - 2, hSize, hSize);
+                    ctx.fillRect(this.width/2 - 2 - hSize, this.height/2 - hSize - 2, hSize, hSize);
+                    ctx.fillStyle = '#ff0000'; // taillights
+                    ctx.fillRect(-this.width/2 + 2, -this.height/2 + 2, hSize, hSize);
+                    ctx.fillRect(this.width/2 - 2 - hSize, -this.height/2 + 2, hSize, hSize);
+                } else if (this.lane === 'S') {
+                    ctx.fillRect(-this.width/2 + 2, -this.height/2 + 2, hSize, hSize);
+                    ctx.fillRect(this.width/2 - 2 - hSize, -this.height/2 + 2, hSize, hSize);
+                    ctx.fillStyle = '#ff0000';
+                    ctx.fillRect(-this.width/2 + 2, this.height/2 - hSize - 2, hSize, hSize);
+                    ctx.fillRect(this.width/2 - 2 - hSize, this.height/2 - hSize - 2, hSize, hSize);
+                } else if (this.lane === 'W') {
+                    ctx.fillRect(this.width/2 - hSize - 2, -this.height/2 + 2, hSize, hSize);
+                    ctx.fillRect(this.width/2 - hSize - 2, this.height/2 - hSize - 2, hSize, hSize);
+                    ctx.fillStyle = '#ff0000';
+                    ctx.fillRect(-this.width/2 + 2, -this.height/2 + 2, hSize, hSize);
+                    ctx.fillRect(-this.width/2 + 2, this.height/2 - hSize - 2, hSize, hSize);
+                } else if (this.lane === 'E') {
+                    ctx.fillRect(-this.width/2 + 2, -this.height/2 + 2, hSize, hSize);
+                    ctx.fillRect(-this.width/2 + 2, this.height/2 - hSize - 2, hSize, hSize);
+                    ctx.fillStyle = '#ff0000';
+                    ctx.fillRect(this.width/2 - hSize - 2, -this.height/2 + 2, hSize, hSize);
+                    ctx.fillRect(this.width/2 - hSize - 2, this.height/2 - hSize - 2, hSize, hSize);
+                }
+                ctx.restore();
+
+                // Draw Frustration Bar
+                if (this.frustration > 0 && !this.angry) {
+                    const barW = 30;
+                    const barH = 5;
+                    let bx = this.x - barW/2;
+                    let by = this.y - this.height/2 - 12;
+                    if (this.lane === 'W' || this.lane === 'E') by = this.y - this.height/2 - 10;
+                    
+                    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                    ctx.fillRect(bx, by, barW, barH);
+                    
+                    const ratio = this.frustration / 100;
+                    const r = 255;
+                    const g = Math.floor(255 * (1 - ratio));
+                    ctx.fillStyle = `rgb(${r}, ${g}, 0)`;
+                    ctx.fillRect(bx, by, barW * ratio, barH);
+                }
+
+                if (this.angry) {
+                    ctx.fillStyle = '#ff3366';
+                    ctx.font = 'bold 24px sans-serif';
+                    ctx.textAlign = 'center';
+                    let by = this.y - this.height/2 - 5;
+                    if (this.lane === 'W' || this.lane === 'E') by = this.y - this.height/2 - 5;
+                    ctx.fillText('!', this.x, by);
+                }
+            }
+        }
+
+        function spawnCar() {
+            const laneOptions = ['N', 'S', 'W', 'E'];
+            // Prioritize lanes that have fewer cars to keep it somewhat balanced
+            laneOptions.sort((a, b) => lanes[a].length - lanes[b].length);
+            // Still add randomness
+            const lane = Math.random() > 0.5 ? laneOptions[0] : laneOptions[Math.floor(Math.random() * 4)];
+            
+            const lastCar = lanes[lane][lanes[lane].length - 1];
+            // Prevent spawning on top of another car if queue is backed up
+            if (lastCar) {
+                if (lane === 'N' && lastCar.y < 50) return;
+                if (lane === 'S' && lastCar.y > 750) return;
+                if (lane === 'W' && lastCar.x < 50) return;
+                if (lane === 'E' && lastCar.x > 750) return;
+            }
+            
+            lanes[lane].push(new Car(lane));
+        }
+
+        function checkCollisions() {
+            let allCars = [...lanes.N, ...lanes.S, ...lanes.W, ...lanes.E];
+            for (let i = 0; i < allCars.length; i++) {
+                for (let j = i + 1; j < allCars.length; j++) {
+                    let c1 = allCars[i];
+                    let c2 = allCars[j];
+                    // Narrow phase AABB (with 0.85 leniency to feel fair)
+                    if (Math.abs(c1.x - c2.x) < ((c1.width + c2.width) / 2) * 0.85 &&
+                        Math.abs(c1.y - c2.y) < ((c1.height + c2.height) / 2) * 0.85) {
+                        triggerGameOver(c1.x, c1.y, c2.x, c2.y);
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function triggerGameOver(x1, y1, x2, y2) {
+            gameState = 'GAMEOVER';
+            shakeAmount = 25;
+            
+            // Generate crash particles
+            const cx = (x1 + x2) / 2;
+            const cy = (y1 + y2) / 2;
+            for(let i=0; i<40; i++) {
+                particles.push(new Particle(cx, cy, '#ff3366'));
+                particles.push(new Particle(cx, cy, '#ffaa00'));
+                particles.push(new Particle(cx, cy, '#ffffff'));
+            }
+
+            setTimeout(() => {
+                document.getElementById('game-over-screen').classList.remove('hidden');
+                finalScoreEl.innerText = score;
+            }, 1000);
+        }
+
+        function update(deltaTime) {
+            if (gameState !== 'PLAYING') return;
+
+            // Spawner
+            spawnTimer += deltaTime;
+            if (spawnTimer > spawnInterval) {
+                spawnCar();
+                spawnTimer = 0;
+                // Slowly increase difficulty
+                if (spawnInterval > 400) {
+                    spawnInterval -= 15;
+                }
+            }
+
+            // Update Cars
+            ['N', 'S', 'W', 'E'].forEach(lane => {
+                for (let i = 0; i < lanes[lane].length; i++) {
+                    let car = lanes[lane][i];
+                    let carAhead = i > 0 ? lanes[lane][i - 1] : null;
+                    let isGreen = (lane === 'N' || lane === 'S') ? verticalGreen : !verticalGreen;
+                    car.update(carAhead, isGreen);
+                }
+                
+                // Cleanup and Score
+                lanes[lane] = lanes[lane].filter(car => {
+                    if (car.markedForDeletion) {
+                        score++;
+                        scoreEl.innerText = score;
+                        return false;
+                    }
+                    return true;
+                });
+            });
+
+            checkCollisions();
+        }
+
+        function drawBackground() {
+            // Draw grid background
+            ctx.fillStyle = '#111115';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#2a2a35';
+            for(let x=10; x<800; x+=20) {
+                for(let y=10; y<800; y+=20) {
+                    ctx.fillRect(x, y, 2, 2);
+                }
+            }
+
+            // Draw Roads (120px wide, from 340 to 460)
+            ctx.fillStyle = '#222228';
+            ctx.fillRect(340, 0, 120, 800); // Vertical
+            ctx.fillRect(0, 340, 800, 120); // Horizontal
+            
+            // Center Intersection
+            ctx.fillStyle = '#2a2a32';
+            ctx.fillRect(340, 340, 120, 120);
+
+            // Road markings (Dashed lines)
+            ctx.strokeStyle = '#555566';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([20, 20]);
+            
+            ctx.beginPath();
+            ctx.moveTo(400, 0); ctx.lineTo(400, 340);
+            ctx.moveTo(400, 460); ctx.lineTo(400, 800);
+            ctx.moveTo(0, 400); ctx.lineTo(340, 400);
+            ctx.moveTo(460, 400); ctx.lineTo(800, 400);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Zebra Crossings / Stop lines
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            for(let i=0; i<5; i++) {
+                ctx.fillRect(345 + i*23, 310, 15, 30); // N
+                ctx.fillRect(345 + i*23, 460, 15, 30); // S
+                ctx.fillRect(310, 345 + i*23, 30, 15); // W
+                ctx.fillRect(460, 345 + i*23, 30, 15); // E
+            }
+
+            // Draw Traffic Lights indicators
+            const drawLight = (x, y, w, h, isGreen) => {
+                ctx.fillStyle = isGreen ? 'rgba(0, 255, 102, 0.4)' : 'rgba(255, 51, 102, 0.4)';
+                ctx.fillRect(x, y, w, h);
+                ctx.fillStyle = isGreen ? '#00ff66' : '#ff3366';
+                if (w > h) {
+                    ctx.fillRect(x, y + h/2 - 2, w, 4); // Horizontal line
+                } else {
+                    ctx.fillRect(x + w/2 - 2, y, 4, h); // Vertical line
+                }
+            };
+
+            // N (Lane right side: 340 to 400)
+            drawLight(340, 335, 60, 10, verticalGreen);
+            // S (Lane right side: 400 to 460)
+            drawLight(400, 455, 60, 10, verticalGreen);
+            // W (Lane bottom side: 400 to 460)
+            drawLight(335, 400, 10, 60, !verticalGreen);
+            // E (Lane top side: 340 to 400)
+            drawLight(455, 340, 10, 60, !verticalGreen);
+        }
+
+        function draw() {
+            ctx.save();
+
+            // Apply camera shake
+            if (shakeAmount > 0) {
+                const dx = (Math.random() - 0.5) * shakeAmount;
+                const dy = (Math.random() - 0.5) * shakeAmount;
+                ctx.translate(dx, dy);
+                shakeAmount *= 0.9;
+                if (shakeAmount < 0.5) shakeAmount = 0;
+            }
+
+            drawBackground();
+
+            // Draw all cars
+            ['N', 'S', 'W', 'E'].forEach(lane => {
+                lanes[lane].forEach(car => car.draw(ctx));
+            });
+
+            // Draw particles
+            particles.forEach((p, index) => {
+                p.update();
+                p.draw(ctx);
+                if (p.life <= 0) particles.splice(index, 1);
+            });
+
+            ctx.restore();
+        }
+
+        function loop(timestamp) {
+            let deltaTime = timestamp - lastTime;
+            if (isNaN(deltaTime)) deltaTime = 16;
+            lastTime = timestamp;
+
+            update(deltaTime);
+            draw();
+
+            requestAnimationFrame(loop);
+        }
+
+        function resetGame() {
+            lanes = { N: [], S: [], W: [], E: [] };
+            particles = [];
+            score = 0;
+            scoreEl.innerText = score;
+            spawnTimer = 0;
+            spawnInterval = 1200;
+            verticalGreen = true;
+            gameState = 'PLAYING';
+            lastTime = performance.now();
+            
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-over-screen').classList.add('hidden');
+        }
+
+        function toggleLights() {
+            if (gameState === 'PLAYING') {
+                verticalGreen = !verticalGreen;
+            }
+        }
+
+        // Input listeners
+        document.getElementById('game-container').addEventListener('mousedown', toggleLights);
+        document.getElementById('game-container').addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevent scrolling
+            toggleLights();
+        }, { passive: false });
+
+        document.getElementById('start-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            resetGame();
+        });
+        document.getElementById('restart-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            resetGame();
+        });
+
+        // Start the loop
+        requestAnimationFrame(loop);
+    </script>
+</body>
+</html>

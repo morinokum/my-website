@@ -5,7 +5,7 @@ echo "🔍 ダウンロードフォルダから新しいゲーム（AI-GAME-PORT
 # 1. games フォルダを準備
 mkdir -p games
 
-# 2. ダウンロードフォルダから目印のあるファイルだけを探索 (grepのオプションで除外設定を最適化)
+# 2. ダウンロードフォルダから目印のあるファイルだけを探索
 grep -rl "AI-GAME-PORTFOLIO" ~/ダウンロード --include="*.html" --exclude-dir="my-website" 2>/dev/null | while read -r file; do
   filename=$(basename "$file")
   
@@ -64,8 +64,9 @@ cat << 'HTMLEOF' > index.html
     <div class="grid" id="gameGrid">
 HTMLEOF
 
-# 4. games フォルダ内のHTMLを読み込んでカードを追加
+# 4. games フォルダ内のHTMLを読み込んでカードを追加＆AI用のリスト作成
 declare -A seen_titles
+game_list_text="" # AIへの指示文に入れるゲームリスト用の変数
 
 # ls -t で新しい順に処理
 while IFS= read -r file; do
@@ -82,8 +83,9 @@ while IFS= read -r file; do
   fi
   
   seen_titles["$gametitle"]=1
+  game_list_text+="- ${gametitle}\n" # AI用のリストにタイトルを追加
 
-  # Base64エンコードをやめ、ファイル名だけをJSに渡すように変更
+  # HTMLへの書き出し
   cat << HTMLEOF >> index.html
       <div class="card" data-title="${gametitle}">
         <div>
@@ -93,14 +95,13 @@ while IFS= read -r file; do
         </div>
         <div class="button-group">
           <a href="games/${filename}" class="button" target="_blank">Play</a>
-          <!-- onclickにファイル名を渡す -->
           <button class="button copy-btn" onclick="copyGameCode('${filename}')">コードコピー</button>
         </div>
       </div>
 HTMLEOF
 done < <(ls -t games/*.html 2>/dev/null)
 
-# 5. HTMLのフッターと、Fetch APIを利用したコピー機能・検索機能を追加
+# 5. HTMLのフッターとJSを追加
 cat << 'HTMLEOF' >> index.html
     </div>
   </div>
@@ -108,7 +109,6 @@ cat << 'HTMLEOF' >> index.html
   <div id="toast">コードをクリップボードにコピーしました！</div>
 
   <script>
-    // 検索フィルター機能
     function filterGames() {
       const input = document.getElementById('searchInput').value.toLowerCase();
       const cards = document.querySelectorAll('.card');
@@ -118,7 +118,6 @@ cat << 'HTMLEOF' >> index.html
       });
     }
 
-    // Fetch APIを使ったスマートなコードコピー機能
     async function copyGameCode(filename) {
       try {
         const response = await fetch('games/' + filename);
@@ -129,7 +128,7 @@ cat << 'HTMLEOF' >> index.html
         showToast(filename + ' のコードをコピーしました！');
       } catch (err) {
         console.error('コピーに失敗しました', err);
-        alert('コードの読み込みに失敗しました。ローカル環境(file://)では動作しない場合があります。');
+        alert('コードの読み込みに失敗しました。');
       }
     }
 
@@ -144,13 +143,37 @@ cat << 'HTMLEOF' >> index.html
 </html>
 HTMLEOF
 
-# 6. Gitで安全に自動コミット＆プッシュ（変更がある場合のみ実行）
+# 6. Gitで安全に自動コミット＆プッシュ
 if [ -n "$(git status --porcelain)" ]; then
   git add .
-  # コミットメッセージに日時を追加して履歴をわかりやすく
   git commit -m "ポートフォリオ更新: $(date +'%Y-%m-%d %H:%M:%S')"
   git push origin main
   echo "🎉 サイトの自動収集・ビルド・公開が完了しました！"
 else
   echo "✅ 変更がないため、Gitの更新はスキップしました。"
+fi
+
+# 7. 🌟 新規追加：AIへのゲーム作成指示プロンプトの生成とクリップボードコピー 🌟
+echo -e "\n🤖 AIへの次回作作成プロンプトを生成中..."
+
+PROMPT="私はこれまでに以下のHTMLブラウザゲームを作成しました。
+
+${game_list_text}
+これらは私の「AI-GAME-PORTFOLIO」に収録されています。
+次回作を作りたいのですが、上記のリストと内容やジャンルが被らない、全く新しいルールの「面白くてハマるゲーム」のアイデアを1つ考え、HTML/CSS/JSが1つにまとまった1ファイルの完全なコードを生成してください。
+【条件】コード内のどこかに必ず「AI-GAME-PORTFOLIO」という文字列を含めてください。"
+
+# xclip コマンドを使ってクリップボードにコピー
+if command -v xclip >/dev/null 2>&1; then
+  echo -e "$PROMPT" | xclip -selection clipboard
+  echo "📋 クリップボードにAIへの指示文をコピーしました！"
+  echo "   Geminiの入力欄で「Ctrl + V (貼り付け)」するだけで次回作を発注できます。"
+else
+  echo "⚠️ クリップボードに直接コピーするツール(xclip)が見つかりませんでした。"
+  echo "   以下のテキストを手動でコピーしてAIに貼り付けてください："
+  echo "--------------------------------------------------"
+  echo -e "$PROMPT"
+  echo "--------------------------------------------------"
+  echo -e "💡 次回から自動でコピーされるようにするには、Linuxターミナルで以下を実行してください："
+  echo -e "   sudo apt update && sudo apt install xclip\n"
 fi

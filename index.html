@@ -49,7 +49,6 @@
         </div>
         <div class="button-group">
           <a href="games/ai_game_portfolio.html" class="button" target="_blank">Play</a>
-          <!-- onclickにファイル名を渡す -->
           <button class="button copy-btn" onclick="copyGameCode('ai_game_portfolio.html')">コードコピー</button>
         </div>
       </div>
@@ -61,7 +60,6 @@
         </div>
         <div class="button-group">
           <a href="games/gorgeous_scene_transition_portfolio.html" class="button" target="_blank">Play</a>
-          <!-- onclickにファイル名を渡す -->
           <button class="button copy-btn" onclick="copyGameCode('gorgeous_scene_transition_portfolio.html')">コードコピー</button>
         </div>
       </div>
@@ -73,7 +71,6 @@
         </div>
         <div class="button-group">
           <a href="games/gemini-code-1791547276422.html" class="button" target="_blank">Play</a>
-          <!-- onclickにファイル名を渡す -->
           <button class="button copy-btn" onclick="copyGameCode('gemini-code-1791547276422.html')">コードコピー</button>
         </div>
       </div>
@@ -85,7 +82,6 @@
         </div>
         <div class="button-group">
           <a href="games/code_artifact (2).html" class="button" target="_blank">Play</a>
-          <!-- onclickにファイル名を渡す -->
           <button class="button copy-btn" onclick="copyGameCode('code_artifact (2).html')">コードコピー</button>
         </div>
       </div>
@@ -97,7 +93,6 @@
         </div>
         <div class="button-group">
           <a href="games/conquistador_smoke_rank (1).html" class="button" target="_blank">Play</a>
-          <!-- onclickにファイル名を渡す -->
           <button class="button copy-btn" onclick="copyGameCode('conquistador_smoke_rank (1).html')">コードコピー</button>
         </div>
       </div>
@@ -109,7 +104,6 @@
         </div>
         <div class="button-group">
           <a href="games/survival_wall_throw.html" class="button" target="_blank">Play</a>
-          <!-- onclickにファイル名を渡す -->
           <button class="button copy-btn" onclick="copyGameCode('survival_wall_throw.html')">コードコピー</button>
         </div>
       </div>
@@ -121,7 +115,6 @@
         </div>
         <div class="button-group">
           <a href="games/wizardry_style_rpg_labyrinth_of_legends (1).html" class="button" target="_blank">Play</a>
-          <!-- onclickにファイル名を渡す -->
           <button class="button copy-btn" onclick="copyGameCode('wizardry_style_rpg_labyrinth_of_legends (1).html')">コードコピー</button>
         </div>
       </div>
@@ -133,7 +126,6 @@
         </div>
         <div class="button-group">
           <a href="games/wizardry_rpg.html" class="button" target="_blank">Play</a>
-          <!-- onclickにファイル名を渡す -->
           <button class="button copy-btn" onclick="copyGameCode('wizardry_rpg.html')">コードコピー</button>
         </div>
       </div>
@@ -145,7 +137,6 @@
         </div>
         <div class="button-group">
           <a href="games/fps_game.html" class="button" target="_blank">Play</a>
-          <!-- onclickにファイル名を渡す -->
           <button class="button copy-btn" onclick="copyGameCode('fps_game.html')">コードコピー</button>
         </div>
       </div>
@@ -157,7 +148,6 @@
         </div>
         <div class="button-group">
           <a href="games/pc88 (1).html" class="button" target="_blank">Play</a>
-          <!-- onclickにファイル名を渡す -->
           <button class="button copy-btn" onclick="copyGameCode('pc88 (1).html')">コードコピー</button>
         </div>
       </div>
@@ -169,7 +159,6 @@
         </div>
         <div class="button-group">
           <a href="games/code_artifact (1).html" class="button" target="_blank">Play</a>
-          <!-- onclickにファイル名を渡す -->
           <button class="button copy-btn" onclick="copyGameCode('code_artifact (1).html')">コードコピー</button>
         </div>
       </div>
@@ -181,7 +170,6 @@
         </div>
         <div class="button-group">
           <a href="games/retro_kyoto_run.html" class="button" target="_blank">Play</a>
-          <!-- onclickにファイル名を渡す -->
           <button class="button copy-btn" onclick="copyGameCode('retro_kyoto_run.html')">コードコピー</button>
         </div>
       </div>
@@ -193,7 +181,6 @@
         </div>
         <div class="button-group">
           <a href="games/minimal_rpg.html" class="button" target="_blank">Play</a>
-          <!-- onclickにファイル名を渡す -->
           <button class="button copy-btn" onclick="copyGameCode('minimal_rpg.html')">コードコピー</button>
         </div>
       </div>
@@ -205,7 +192,6 @@
         </div>
         <div class="button-group">
           <a href="games/kabe.html" class="button" target="_blank">Play</a>
-          <!-- onclickにファイル名を渡す -->
           <button class="button copy-btn" onclick="copyGameCode('kabe.html')">コードコピー</button>
         </div>
       </div>
@@ -215,7 +201,6 @@
   <div id="toast">コードをクリップボードにコピーしました！</div>
 
   <script>
-    // 検索フィルター機能
     function filterGames() {
       const input = document.getElementById('searchInput').value.toLowerCase();
       const cards = document.querySelectorAll('.card');
@@ -225,7 +210,6 @@
       });
     }
 
-    // Fetch APIを使ったスマートなコードコピー機能
     async function copyGameCode(filename) {
       try {
         const response = await fetch('games/' + filename);
@@ -236,7 +220,7 @@
         showToast(filename + ' のコードをコピーしました！');
       } catch (err) {
         console.error('コピーに失敗しました', err);
-        alert('コードの読み込みに失敗しました。ローカル環境(file://)では動作しない場合があります。');
+        alert('コードの読み込みに失敗しました。');
       }
     }
 

@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <!-- AI-GAME-PORTFOLIO -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Idle Drakkhen RPG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            touch-action: none; /* スマホでのスワイプによる画面スクロールを防止 */
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            user-select: none;
+        }
+        /* レトロな走査線エフェクト */
+        .scanlines {
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.15));
+            background-size: 100% 4px;
+        }
+        /* キャンバス上のテキストをくっきりさせる */
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+        }
+        /* カスタムスクロールバー */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+    </style>
+</head>
+<body class="flex flex-col h-screen">
+
+    <!-- Top: 3D Viewport (40% height) -->
+    <div id="viewport" class="relative w-full h-[40%] flex-none border-b-2 border-slate-600 bg-black overflow-hidden shadow-lg shadow-black/50 z-10">
+        <canvas id="gameCanvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+        <div class="absolute inset-0 scanlines pointer-events-none"></div>
+    </div>
+
+    <!-- Log Bar (5% height) -->
+    <div class="bg-slate-900 border-b border-slate-700 text-slate-300 text-xs sm:text-sm p-1 text-center font-mono h-[5%] flex-none flex items-center justify-center">
+        <span id="log-display" class="truncate px-2">未知の島に降り立った。冒険が始まる。</span>
+    </div>
+
+    <!-- Middle: Party Status (15% height) -->
+    <div id="party-status" class="flex-none flex w-full bg-slate-800 p-1 sm:p-2 gap-1 sm:gap-2 shadow-inner h-[15%]">
+        <!-- JSで動的に生成されます -->
+    </div>
+
+    <!-- Bottom: Controls/Upgrades (40% height) -->
+    <div class="flex-1 overflow-y-auto p-2 sm:p-4 bg-slate-900 relative">
+        <div class="flex justify-between items-end mb-3 sticky top-0 bg-slate-900/90 backdrop-blur pb-2 z-10 border-b border-slate-700">
+            <div>
+                <div class="text-xs text-slate-400 font-bold mb-1">所持金</div>
+                <h2 class="text-xl sm:text-2xl font-bold text-yellow-400 drop-shadow-md">💰 <span id="gold-display">0</span></h2>
+            </div>
+            <div class="text-right">
+                <div class="text-xs text-slate-400 font-bold mb-1">現在のエリア</div>
+                <div class="text-sm font-bold text-emerald-300">Day <span id="day-display">1</span> - <span id="biome-display">草原</span></div>
+            </div>
+        </div>
+        
+        <div id="upgrades-list" class="space-y-2 sm:space-y-3 pb-8">
+            <!-- JSで動的に生成されます -->
+        </div>
+
+        <div class="mt-8 mb-4 text-center">
+            <button id="btn-reset" onclick="handleReset(this)" class="text-[10px] text-red-500/50 border border-red-500/30 px-3 py-1 rounded transition-colors hover:bg-red-900/30">データリセット</button>
+        </div>
+    </div>
+
+    <script>
+        // --- ゲームデータ定義 ---
+        const BIOMES = [
+            { name: '平原', groundStart: '#2d5a27', groundEnd: '#1a3816', line: '#112211' },
+            { name: '湿地帯', groundStart: '#4a4a33', groundEnd: '#2a2a1a', line: '#1a1a0f' },
+            { name: '枯れ砂漠', groundStart: '#8b6f4e', groundEnd: '#5c452b', line: '#3a2715' },
+            { name: '雪原', groundStart: '#b0c4de', groundEnd: '#778899', line: '#4a5d6e' }
+        ];
+
+        const MONSTER_TYPES = [
+            { emoji: '🦇', name: '吸血コウモリ', baseHp: 30, baseAtk: 6, baseDef: 1, reward: 5, type: 'normal' },
+            { emoji: '🐺', name: 'ダイアウルフ', baseHp: 60, baseAtk: 12, baseDef: 3, reward: 12, type: 'normal' },
+            { emoji: '💀', name: 'スケルトン', baseHp: 90, baseAtk: 18, baseDef: 6, reward: 20, type: 'normal' },
+            { emoji: '👺', name: 'ゴブリン', baseHp: 120, baseAtk: 15, baseDef: 8, reward: 28, type: 'normal' },
+            { emoji: '🦖', name: 'ドレイク', baseHp: 300, baseAtk: 30, baseDef: 12, reward: 80, type: 'elite' },
+            { emoji: '🐉', name: 'エンシェントドラゴン', baseHp: 1200, baseAtk: 60, baseDef: 25, reward: 400, type: 'boss' }
+        ];
+
+        // --- 状態管理 ---
+        let state = {
+            gold: 0,
+            distance: 0,
+            time: 8.0, // 0.0 ~ 24.0
+            day: 1,
+            biomeIdx: 0,
+            encounterCount: 0,
+            party: [
+                { name: '戦士', icon: '⚔️', maxHp: 100, hp: 100, atk: 12, def: 5, lvl: 1, cooldown: 1.5, timer: 0 },
+                { name: 'アマゾン', icon: '🏹', maxHp: 90, hp: 90, atk: 15, def: 4, lvl: 1, cooldown: 1.2, timer: 0 },
+                { name: '斥候', icon: '🗡️', maxHp: 80, hp: 80, atk: 10, def: 6, lvl: 1, cooldown: 1.0, timer: 0 },
+                { name: '魔術師', icon: '🔮', maxHp: 60, hp: 60, atk: 30, def: 2, lvl: 1, cooldown: 2.2, timer: 0 }
+            ],
+            gameMode: 'walking', // 'walking', 'approaching', 'fighting', 'dead'
+            nextEncounter: 15,
+            monster: null,
+            particles: [],
+            screenFlash: 0,
+            lastSaveTime: Date.now()
+        };
+
+        // --- UI初期化 ---
+        function initUI() {
+            const partyContainer = document.getElementById('party-status');
+            partyContainer.innerHTML = '';
+            state.party.forEach((hero, i) => {
+                partyContainer.innerHTML += `
+                    <div class="flex-1 bg-slate-700/50 rounded p-1 flex flex-col items-center justify-center border border-slate-600 relative overflow-hidden transition-colors" id="hero-card-${i}">
+                        <div class="text-[10px] sm:text-xs text-slate-300 font-bold mb-0.5">${hero.name}</div>
+                        <div class="text-xl sm:text-2xl">${hero.icon}</div>
+                        <div class="w-full bg-red-950/80 h-1.5 sm:h-2 mt-1 rounded-full overflow-hidden border border-slate-900">
+                            <div id="hp-bar-${i}" class="bg-gradient-to-r from-emerald-500 to-emerald-400 h-full transition-all duration-300" style="width: 100%"></div>
+                        </div>
+                        <div class="text-[9px] sm:text-[10px] mt-1 text-slate-400 font-mono">Lv <span id="lvl-${i}" class="text-white">${hero.lvl}</span></div>
+                    </div>
+                `;
+            });
+            updateUpgradesUI();
+        }
+
+        function getUpgradeCost(hero) {
+            return Math.floor(40 * Math.pow(1.6, hero.lvl - 1));
+        }
+        function getHealCost() {
+            return 15 * state.party.reduce((max, h) => Math.max(max, h.lvl), 1);
+        }
+
+        function updateUpgradesUI() {
+            const container = document.getElementById('upgrades-list');
+            container.innerHTML = `
+                <button id="btn-heal" onclick="healAll()" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 sm:py-3 px-4 rounded mb-2 shadow-lg active:scale-95 transition-all flex justify-between items-center border border-emerald-500">
+                    <span class="text-sm sm:text-base">💊 全体回復 (Revive)</span>
+                    <span class="bg-black/40 px-2 py-1 rounded text-xs sm:text-sm font-mono" id="cost-heal">💰 ${getHealCost()}</span>
+                </button>
+            `;
+
+            state.party.forEach((hero, i) => {
+                let cost = getUpgradeCost(hero);
+                container.innerHTML += `
+                    <div class="bg-slate-800 rounded p-2 sm:p-3 flex justify-between items-center border border-slate-700 shadow-sm" id="upgrade-box-${i}">
+                        <div class="flex items-center gap-2 sm:gap-3">
+                            <div class="text-xl sm:text-2xl bg-slate-900 p-1.5 rounded border border-slate-700">${hero.icon}</div>
+                            <div>
+                                <div class="font-bold text-xs sm:text-sm text-slate-200">${hero.name} <span class="text-slate-400 font-normal ml-1">Lv ${hero.lvl}</span></div>
+                                <div class="text-[10px] sm:text-xs text-slate-400 font-mono mt-0.5">HP:${hero.maxHp} ATK:${hero.atk} DEF:${hero.def}</div>
+                            </div>
+                        </div>
+                        <button id="btn-upgrade-${i}" onclick="upgradeHero(${i})" class="bg-slate-600 text-slate-400 font-bold py-1.5 sm:py-2 px-3 sm:px-4 rounded text-xs sm:text-sm active:scale-95 transition-all min-w-[80px]">
+                            強化 💰 ${cost}
+                        </button>
+                    </div>
+                `;
+            });
+        }
+
+        // --- アクション処理 ---
+        function upgradeHero(idx) {
+            let hero = state.party[idx];
+            let cost = getUpgradeCost(hero);
+            if (state.gold >= cost) {
+                state.gold -= cost;
+                hero.lvl++;
+                hero.maxHp = Math.floor(hero.maxHp * 1.25);
+                hero.hp = hero.maxHp; 
+                hero.atk = Math.floor(hero.atk * 1.25);
+                hero.def = Math.floor(hero.def * 1.25);
+                updateUpgradesUI();
+                updatePartyUI();
+                setLog(`${hero.name} がレベルアップした！`);
+            }
+        }
+
+        function healAll() {
+            let cost = getHealCost();
+            if (state.gold >= cost) {
+                let needsHeal = state.party.some(h => h.hp < h.maxHp);
+                if (needsHeal) {
+                    state.gold -= cost;
+                    state.party.forEach(h => h.hp = h.maxHp);
+                    updateUpgradesUI();
+                    updatePartyUI();
+                    setLog(`パーティーは休息し、活力を取り戻した。`);
+                }
+            }
+        }
+
+        function setLog(msg) {
+            document.getElementById('log-display').innerText = msg;
+        }
+
+        function updatePartyUI() {
+            state.party.forEach((hero, i) => {
+                let bar = document.getElementById(`hp-bar-${i}`);
+                if(bar) {
+                    let pct = Math.max(0, hero.hp / hero.maxHp) * 100;
+                    bar.style.width = `${pct}%`;
+                    if(pct === 0) {
+                        bar.classList.replace('from-emerald-500', 'from-slate-600');
+                        bar.classList.replace('to-emerald-400', 'to-slate-500');
+                    } else {
+                        bar.classList.replace('from-slate-600', 'from-emerald-500');
+                        bar.classList.replace('to-slate-500', 'to-emerald-400');
+                    }
+                }
+                let lvl = document.getElementById(`lvl-${i}`);
+                if(lvl && lvl.innerText != hero.lvl) lvl.innerText = hero.lvl;
+            });
+            
+            document.getElementById('gold-display').innerText = state.gold.toLocaleString();
+            document.getElementById('day-display').innerText = state.day;
+            document.getElementById('biome-display').innerText = BIOMES[state.biomeIdx].name;
+            
+            // ボタンのアフォーダンス更新
+            state.party.forEach((hero, i) => {
+                let btn = document.getElementById(`btn-upgrade-${i}`);
+                let box = document.getElementById(`upgrade-box-${i}`);
+                if(btn && box) {
+                    let cost = getUpgradeCost(hero);
+                    if(state.gold >= cost) {
+                        btn.className = "bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-1.5 sm:py-2 px-3 sm:px-4 rounded text-xs sm:text-sm active:scale-95 transition-all shadow-md";
+                        box.classList.add('border-yellow-500/50');
+                    } else {
+                        btn.className = "bg-slate-600 text-slate-400 font-bold py-1.5 sm:py-2 px-3 sm:px-4 rounded text-xs sm:text-sm active:scale-95 transition-all";
+                        box.classList.remove('border-yellow-500/50');
+                    }
+                }
+            });
+
+            let healBtn = document.getElementById('btn-heal');
+            let costHealDisplay = document.getElementById('cost-heal');
+            if(healBtn && costHealDisplay) {
+                let cost = getHealCost();
+                costHealDisplay.innerText = `💰 ${cost}`;
+                if (state.gold >= cost) {
+                    healBtn.classList.remove('opacity-50', 'pointer-events-none');
+                } else {
+                    healBtn.classList.add('opacity-50', 'pointer-events-none');
+                }
+            }
+        }
+
+        function flashHeroCard(idx) {
+            let el = document.getElementById(`hero-card-${idx}`);
+            if(el) {
+                el.classList.add('bg-red-900/80', 'border-red-500');
+                setTimeout(() => {
+                    el.classList.remove('bg-red-900/80', 'border-red-500');
+                }, 150);
+            }
+        }
+
+        let resetClicks = 0;
+        function handleReset(btn) {
+            if (resetClicks === 0) {
+                btn.innerText = "本当にリセットしますか？(もう一度タップ)";
+                btn.classList.replace('text-red-500/50', 'text-red-400');
+                btn.classList.replace('border-red-500/30', 'border-red-400');
+                resetClicks++;
+                setTimeout(() => {
+                    resetClicks = 0;
+                    btn.innerText = "データリセット";
+                    btn.classList.replace('text-red-400', 'text-red-500/50');
+                    btn.classList.replace('border-red-400', 'border-red-500/30');
+                }, 3000);
+            } else {
+                localStorage.removeItem('drakkhenIdleSave');
+                location.reload();
+            }
+        }
+
+        // --- キャンバス描画準備 ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false }); // 描画最適化
+        let width, height;
+
+        function resize() {
+            const parent = document.getElementById('viewport');
+            width = parent.clientWidth;
+            height = parent.clientHeight;
+            // 解像度を落としてレトロ感を出す＆パフォーマンス向上
+            canvas.width = width * 0.75; 
+            canvas.height = height * 0.75;
+            ctx.scale(0.75, 0.75); 
+        }
+        window.addEventListener('resize', resize);
+        
+        // 山の生成
+        const mountains = [];
+        for (let i = 0; i < 15; i++) {
+            mountains.push({
+                x: Math.random(), 
+                size: 0.1 + Math.random() * 0.6
+            });
+        }
+
+        function getSkyGradient(time) {
+            if (time >= 4 && time < 7) return ['#ff7e5f', '#3a6073']; // 夜明け
+            if (time >= 7 && time < 16) return ['#4facfe', '#00f2fe']; // 昼
+            if (time >= 16 && time < 19) return ['#f5576c', '#203a43']; // 夕暮れ
+            return ['#0f2027', '#111827']; // 夜
+        }
+
+        // --- メインロジック ---
+        function spawnMonster() {
+            state.encounterCount++;
+            let diffMult = Math.pow(1.15, Math.floor(state.distance / 100)); // 距離に応じてスケール
+            let type;
+            
+            if (state.encounterCount % 10 === 0) {
+                type = MONSTER_TYPES[5]; // 10回に1回ボス（ドラゴン）
+                setLog("大地が震える...強大な気配を感じる！");
+            } else {
+                // 距離に応じて出現する敵の種類が増える
+                let maxIdx = Math.min(4, Math.floor(state.distance / 150) + 1);
+                type = MONSTER_TYPES[Math.floor(Math.random() * maxIdx)];
+                setLog(`前方に影が見える...`);
+            }
+
+            state.monster = {
+                emoji: type.emoji,
+                name: type.name,
+                type: type.type,
+                maxHp: Math.floor(type.baseHp * diffMult),
+                hp: Math.floor(type.baseHp * diffMult),
+                atk: Math.floor(type.baseAtk * diffMult),
+                def: Math.floor(type.baseDef * diffMult),
+                reward: Math.floor(type.reward * diffMult),
+                dist: 12.0, // 奥から出現
+                dead: false,
+                attackTimer: 2.5
+            };
+        }
+
+        function spawnProjectile(heroIdx, tx, ty) {
+            let startX = canvas.width * (0.15 + heroIdx * 0.23);
+            let startY = canvas.height;
+            state.particles.push({
+                x: startX, y: startY, tx: tx, ty: ty,
+                life: 0.2, maxLife: 0.2, color: ['#fff', '#f00', '#0ff', '#f0f'][heroIdx], type: 'proj'
+            });
+        }
+
+        function spawnText(text, x, y, color = '#ffffff') {
+            state.particles.push({
+                x: x + (Math.random() - 0.5) * 60, y: y - Math.random() * 40,
+                vx: 0, vy: -40, life: 1.0, maxLife: 1.0, text: text, color: color, type: 'text'
+            });
+        }
+
+        function update(dt) {
+            // 時間の進行
+            state.time += dt * 0.2; // 現実の1秒 = ゲーム内の0.2時間
+            if (state.time >= 24) {
+                state.time -= 24;
+                state.day++;
+            }
+
+            // バイオームの更新
+            state.biomeIdx = Math.floor(Math.max(0, state.distance) / 400) % BIOMES.length;
+
+            if (state.screenFlash > 0) state.screenFlash -= dt * 4;
+
+            if (state.gameMode === 'walking') {
+                state.distance += dt * 3.0; // 前進
+                
+                if (state.distance >= state.nextEncounter) {
+                    state.gameMode = 'approaching';
+                    spawnMonster();
+                }
+            } 
+            else if (state.gameMode === 'approaching') {
+                state.monster.dist -= dt * 6.0; // 敵が近づく
+                if (state.monster.dist <= 1.0) {
+                    state.monster.dist = 1.0;
+                    state.gameMode = 'fighting';
+                    setLog(`${state.monster.name} が襲いかかってきた！`);
+                }
+            } 
+            else if (state.gameMode === 'fighting' && state.monster && !state.monster.dead) {
+                let m = state.monster;
+                let mx = canvas.width / 2;
+                let my = canvas.height / 2;
+
+                // 英雄の攻撃
+                state.party.forEach((hero, i) => {
+                    if (hero.hp > 0) {
+                        hero.timer -= dt;
+                        if (hero.timer <= 0) {
+                            let dmg = Math.max(1, hero.atk - m.def + Math.floor(Math.random()*4));
+                            let isCrit = Math.random() < 0.15;
+                            if(isCrit) dmg = Math.floor(dmg * 1.8);
+
+                            m.hp -= dmg;
+                            spawnProjectile(i, mx, my);
+                            
+                            setTimeout(() => {
+                                spawnText(dmg, mx, my, isCrit ? '#ffaa00' : '#ffffff');
+                            }, 200);
+                            
+                            hero.timer = hero.cooldown * (0.8 + Math.random()*0.4);
+                        }
+                    }
+                });
+
+                // モンスターの攻撃
+                m.attackTimer -= dt;
+                if (m.attackTimer <= 0) {
+                    let alive = state.party.map((h, idx) => ({h, idx})).filter(x => x.h.hp > 0);
+                    if (alive.length > 0) {
+                        let target = alive[Math.floor(Math.random() * alive.length)];
+                        let dmg = Math.max(1, m.atk - target.h.def + Math.floor(Math.random()*6));
+                        target.h.hp = Math.max(0, target.h.hp - dmg);
+                        
+                        flashHeroCard(target.idx);
+                        state.screenFlash = 1.0; // 画面フラッシュ
+                        spawnText(dmg, canvas.width*(0.15 + target.idx*0.23), canvas.height - 20, '#ff4444');
+                        
+                        m.attackTimer = (m.type === 'boss' ? 1.5 : 2.0); 
+                    }
+                }
+
+                // 勝敗判定
+                let aliveCount = state.party.filter(h => h.hp > 0).length;
+                if (aliveCount === 0) {
+                    // 全滅
+                    state.gameMode = 'dead';
+                    setLog("パーティーは全滅した...");
+                    setTimeout(() => {
+                        state.party.forEach(h => h.hp = h.maxHp);
+                        state.monster = null;
+                        state.gameMode = 'walking';
+                        state.distance = Math.max(0, state.distance - 50); // ペナルティで後退
+                        state.nextEncounter = state.distance + 20;
+                        setLog("拠点で再起し、再び旅に出た。");
+                        updatePartyUI();
+                    }, 4000);
+                } 
+                else if (m.hp <= 0) {
+                    // 勝利
+                    m.dead = true;
+                    state.gold += m.reward;
+                    spawnText("撃破！", mx, my - 60, '#00ff00');
+                    spawnText(`+${m.reward} G`, mx, my - 30, '#ffff00');
+                    setLog(`${m.name} を倒した！ (+${m.reward}G)`);
+                    
+                    setTimeout(() => {
+                        state.gameMode = 'walking';
+                        state.monster = null;
+                        state.nextEncounter = state.distance + 15 + Math.random() * 20;
+                        updateUpgradesUI();
+                    }, 1200);
+                }
+            }
+
+            // パーティクルの更新
+            for (let i = state.particles.length - 1; i >= 0; i--) {
+                let p = state.particles[i];
+                p.life -= dt;
+                if (p.life <= 0) {
+                    state.particles.splice(i, 1);
+                } else if (p.type === 'text') {
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                }
+            }
+        }
+
+        // --- 描画処理 ---
+        function draw() {
+            const w = canvas.width;
+            const h = canvas.height;
+            const horizon = h * 0.45; // 地平線の位置
+
+            // 1. 空の描画
+            let skyColor = getSkyGradient(state.time);
+            let skyGrad = ctx.createLinearGradient(0, 0, 0, horizon);
+            skyGrad.addColorStop(0, skyColor[0]);
+            skyGrad.addColorStop(1, skyColor[1]);
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, w, horizon);
+
+            // 太陽と月
+            let drawBody = (cx, cy, r, color, glow) => {
+                if (glow) {
+                    ctx.fillStyle = glow;
+                    ctx.beginPath(); ctx.arc(cx, cy, r*2.5, 0, Math.PI*2); ctx.fill();
+                }
+                ctx.fillStyle = color;
+                ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
+            }
+            let radX = w * 0.4; let radY = h * 0.3;
+            if (state.time >= 4 && state.time <= 20) { // 太陽
+                let p = (state.time - 4) / 16; 
+                let angle = Math.PI - p * Math.PI; 
+                let sx = w/2 + Math.cos(angle) * radX;
+                let sy = horizon + 30 - Math.sin(angle) * radY; // 地平線から昇る
+                drawBody(sx, sy, 18, '#FFD700', 'rgba(255, 200, 0, 0.2)');
+            }
+            if (state.time >= 18 || state.time <= 6) { // 月
+                let p = state.time >= 18 ? (state.time - 18) / 12 : (state.time + 6) / 12;
+                let angle = Math.PI - p * Math.PI;
+                let mx = w/2 + Math.cos(angle) * radX;
+                let my = horizon + 30 - Math.sin(angle) * radY;
+                drawBody(mx, my, 12, '#E2E8F0', 'rgba(255, 255, 255, 0.1)');
+                
+                // 星
+                ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                for(let i=0; i<20; i++) {
+                    let sx = (Math.sin(i*11) * 0.5 + 0.5) * w;
+                    let sy = (Math.cos(i*13) * 0.5 + 0.5) * horizon;
+                    ctx.fillRect(sx, sy, 2, 2);
+                }
+            }
+
+            // 山（遠景のパララックス）
+            ctx.fillStyle = BIOMES[state.biomeIdx].line;
+            let mOffset = (state.distance * 0.01) % 1;
+            mountains.forEach(m => {
+                let mx = ((m.x - mOffset + 1) % 1) * w;
+                let mw = w * 0.4 * m.size;
+                let mh = horizon * 0.5 * m.size;
+                ctx.beginPath();
+                ctx.moveTo(mx - mw/2, horizon);
+                ctx.lineTo(mx, horizon - mh);
+                ctx.lineTo(mx + mw/2, horizon);
+                ctx.fill();
+                // 画面端の折り返し描画
+                if (mx - mw/2 < 0) {
+                    ctx.beginPath(); ctx.moveTo(mx+w - mw/2, horizon); ctx.lineTo(mx+w, horizon - mh); ctx.lineTo(mx+w + mw/2, horizon); ctx.fill();
+                }
+            });
+
+            // 2. 地面の描画
+            let b = BIOMES[state.biomeIdx];
+            let groundGrad = ctx.createLinearGradient(0, horizon, 0, h);
+            groundGrad.addColorStop(0, b.groundEnd);
+            groundGrad.addColorStop(1, b.groundStart);
+            ctx.fillStyle = groundGrad;
+            ctx.fillRect(0, horizon, w, h - horizon);
+
+            // 3. 疑似3Dパースペクティブグリッド
+            ctx.strokeStyle = b.line;
+            ctx.lineWidth = 1.5;
+            // 水平線（近づいてくる表現）
+            let moveOffset = (state.distance % 6) / 6; // 0.0 ~ 1.0
+            for (let i = 1; i <= 15; i++) {
+                let z = (i - moveOffset);
+                if (z <= 0.1) continue;
+                let p = 1.5 / z; // パースペクティブ分割
+                let y = horizon + (h - horizon) * p;
+                if (y > horizon && y <= h * 1.5) {
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+                }
+            }
+            // 垂直線（放射状）
+            let vpX = w/2;
+            for(let i = -15; i <= 15; i++) {
+                let xAtBottom = vpX + i * (w / 4);
+                ctx.beginPath(); ctx.moveTo(vpX, horizon); ctx.lineTo(xAtBottom, h); ctx.stroke();
+            }
+
+            // 4. モンスター描画
+            if (state.monster) {
+                let m = state.monster;
+                // z軸ベースのスケール計算
+                let scale = 1.0 / m.dist; 
+                let size = (h * 0.8) * scale;
+                if (size > h * 1.5) size = h * 1.5; // 最大サイズ制限
+                
+                let mx = w/2;
+                let my = horizon + (h - horizon) * scale + size*0.1; // パースに合わせたY座標
+
+                // 影
+                if (!m.dead) {
+                    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                    ctx.beginPath(); ctx.ellipse(mx, my, size*0.3, size*0.08, 0, 0, Math.PI*2); ctx.fill();
+                }
+
+                ctx.font = `${size}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                
+                // 登場時・被弾時のシェイク
+                let wobble = 0;
+                if (!m.dead && state.gameMode === 'fighting') {
+                    wobble = Math.sin(Date.now()/50) * (size*0.02);
+                }
+
+                ctx.save();
+                if (m.dead) ctx.globalAlpha = 0.3; // 死亡時フェード
+                // テキストの縁取りで視認性アップ
+                ctx.lineWidth = size * 0.05;
+                ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+                ctx.strokeText(m.emoji, mx + wobble, my);
+                ctx.fillText(m.emoji, mx + wobble, my);
+                
+                // モンスターHPバー
+                if (!m.dead && m.dist < 3.0) {
+                    let bw = size * 0.6;
+                    let bh = size * 0.08;
+                    let bx = mx - bw/2;
+                    let by = my - size - bh - 10;
+                    ctx.fillStyle = '#450a0a'; ctx.fillRect(bx, by, bw, bh);
+                    ctx.fillStyle = m.type === 'boss' ? '#dc2626' : '#ea580c';
+                    ctx.fillRect(bx, by, bw * Math.max(0, m.hp / m.maxHp), bh);
+                    ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.strokeRect(bx, by, bw, bh);
+                }
+                ctx.restore();
+            }
+
+            // 5. パーティクル描画
+            state.particles.forEach(p => {
+                if (p.type === 'proj') {
+                    let t = 1.0 - (p.life / p.maxLife);
+                    let cx = p.x + (p.tx - p.x) * t;
+                    let cy = p.y + (p.ty - p.y) * Math.pow(t, 2); // 放物線っぽく
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                    ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI * 2); ctx.fill();
+                } else if (p.type === 'text') {
+                    ctx.font = 'bold 22px "Inter", sans-serif';
+                    ctx.fillStyle = p.color;
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 4;
+                    ctx.textAlign = 'center';
+                    ctx.globalAlpha = p.life / p.maxLife;
+                    ctx.strokeText(p.text, p.x, p.y);
+                    ctx.fillText(p.text, p.x, p.y);
+                    ctx.globalAlpha = 1.0;
+                }
+            });
+
+            // 6. ダメージフラッシュ & 死亡エフェクト
+            if (state.screenFlash > 0) {
+                ctx.fillStyle = `rgba(220, 38, 38, ${state.screenFlash * 0.4})`;
+                ctx.fillRect(0, 0, w, h);
+            }
+            if (state.gameMode === 'dead') {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, w, h);
+                ctx.fillStyle = '#dc2626';
+                ctx.font = 'bold 36px serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText("PARTY WIPED...", w/2, h/2 - 20);
+            }
+        }
+
+        // --- セーブ＆ロード処理 ---
+        function saveGame() {
+            state.lastSaveTime = Date.now();
+            localStorage.setItem('drakkhenIdleSave', JSON.stringify({
+                gold: state.gold, distance: state.distance, day: state.day, time: state.time, biomeIdx: state.biomeIdx, encounterCount: state.encounterCount,
+                party: state.party.map(h => ({ lvl: h.lvl, hp: h.hp, maxHp: h.maxHp, atk: h.atk, def: h.def })),
+                lastSaveTime: state.lastSaveTime
+            }));
+        }
+
+        function loadGame() {
+            let saved = localStorage.getItem('drakkhenIdleSave');
+            if (saved) {
+                try {
+                    let data = JSON.parse(saved);
+                    state.gold = data.gold; state.distance = data.distance; state.day = data.day;
+                    state.time = data.time || 8; state.biomeIdx = data.biomeIdx || 0; state.encounterCount = data.encounterCount || 0;
+                    data.party.forEach((p, i) => {
+                        state.party[i].lvl = p.lvl; state.party[i].hp = p.hp; state.party[i].maxHp = p.maxHp;
+                        state.party[i].atk = p.atk; state.party[i].def = p.def;
+                    });
+                    
+                    // 簡易オフライン進行計算（10秒に1回程度の雑魚討伐と仮定）
+                    let now = Date.now();
+                    if (data.lastSaveTime) {
+                        let secondsAway = (now - data.lastSaveTime) / 1000;
+                        if (secondsAway > 60) {
+                            let maxTime = Math.min(secondsAway, 86400); // 最大24時間分
+                            let defeats = Math.floor(maxTime / 15);
+                            let avgReward = 5 * Math.pow(1.15, Math.floor(state.distance / 100));
+                            let offlineGold = Math.floor(defeats * avgReward);
+                            if (offlineGold > 0) {
+                                state.gold += offlineGold;
+                                setTimeout(() => {
+                                    setLog(`オフライン進行で ${offlineGold.toLocaleString()} G 獲得！`);
+                                }, 1000);
+                            }
+                        }
+                    }
+                } catch(e) { console.error("Save data corrupted", e); }
+            }
+        }
+
+        // --- メインループ ---
+        let lastTime = performance.now();
+        let accumulator = 0;
+        const TIME_STEP = 0.05; // 固定ステップ (20FPSでロジック処理)
+
+        function gameLoop(now) {
+            let frameTime = (now - lastTime) / 1000;
+            lastTime = now;
+            
+            // タブが裏に回っていた時の異常値防止 (最大1秒分のみ追いつく)
+            if (frameTime > 1.0) frameTime = 1.0; 
+            accumulator += frameTime;
+            
+            while (accumulator >= TIME_STEP) {
+                update(TIME_STEP);
+                accumulator -= TIME_STEP;
+            }
+            
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 定期UI更新（毎フレームやるとDOM操作が重いため）
+        setInterval(() => {
+            updatePartyUI();
+        }, 300);
+
+        // 10秒ごとに自動セーブ
+        setInterval(saveGame, 10000);
+
+        // 起動処理
+        window.onload = () => {
+            loadGame();
+            initUI();
+            resize();
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>

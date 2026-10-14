@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CHROMA DECA - AI-GAME-PORTFOLIO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow: hidden;
+            touch-action: none; /* Prevent scroll on touch */
+        }
+        .font-cyber {
+            font-family: 'Orbitron', sans-serif;
+        }
+        #score-display {
+            transition: all 0.2s ease-out;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <header class="w-full max-w-md flex justify-between items-end mb-4">
+        <div>
+            <h1 class="text-3xl font-black tracking-widest font-cyber text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-fuchsia-500">
+                CHROMA DECA
+            </h1>
+            <p class="text-[10px] text-slate-400 font-cyber tracking-widest mt-1">PART OF AI-GAME-PORTFOLIO</p>
+        </div>
+        <div class="text-right">
+            <div class="text-xs text-slate-400 font-bold tracking-widest">SCORE</div>
+            <div class="text-3xl font-bold font-cyber text-cyan-400" id="score-display">0</div>
+        </div>
+    </header>
+
+    <main class="relative w-full max-w-md aspect-square bg-slate-800 rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.8)] border border-slate-700 select-none overflow-hidden" id="canvas-container">
+        <canvas id="game-canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+        
+        <!-- Game Over Overlay -->
+        <div id="game-over" class="hidden absolute top-0 left-0 w-full h-full glass-panel flex flex-col items-center justify-center z-10 p-6 text-center">
+            <h2 class="text-4xl font-black text-fuchsia-500 mb-2 font-cyber animate-pulse">SYSTEM HALTED</h2>
+            <p class="mb-2 text-slate-300">No empty space available.</p>
+            <p class="mb-8 text-xl font-bold">Final Score: <span id="final-score" class="text-cyan-400 font-cyber">0</span></p>
+            <button id="restart-btn" class="px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-900 font-black rounded-full transition-transform hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(6,182,212,0.6)] font-cyber">
+                REBOOT SYSTEM
+            </button>
+        </div>
+    </main>
+
+    <footer class="w-full max-w-md mt-6 flex items-stretch bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
+        <div class="p-4 bg-slate-900/50 flex flex-col items-center justify-center w-32 border-r border-slate-700 shrink-0">
+            <div class="text-[10px] font-bold text-slate-400 mb-2 tracking-widest">NEXT MODULE</div>
+            <div class="w-16 h-16 rounded-xl flex items-center justify-center text-3xl font-black font-cyber transition-all duration-300" id="next-block-display">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+        <div class="p-4 flex-1 text-xs text-slate-300 flex flex-col justify-center leading-relaxed">
+            <p><span class="text-cyan-400 font-bold">1.</span> Place on empty space. Same colors pull & merge.</p>
+            <p><span class="text-fuchsia-400 font-bold">2.</span> Reach multiple of <span class="text-white font-bold bg-slate-700 px-1 rounded">10</span> to OVERLOAD (Explode).</p>
+            <p><span class="text-yellow-400 font-bold">3.</span> Overloads change adjacent blocks to their color and add <span class="text-white font-bold">+1</span>, causing massive chains!</p>
+        </div>
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const canvasContainer = document.getElementById('canvas-container');
+        
+        // Logical constants
+        const LOGICAL_SIZE = 500;
+        const GRID_SIZE = 5;
+        const CELL_SIZE = LOGICAL_SIZE / GRID_SIZE;
+        
+        // Colors palette (Neon Theme)
+        const COLORS = {
+            cyan: '#06b6d4',    // Tailwind cyan-500
+            magenta: '#d946ef', // Tailwind fuchsia-500
+            yellow: '#eab308'   // Tailwind yellow-500
+        };
+        const COLOR_KEYS = Object.keys(COLORS);
+
+        // State variables
+        let grid = [];
+        let score = 0;
+        let gameState = 'playing'; // 'playing', 'gameover'
+        let isProcessingQueue = false;
+        let nextBlock = null;
+
+        // Utility: Sleep for async animations
+        const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+        class AnimationManager {
+            constructor() {
+                this.animations = [];
+            }
+            add(anim) {
+                return new Promise(resolve => {
+                    anim.onComplete = resolve;
+                    this.animations.push(anim);
+                });
+            }
+            update(dt) {
+                for (let i = this.animations.length - 1; i >= 0; i--) {
+                    let a = this.animations[i];
+                    a.t += dt;
+                    if (a.t >= a.duration) {
+                        a.t = a.duration;
+                        a.update(1.0, dt); // progress = 1.0
+                        if (a.onComplete) a.onComplete();
+                        this.animations.splice(i, 1);
+                    } else {
+                        a.update(a.t / a.duration, dt);
+                    }
+                }
+            }
+            draw(ctx) {
+                // Ensure proper z-indexing by drawing specific layers if needed. 
+                // For now, draw all in order of insertion.
+                this.animations.forEach(a => a.draw(ctx));
+            }
+        }
+        const animManager = new AnimationManager();
+
+        class SlideAnim {
+            constructor(sc, sr, ec, er, color, val) {
+                this.sc = sc; this.sr = sr;
+                this.ec = ec; this.er = er;
+                this.color = color;
+                this.val = val;
+                this.duration = 250; 
+                this.t = 0;
+                this.progress = 0;
+            }
+            update(p, dt) {
+                // Ease in out cubic
+                this.progress = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+            }
+            draw(ctx) {
+                let x = (this.sc + (this.ec - this.sc) * this.progress) * CELL_SIZE;
+                let y = (this.sr + (this.er - this.sr) * this.progress) * CELL_SIZE;
+                drawBlock(ctx, x, y, CELL_SIZE, this.color, this.val, 1.0, 0.9);
+            }
+        }
+
+        class BounceAnim {
+            constructor(c, r) {
+                this.c = c; this.r = r;
+                this.duration = 200;
+                this.t = 0;
+            }
+            update(p, dt) {
+                let cell = grid[this.r][this.c];
+                if (cell) {
+                    // Pop effect
+                    cell.scale = 1.0 + Math.sin(p * Math.PI) * 0.15;
+                }
+            }
+            draw(ctx) {} 
+        }
+
+        class ExplosionAnim {
+            constructor(c, r, color) {
+                this.x = c * CELL_SIZE + CELL_SIZE / 2;
+                this.y = r * CELL_SIZE + CELL_SIZE / 2;
+                this.color = color;
+                this.duration = 600;
+                this.t = 0;
+                this.particles = [];
+                for(let i=0; i<25; i++) {
+                    let angle = Math.random() * Math.PI * 2;
+                    let speed = Math.random() * 400 + 100; 
+                    this.particles.push({
+                        x: this.x, y: this.y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        size: Math.random() * 12 + 4,
+                        rot: Math.random() * Math.PI,
+                        vrot: (Math.random() - 0.5) * 15
+                    });
+                }
+                this.alpha = 1.0;
+            }
+            update(p, dt) {
+                let sec = dt / 1000;
+                this.particles.forEach(pt => {
+                    pt.x += pt.vx * sec;
+                    pt.y += pt.vy * sec;
+                    pt.rot += pt.vrot * sec;
+                    pt.vx *= 0.85; // friction
+                    pt.vy *= 0.85;
+                });
+                this.alpha = 1 - Math.pow(p, 2); // slow fade then fast
+            }
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.color;
+                this.particles.forEach(pt => {
+                    ctx.translate(pt.x, pt.y);
+                    ctx.rotate(pt.rot);
+                    ctx.fillRect(-pt.size/2, -pt.size/2, pt.size, pt.size);
+                    ctx.rotate(-pt.rot);
+                    ctx.translate(-pt.x, -pt.y);
+                });
+                ctx.restore();
+            }
+        }
+
+        class FloatingTextAnim {
+            constructor(c, r, text, color) {
+                this.x = c * CELL_SIZE + CELL_SIZE / 2;
+                this.y = r * CELL_SIZE + CELL_SIZE / 2;
+                this.text = text;
+                this.color = color;
+                this.duration = 900;
+                this.t = 0;
+                this.dy = 0;
+            }
+            update(p, dt) {
+                this.dy = -60 * Math.pow(p, 0.5);
+                this.alpha = 1 - Math.pow(p, 3);
+            }
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.font = `black 36px 'Orbitron', sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Outline
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = '#000';
+                ctx.strokeText(this.text, this.x, this.y + this.dy);
+                
+                // Text with glow
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = this.color;
+                ctx.fillText(this.text, this.x, this.y + this.dy);
+                
+                ctx.restore();
+            }
+        }
+
+        class ColorChangeAnim {
+            constructor(c, r, color) {
+                this.c = c; this.r = r;
+                this.color = color;
+                this.duration = 300;
+                this.t = 0;
+            }
+            update(p, dt) {
+                this.alpha = p < 0.5 ? p * 2 : (1 - p) * 2;
+            }
+            draw(ctx) {
+                let x = this.c * CELL_SIZE;
+                let y = this.r * CELL_SIZE;
+                ctx.save();
+                ctx.globalAlpha = this.alpha * 0.8;
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = this.color;
+                ctx.beginPath();
+                ctx.roundRect(x + 6, y + 6, CELL_SIZE - 12, CELL_SIZE - 12, 16);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function drawBlock(ctx, x, y, size, color, val, scale = 1.0, alpha = 1.0) {
+            const padding = 6;
+            const w = size - padding * 2;
+            const cx = x + size / 2;
+            const cy = y + size / 2;
+            
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.scale(scale, scale);
+            ctx.translate(-w / 2, -w / 2);
+            
+            ctx.globalAlpha = alpha;
+            
+            // Base shadow/glow
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = color;
+            ctx.fillStyle = color;
+            
+            ctx.beginPath();
+            ctx.roundRect(0, 0, w, w, 16);
+            ctx.fill();
+            
+            ctx.shadowBlur = 0; // Reset for inner parts
+            
+            // Inner darker bevel for depth
+            ctx.fillStyle = 'rgba(0,0,0,0.25)';
+            ctx.beginPath();
+            ctx.roundRect(4, 4, w - 8, w - 8, 12);
+            ctx.fill();
+
+            // Inner highlight
+            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            ctx.beginPath();
+            ctx.roundRect(4, 4, w - 8, (w - 8)/2, 12);
+            ctx.fill();
+            
+            // Value Text
+            ctx.fillStyle = '#ffffff';
+            // Scale font size based on value length to fit large merged numbers
+            let fontSize = val > 99 ? w * 0.35 : w * 0.45; 
+            ctx.font = `900 ${fontSize}px 'Orbitron', sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Slight drop shadow on text
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetY = 2;
+            ctx.fillText(val, w / 2, w / 2 + 2);
+            
+            ctx.restore();
+        }
+
+        function draw() {
+            // Clear logical area
+            ctx.clearRect(0, 0, LOGICAL_SIZE, LOGICAL_SIZE);
+            
+            // Draw Grid Background
+            for(let r=0; r<GRID_SIZE; r++) {
+                for(let c=0; c<GRID_SIZE; c++) {
+                    ctx.fillStyle = '#1e293b'; 
+                    ctx.beginPath();
+                    ctx.roundRect(c*CELL_SIZE + 6, r*CELL_SIZE + 6, CELL_SIZE - 12, CELL_SIZE - 12, 16);
+                    ctx.fill();
+                    
+                    ctx.strokeStyle = '#334155';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            }
+            
+            // Draw Blocks
+            for(let r=0; r<GRID_SIZE; r++) {
+                for(let c=0; c<GRID_SIZE; c++) {
+                    let cell = grid[r][c];
+                    // Do not draw if it is currently being merged (SlideAnim draws it)
+                    if (cell && !cell.isMerging) {
+                        drawBlock(ctx, c*CELL_SIZE, r*CELL_SIZE, CELL_SIZE, cell.color, cell.val, cell.scale || 1.0);
+                    }
+                }
+            }
+            
+            // Draw Animations (Particles, Sliding Blocks, Floating Text)
+            animManager.draw(ctx);
+        }
+
+        function getNeighbors(c, r) {
+            let n = [];
+            if (r > 0) n.push({c: c, r: r-1});
+            if (r < GRID_SIZE-1) n.push({c: c, r: r+1});
+            if (c > 0) n.push({c: c-1, r: r});
+            if (c < GRID_SIZE-1) n.push({c: c+1, r: r});
+            return n;
+        }
+
+        function generateNextBlock() {
+            const colorKey = COLOR_KEYS[Math.floor(Math.random() * COLOR_KEYS.length)];
+            // Weights favoring 1-7
+            const weights = [1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7];
+            const val = weights[Math.floor(Math.random() * weights.length)];
+            return { color: COLORS[colorKey], val: val };
+        }
+
+        function updateNextBlockUI() {
+            const el = document.getElementById('next-block-display');
+            el.style.backgroundColor = nextBlock.color;
+            el.style.boxShadow = `0 0 20px ${nextBlock.color}80, inset 0 0 10px rgba(0,0,0,0.5)`;
+            el.style.color = '#ffffff';
+            el.style.textShadow = '0px 2px 5px rgba(0,0,0,0.8)';
+            el.innerText = nextBlock.val;
+        }
+
+        function updateScore(pts) {
+            score += pts;
+            const el = document.getElementById('score-display');
+            el.innerText = score;
+            
+            if (pts > 0) {
+                el.style.transform = 'scale(1.3)';
+                el.style.color = '#ffffff';
+                el.style.textShadow = '0 0 10px #06b6d4';
+                setTimeout(() => {
+                    el.style.transform = 'scale(1)';
+                    el.style.color = '#06b6d4';
+                    el.style.textShadow = 'none';
+                }, 200);
+            }
+        }
+
+        async function onCellClick(c, r) {
+            if (gameState !== 'playing' || isProcessingQueue || grid[r][c] !== null) return;
+            
+            isProcessingQueue = true;
+            
+            // 1. Place Block
+            grid[r][c] = { color: nextBlock.color, val: nextBlock.val, scale: 1.0, isMerging: false };
+            animManager.add(new BounceAnim(c, r));
+            updateScore(10); // Placement score
+            
+            nextBlock = generateNextBlock();
+            updateNextBlockUI();
+            
+            // 2. Start Merge Sequence
+            await processMerge(c, r);
+            
+            // Finish turn
+            isProcessingQueue = false;
+            checkGameOver();
+        }
+
+        async function processMerge(c, r) {
+            let target = grid[r][c];
+            let neighbors = getNeighbors(c, r);
+            let sameColorNeighbors = neighbors.filter(n => grid[n.r][n.c] && grid[n.r][n.c].color === target.color && !grid[n.r][n.c].isMerging);
+            
+            if (sameColorNeighbors.length > 0) {
+                let anims = [];
+                let sum = target.val;
+                
+                // Hide target visually during merge
+                target.isMerging = true;
+                let originVal = target.val;
+                
+                sameColorNeighbors.forEach(n => {
+                    let cell = grid[n.r][n.c];
+                    sum += cell.val;
+                    grid[n.r][n.c] = null; // Remove from grid
+                    anims.push(animManager.add(new SlideAnim(n.c, n.r, c, r, cell.color, cell.val)));
+                });
+                
+                // Keep the target rendering as a sliding animation from itself to itself to maintain visual consistency
+                anims.push(animManager.add(new SlideAnim(c, r, c, r, target.color, originVal)));
+
+                await Promise.all(anims);
+                
+                // Merge completed
+                target.val = sum;
+                target.isMerging = false;
+                updateScore(sum * 10); // Merge score
+                await animManager.add(new BounceAnim(c, r));
+            }
+            
+            // 3. Check for Overload
+            await processOverload(c, r, 1);
+        }
+
+        async function processOverload(c, r, chainCount) {
+            let target = grid[r][c];
+            if (!target || target.val % 10 !== 0) return; // Multiple of 10 triggers Overload
+            
+            // Overload Triggered!
+            let color = target.color;
+            let val = target.val;
+            grid[r][c] = null; // Destroy
+            
+            // Scoring
+            let pts = val * 100 * chainCount;
+            updateScore(pts);
+            animManager.add(new FloatingTextAnim(c, r, `+${pts}`, color));
+            
+            // Explosion
+            animManager.add(new ExplosionAnim(c, r, color));
+            await sleep(150); // Pause briefly for impact
+            
+            let neighbors = getNeighbors(c, r);
+            let targetsToChain = [];
+            let changeAnims = [];
+            
+            // Spread Color and +1 Energy
+            neighbors.forEach(n => {
+                let cell = grid[n.r][n.c];
+                if (cell) {
+                    cell.color = color;
+                    cell.val += 1;
+                    changeAnims.push(animManager.add(new ColorChangeAnim(n.c, n.r, color)));
+                    targetsToChain.push({c: n.c, r: n.r});
+                }
+            });
+            
+            if (changeAnims.length > 0) {
+                await Promise.all(changeAnims);
+                // Pop the changed cells
+                targetsToChain.forEach(t => animManager.add(new BounceAnim(t.c, t.r)));
+                await sleep(100);
+            }
+            
+            // Recursively check chains for newly affected blocks
+            for (let i = 0; i < targetsToChain.length; i++) {
+                let t = targetsToChain[i];
+                await processOverload(t.c, t.r, chainCount + 1);
+            }
+        }
+
+        function checkGameOver() {
+            let isFull = true;
+            for(let r=0; r<GRID_SIZE; r++) {
+                for(let c=0; c<GRID_SIZE; c++) {
+                    if (!grid[r][c]) {
+                        isFull = false;
+                        break;
+                    }
+                }
+            }
+            if (isFull) {
+                gameState = 'gameover';
+                document.getElementById('final-score').innerText = score;
+                document.getElementById('game-over').classList.remove('hidden');
+            }
+        }
+
+        function resizeCanvas() {
+            const rect = canvasContainer.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(canvas.width / LOGICAL_SIZE, canvas.height / LOGICAL_SIZE);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        canvas.addEventListener('pointerdown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = LOGICAL_SIZE / rect.width;
+            const scaleY = LOGICAL_SIZE / rect.height;
+            
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            
+            const c = Math.floor(x / CELL_SIZE);
+            const r = Math.floor(y / CELL_SIZE);
+            
+            if (c >= 0 && c < GRID_SIZE && r >= 0 && r < GRID_SIZE) {
+                onCellClick(c, r);
+            }
+        });
+
+        document.getElementById('restart-btn').addEventListener('click', init);
+
+        let lastTime = performance.now();
+        function loop(time) {
+            let dt = time - lastTime;
+            lastTime = time;
+            
+            // Cap dt to prevent huge jumps if tab was inactive
+            if (dt > 100) dt = 16; 
+            
+            animManager.update(dt);
+            draw();
+            
+            requestAnimationFrame(loop);
+        }
+
+        function init() {
+            score = 0;
+            updateScore(0);
+            grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(null));
+            gameState = 'playing';
+            isProcessingQueue = false;
+            animManager.animations = [];
+            document.getElementById('game-over').classList.add('hidden');
+            
+            nextBlock = generateNextBlock();
+            updateNextBlockUI();
+            
+            resizeCanvas();
+        }
+
+        // Start
+        init();
+        requestAnimationFrame(loop);
+    </script>
+</body>
+</html>

@@ -1,11 +1,21 @@
 #!/bin/bash
 
-echo "🔍 ダウンロードフォルダから新しいゲーム（AI-GAME-PORTFOLIO）を探索中..."
+echo "🔍 ダウンロードフォルダから新しいゲームおよび共通データを探索中..."
 
 # 1. games フォルダを準備
 mkdir -p games
 
-# 2. ダウンロードフォルダから目印のあるファイルだけを探索
+# 2. 共通データファイル（game-data.js）の探索と自動更新
+data_file_found=$(grep -rl "AI_PORTFOLIO_DATA_FILE" ~/ダウンロード --include="*.js" 2>/dev/null | head -n 1)
+if [ -n "$data_file_found" ]; then
+  cp "$data_file_found" ./game-data.js
+  echo "📦 共通データファイルを更新しました: $(basename "$data_file_found") -> ./game-data.js"
+elif [ -f "$HOME/ダウンロード/game-data.js" ]; then
+  cp "$HOME/ダウンロード/game-data.js" ./game-data.js
+  echo "📦 共通データファイルを更新しました: game-data.js -> ./game-data.js"
+fi
+
+# 3. ダウンロードフォルダから目印のあるHTMLファイルだけを探索・収集
 grep -rl "AI-GAME-PORTFOLIO" ~/ダウンロード --include="*.html" --exclude-dir="my-website" 2>/dev/null | while read -r file; do
   filename=$(basename "$file")
   
@@ -13,11 +23,11 @@ grep -rl "AI-GAME-PORTFOLIO" ~/ダウンロード --include="*.html" --exclude-d
     continue
   fi
 
-  echo "✨ 新しく発見して収集: $filename"
+  echo "✨ 新しいゲームを発見して収集: $filename"
   cp "$file" games/
 done
 
-# 3. index.html のデザイン部分を生成（検索窓とCSSを追加）
+# 4. index.html のデザイン部分を生成
 cat << 'HTMLEOF' > index.html
 <!DOCTYPE html>
 <html lang="ja">
@@ -64,7 +74,7 @@ cat << 'HTMLEOF' > index.html
     <div class="grid" id="gameGrid">
 HTMLEOF
 
-# 4. games フォルダ内のHTMLを読み込んでカードを追加＆AI用のリスト作成
+# 5. games フォルダ内のHTMLを読み込んでカードを追加＆AI用のリスト作成
 declare -A seen_titles
 game_list_text=""
 
@@ -72,7 +82,7 @@ while IFS= read -r file; do
   [ -e "$file" ] || continue
   filename=$(basename "$file")
   
-  # タイトルタグの抽出（文字エンコーディングやスペースに対応）
+  # タイトルタグの抽出
   raw_title=$(grep -io '<title>.*</title>' "$file" | sed -e 's/<title>//i' -e 's/<\/title>//i' | head -n 1)
   gametitle=${raw_title:-${filename%.*}}
   
@@ -84,10 +94,10 @@ while IFS= read -r file; do
   seen_titles["$gametitle"]=1
   game_list_text+="- ${gametitle}\n"
 
-  # HTML属性・表示用のエスケープ（`"` を `&quot;` へ変換）
+  # エスケープ処理
   safe_title=$(echo "$gametitle" | sed 's/"/\&quot;/g')
 
-  # HTMLへの書き出し
+  # カード出力
   cat << HTMLEOF >> index.html
       <div class="card" data-title="${safe_title}">
         <div>
@@ -103,7 +113,7 @@ while IFS= read -r file; do
 HTMLEOF
 done < <(ls -t games/*.html 2>/dev/null)
 
-# 5. HTMLのフッターとJSを追加
+# 6. フッターとJavaScriptを追加
 cat << 'HTMLEOF' >> index.html
     </div>
   </div>
@@ -145,7 +155,7 @@ cat << 'HTMLEOF' >> index.html
 </html>
 HTMLEOF
 
-# 6. Gitで自動コミット＆プッシュ
+# 7. Gitで自動コミット＆プッシュ
 if [ -n "$(git status --porcelain)" ]; then
   git add .
   git commit -m "ポートフォリオ更新: $(date +'%Y-%m-%d %H:%M:%S')"
@@ -155,18 +165,18 @@ else
   echo "✅ 変更がないため、Gitの更新はスキップしました。"
 fi
 
-# 7. 🌟 自由入力機能付き：AIへの発注プロンプト作成とクリップボードコピー 🌟
+# 8. 🌟 共通データ連携対応：AIへの発注プロンプト作成とクリップボードコピー 🌟
 echo -e "\n--------------------------------------------------"
 echo "🤖 次回作の注文（プロンプト）を作成します。"
-echo "特にお望みのテーマ・ジャンル・ルールがあれば入力してください。"
-echo "（何も入力せずに Enter を押すと、全自動のアイデアお任せ文になります）"
+echo "開発中のテーマや、新しく追加したい要素・ルールを入力してください。"
+echo "（何も入力せずに Enter を押すと、共通データを活用したお任せアイデアになります）"
 echo -n "👉 リクエスト入力: "
 read -r custom_request
 
 if [ -n "$custom_request" ]; then
-  REQUEST_PART="次回作として「${custom_request}」という要素を入れたゲームを作りたいです。"
+  REQUEST_PART="次回作として「${custom_request}」という概念やテーマを組み込んだゲームを作りたいです。"
 else
-  REQUEST_PART="次回作を作りたいのですが、上記のリストと内容やジャンルが被らない、全く新しいルールの「面白くてハマるゲーム」のアイデアを1つ考えてください。"
+  REQUEST_PART="次回作を作りたいのですが、共通データを活かした、既存作品と被らない新しいルールの「面白くてハマる単一ファイルゲーム」のアイデアを1つ考えてください。"
 fi
 
 PROMPT="私はこれまでに以下のHTMLブラウザゲームを作成しました。
@@ -175,12 +185,15 @@ ${game_list_text}
 これらは私の「AI-GAME-PORTFOLIO」に収録されています。
 
 ${REQUEST_PART}
+
 HTML/CSS/JSが1つにまとまった1ファイルの完全なコードを生成してください。
+
 【必須条件】
-・コード内のどこかに必ず「AI-GAME-PORTFOLIO」というメタタグまたはコメント文字列を含めてください。
+・コード内のどこかに必ず「AI-GAME-PORTFOLIO」というメタタグまたは識別コメントを含めてください。
+・マスタデータ（カード、レシピ、家など）は外部URL「https://morinokum.github.io/my-website/game-data.js」から読み込み（window.RUNE_GAME_DATA を利用）、取得失敗時の簡単なフォールバックデータも備えてください。
 ・ローカルストレージなどによるセーブ機能も備えてください。"
 
-# 8. クリップボードへの転送処理（環境に依存しない汎用ロジック）
+# 9. クリップボードへの転送処理
 copy_to_clipboard() {
   local content="$1"
   if command -v xclip >/dev/null 2>&1; then
@@ -200,7 +213,7 @@ if copy_to_clipboard "$PROMPT"; then
   echo -e "\n📋 クリップボードにAIへの指示文をコピーしました！"
   echo "    Geminiの入力欄で「Ctrl + V」すればそのまま発注できます。"
 else
-  echo -e "\n⚠ クリップボード出力ツール(xclip / xsel / wl-copy)が見つかりませんでした。"
+  echo -e "\n⚠ クリップボード出力ツールが見つかりませんでした。"
   echo "   以下のテキストをコピーして使用してください："
   echo "--------------------------------------------------"
   echo -e "$PROMPT"

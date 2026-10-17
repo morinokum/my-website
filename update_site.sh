@@ -66,30 +66,32 @@ HTMLEOF
 
 # 4. games フォルダ内のHTMLを読み込んでカードを追加＆AI用のリスト作成
 declare -A seen_titles
-game_list_text="" # AIへの指示文に入れるゲームリスト用の変数
+game_list_text=""
 
-# ls -t で新しい順に処理
 while IFS= read -r file; do
   [ -e "$file" ] || continue
   filename=$(basename "$file")
   
-  # タイトルタグの抽出
-  gametitle=$(grep -io '<title>.*</title>' "$file" | sed -e 's/<title>//i' -e 's/<\/title>//i' | head -n 1)
-  gametitle=${gametitle:-${filename%.*}}
+  # タイトルタグの抽出（文字エンコーディングやスペースに対応）
+  raw_title=$(grep -io '<title>.*</title>' "$file" | sed -e 's/<title>//i' -e 's/<\/title>//i' | head -n 1)
+  gametitle=${raw_title:-${filename%.*}}
   
   if [ -n "${seen_titles["$gametitle"]}" ]; then
-    echo "  ※重複タイトルをスキップ（過去のバージョン）: $filename"
+    echo "  ※重複タイトルをスキップ: $filename"
     continue
   fi
   
   seen_titles["$gametitle"]=1
-  game_list_text+="- ${gametitle}\n" # AI用のリストにタイトルを追加
+  game_list_text+="- ${gametitle}\n"
+
+  # HTML属性・表示用のエスケープ（`"` を `&quot;` へ変換）
+  safe_title=$(echo "$gametitle" | sed 's/"/\&quot;/g')
 
   # HTMLへの書き出し
   cat << HTMLEOF >> index.html
-      <div class="card" data-title="${gametitle}">
+      <div class="card" data-title="${safe_title}">
         <div>
-          <h3>${gametitle}</h3>
+          <h3>${safe_title}</h3>
           <span class="tag">Web Game</span>
           <p>ファイル: ${filename}</p>
         </div>
@@ -143,7 +145,7 @@ cat << 'HTMLEOF' >> index.html
 </html>
 HTMLEOF
 
-# 6. Gitで安全に自動コミット＆プッシュ
+# 6. Gitで自動コミット＆プッシュ
 if [ -n "$(git status --porcelain)" ]; then
   git add .
   git commit -m "ポートフォリオ更新: $(date +'%Y-%m-%d %H:%M:%S')"
@@ -153,27 +155,54 @@ else
   echo "✅ 変更がないため、Gitの更新はスキップしました。"
 fi
 
-# 7. 🌟 新規追加：AIへのゲーム作成指示プロンプトの生成とクリップボードコピー 🌟
-echo -e "\n🤖 AIへの次回作作成プロンプトを生成中..."
+# 7. 🌟 自由入力機能付き：AIへの発注プロンプト作成とクリップボードコピー 🌟
+echo -e "\n--------------------------------------------------"
+echo "🤖 次回作の注文（プロンプト）を作成します。"
+echo "特にお望みのテーマ・ジャンル・ルールがあれば入力してください。"
+echo "（何も入力せずに Enter を押すと、全自動のアイデアお任せ文になります）"
+echo -n "👉 リクエスト入力: "
+read -r custom_request
+
+if [ -n "$custom_request" ]; then
+  REQUEST_PART="次回作として「${custom_request}」という要素を入れたゲームを作りたいです。"
+else
+  REQUEST_PART="次回作を作りたいのですが、上記のリストと内容やジャンルが被らない、全く新しいルールの「面白くてハマるゲーム」のアイデアを1つ考えてください。"
+fi
 
 PROMPT="私はこれまでに以下のHTMLブラウザゲームを作成しました。
 
 ${game_list_text}
 これらは私の「AI-GAME-PORTFOLIO」に収録されています。
-次回作を作りたいのですが、上記のリストと内容やジャンルが被らない、全く新しいルールの「面白くてハマるゲーム」のアイデアを1つ考え、HTML/CSS/JSが1つにまとまった1ファイルの完全なコードを生成してください。
-【条件】コード内のどこかに必ず「AI-GAME-PORTFOLIO」という文字列を含めてください。"
 
-# xclip コマンドを使ってクリップボードにコピー
-if command -v xclip >/dev/null 2>&1; then
-  echo -e "$PROMPT" | xclip -selection clipboard
-  echo "📋 クリップボードにAIへの指示文をコピーしました！"
-  echo "   Geminiの入力欄で「Ctrl + V (貼り付け)」するだけで次回作を発注できます。"
+${REQUEST_PART}
+HTML/CSS/JSが1つにまとまった1ファイルの完全なコードを生成してください。
+【必須条件】
+・コード内のどこかに必ず「AI-GAME-PORTFOLIO」というメタタグまたはコメント文字列を含めてください。
+・ローカルストレージなどによるセーブ機能も備えてください。"
+
+# 8. クリップボードへの転送処理（環境に依存しない汎用ロジック）
+copy_to_clipboard() {
+  local content="$1"
+  if command -v xclip >/dev/null 2>&1; then
+    echo -e "$content" | xclip -selection clipboard
+    return 0
+  elif command -v xsel >/dev/null 2>&1; then
+    echo -e "$content" | xsel -b
+    return 0
+  elif command -v wl-copy >/dev/null 2>&1; then
+    echo -e "$content" | wl-copy
+    return 0
+  fi
+  return 1
+}
+
+if copy_to_clipboard "$PROMPT"; then
+  echo -e "\n📋 クリップボードにAIへの指示文をコピーしました！"
+  echo "    Geminiの入力欄で「Ctrl + V」すればそのまま発注できます。"
 else
-  echo "⚠️ クリップボードに直接コピーするツール(xclip)が見つかりませんでした。"
-  echo "   以下のテキストを手動でコピーしてAIに貼り付けてください："
+  echo -e "\n⚠ クリップボード出力ツール(xclip / xsel / wl-copy)が見つかりませんでした。"
+  echo "   以下のテキストをコピーして使用してください："
   echo "--------------------------------------------------"
   echo -e "$PROMPT"
   echo "--------------------------------------------------"
-  echo -e "💡 次回から自動でコピーされるようにするには、Linuxターミナルで以下を実行してください："
-  echo -e "   sudo apt update && sudo apt install xclip\n"
 fi

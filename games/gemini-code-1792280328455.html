@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!-- AI-GAME-PORTFOLIO Meta Tag -->
+  <meta name="portfolio-category" content="AI-GAME-PORTFOLIO">
+  <title>紋章カードの錬金市場：ルーン・トレード | AI-GAME-PORTFOLIO</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js for Market Trends -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;600;700;900&display=swap');
+    
+    body {
+      font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+      background-color: #0b0f19;
+      color: #f3f4f6;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #111827;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 4px;
+    }
+
+    /* Glowing Animations */
+    .glow-cyan {
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.25);
+    }
+    .glow-amber {
+      box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);
+    }
+    .glow-emerald {
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.25);
+    }
+
+    .glass-card {
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    /* Price Trend Arrows */
+    .trend-up { color: #10b981; }
+    .trend-down { color: #ef4444; }
+
+    /* Touch Friendly Pulse Effect */
+    .btn-active:active {
+      transform: scale(0.96);
+    }
+  </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between overflow-hidden text-sm">
+
+<!-- AI-DEV-HANDOFF-START
+タイトル: 紋章カードの錬金市場：ルーン・トレード (Rune Merchant Fleet)
+バージョン: 1.2.0
+概要・ルール: 
+  RUNE_GAME_DATA（カード・素材・家具等）を活用した相場トレーディングゲーム。
+  リアルタイムで価格が変動するルーン素材を安く買い、高く売りさばく！
+  自動取引モード（AIアシスタント売買）により放置・効率的トレーディングが可能。
+  商人レベルを上げて交易注文（クエスト）を達成し、巨万の富を築いてマイホーム家具をコンプリートしよう。
+主要な構造（関数・状態管理・画面遷移）:
+  - state: 所持金, 評価pt, インベントリ, 市場価格・履歴, 店舗レベル, マイホーム所有状況, チュートリアル既読フラグ, 自動取引フラグ(autoTradeEnabled)
+  - initMarketData(): window.RUNE_GAME_DATA の読込＋フォールバック構築
+  - tickMarket(): 10秒ごとに相場がランダム変動 ＆ autoTradeTick()の呼び出し
+  - autoTradeTick(): 相場の割安(<=80%)・割高(>=120%)を自動判別して自動売買を遂行
+  - startTutorial() / nextTutorialStep() / finishTutorial(): チュートリアルモーダル管理
+  - UI画面: 「市場(Trade)」「注文(Orders)」「マイホーム(Home)」「ショップ(Upgrades)」
+セーブデータのキー: AI_GAME_PORTFOLIO_RUNE_MERCHANT_SAVE_v1
+実装済み機能:
+  - 外部マスタデータの動的読み込みと堅牢なフォールバック
+  - リアルタイム相場変動＆Chart.jsでの相場ミニグラフ表示
+  - 自動取引（オートトレード）モード（割安時買い・割高時売り）
+  - 素材の売買・保管庫制限
+  - 交易クエスト（納品）システム
+  - マイホーム購入＆バフ適用
+  - ステップバイステップ形式のインタラクティブチュートリアル機能
+  - 自動セーブ／ロード／リセット
+未実装・TODO:
+  - クラフト合成機能（素材からカード生成）
+  - ライバル商人AIとのオークション競売
+設計上のこだわり・注意点:
+  - スマホでの片手操作に配慮したコンパクトなボトムナビ＆大きなボタン
+  - トレンド視覚化と即時フィードバック（トースト通知）
+  - 既存セーブデータ構造との完全な互換性維持（autoTradeEnabledの安全なマージ）
+AI-DEV-HANDOFF-END -->
+
+<!-- 外部マスタデータの取得試行 -->
+<script src="https://morinokum.github.io/my-website/game-data.js" onerror="window.RUNE_DATA_FAILED=true;"></script>
+
+<!-- App Container -->
+<div id="app" class="flex-1 flex flex-col max-w-md w-full mx-auto relative overflow-hidden bg-slate-950 shadow-2xl">
+  
+  <!-- Header: Stats Bar -->
+  <header class="p-3 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between z-10">
+    <div class="flex items-center space-x-2">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-500 to-yellow-300 flex items-center justify-center text-slate-950 font-black text-xs shadow">
+        金
+      </div>
+      <div>
+        <div class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">所持金</div>
+        <div id="gold-display" class="text-base font-extrabold text-amber-400">1,000 G</div>
+      </div>
+    </div>
+
+    <div class="flex items-center space-x-2">
+      <div class="text-right mr-1">
+        <div class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">商人Lv / 名声</div>
+        <div id="rank-display" class="text-xs font-bold text-cyan-400">Lv.1 (名声: 0)</div>
+      </div>
+      <button id="tutorial-btn" onclick="startTutorial(true)" title="チュートリアルを見る" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 btn-active">
+        <i data-lucide="help-circle" class="w-4 h-4"></i>
+      </button>
+      <button id="save-btn" onclick="saveGame(true)" title="手動セーブ" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 btn-active">
+        <i data-lucide="save" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Market Ticker Header -->
+  <div class="bg-slate-900/50 border-b border-slate-800/60 px-3 py-1.5 flex items-center justify-between text-[11px] text-slate-400">
+    <div class="flex items-center space-x-1.5">
+      <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+      <span>ルーン市場相場</span>
+    </div>
+    <div id="next-tick-timer" class="text-slate-500 font-mono">次回更新: 10s</div>
+  </div>
+
+  <main class="flex-1 overflow-y-auto p-3 space-y-3 pb-20 relative" id="main-content">
+    
+    <!-- Tab 1: Trade Market View -->
+    <div id="view-trade" class="space-y-3">
+      
+      <!-- Auto Trade Banner / Controls -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 flex items-center justify-between glow-amber">
+        <div class="flex items-center space-x-2.5">
+          <div id="autotrade-icon-bg" class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 transition-colors duration-300">
+            <i data-lucide="bot" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <div class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+              自動取引モード
+              <span id="autotrade-badge" class="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">OFF</span>
+            </div>
+            <div class="text-[10px] text-slate-400">割安(≤80%)で自動買い / 割高(≥120%)で自動売り</div>
+          </div>
+        </div>
+        <button id="autotrade-toggle-btn" onclick="toggleAutoTrade()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold btn-active border border-slate-700 transition">
+          有効化
+        </button>
+      </div>
+
+      <!-- Mini Chart Card -->
+      <div class="glass-card rounded-xl p-3 glow-cyan">
+        <div class="flex justify-between items-center mb-1">
+          <span class="text-xs font-bold text-cyan-300 flex items-center gap-1">
+            <i data-lucide="trending-up" class="w-3.5 h-3.5"></i> 選択ルーンの値動き
+          </span>
+          <span id="chart-item-name" class="text-xs font-semibold text-slate-300">ルーン原石</span>
+        </div>
+        <div class="h-28 w-full">
+          <canvas id="marketChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Capacity & Inventory Bar -->
+      <div class="flex items-center justify-between bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="package" class="w-4 h-4 text-slate-400"></i>
+          <span class="text-xs text-slate-300 font-medium">保管庫容量</span>
+        </div>
+        <div id="storage-display" class="text-xs font-bold text-slate-200">
+          0 / 50 個
+        </div>
+      </div>
+
+      <!-- Market Items List -->
+      <div class="space-y-2" id="market-item-list">
+        <!-- JSで動的生成 -->
+      </div>
+    </div>
+
+    <!-- Tab 2: Orders View -->
+    <div id="view-orders" class="space-y-3 hidden">
+      <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+        <h3 class="font-bold text-amber-400 text-xs mb-1 flex items-center gap-1.5">
+          <i data-lucide="scroll" class="w-4 h-4"></i> 交易ギルドの緊急買取り依頼
+        </h3>
+        <p class="text-[11px] text-slate-400">指定のルーンアイテムを納品すると、市場価格より高値＋名声ptを獲得できます。</p>
+      </div>
+      <div class="space-y-2" id="order-list">
+        <!-- Dynamic Orders -->
+      </div>
+    </div>
+
+    <!-- Tab 3: Home & Furniture View -->
+    <div id="view-home" class="space-y-3 hidden">
+      <div class="glass-card p-3 rounded-xl border border-slate-800">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-bold text-emerald-400 text-xs flex items-center gap-1.5">
+            <i data-lucide="home" class="w-4 h-4"></i> 錬金術師の隠れ家
+          </h3>
+          <span id="home-buff-count" class="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded-full">バフ効果: 0個</span>
+        </div>
+        <p class="text-[11px] text-slate-400 mb-3">家具を購入・配置すると、売買手数料軽減や保管庫拡張などの永久パッシブ効果を得られます。</p>
+        <div id="furniture-grid" class="grid grid-cols-2 gap-2">
+          <!-- Dynamic Furniture Items -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4: Shop & Upgrades -->
+    <div id="view-upgrades" class="space-y-3 hidden">
+      <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+        <h3 class="font-bold text-purple-400 text-xs mb-1 flex items-center gap-1.5">
+          <i data-lucide="award" class="w-4 h-4"></i> 商人グレード & 施設拡張
+        </h3>
+        <p class="text-[11px] text-slate-400">名声と資金を投資して商売のスケールをアップグレードしましょう。</p>
+      </div>
+      <div class="space-y-2" id="upgrade-list">
+        <!-- Dynamic Upgrades -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Tutorial Modal Overlay -->
+  <div id="tutorial-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 transition-all duration-300 opacity-0 pointer-events-none">
+    <div class="bg-slate-900 border border-cyan-500/40 w-full max-w-sm rounded-2xl p-5 shadow-2xl relative glow-cyan flex flex-col justify-between min-h-[300px]">
+      <div>
+        <div class="flex justify-between items-center mb-3">
+          <div class="flex items-center space-x-2">
+            <div class="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-xs">
+              <i data-lucide="book-open" class="w-4 h-4"></i>
+            </div>
+            <span id="tut-step-title" class="text-xs font-extrabold text-cyan-300 uppercase tracking-wide">商人ガイド (1/4)</span>
+          </div>
+          <button onclick="finishTutorial()" class="text-slate-400 hover:text-slate-200 text-xs p-1">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <h3 id="tut-header" class="text-base font-bold text-slate-100 mb-2">ルーン取引へようこそ！</h3>
+        <p id="tut-body" class="text-xs text-slate-300 leading-relaxed mb-4">
+          ここでは10秒ごとに値動きするルーン素材を安く買い、高く売ることで利益を出します。まずは市場の変動グラフをチェックしましょう！
+        </p>
+      </div>
+
+      <div>
+        <!-- Dots indicator -->
+        <div class="flex justify-center space-x-1.5 mb-4" id="tut-dots">
+          <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+          <span class="w-2 h-2 rounded-full bg-slate-700"></span>
+          <span class="w-2 h-2 rounded-full bg-slate-700"></span>
+          <span class="w-2 h-2 rounded-full bg-slate-700"></span>
+        </div>
+
+        <div class="flex space-x-2">
+          <button id="tut-skip-btn" onclick="finishTutorial()" class="w-1/3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl btn-active">
+            スキップ
+          </button>
+          <button id="tut-next-btn" onclick="nextTutorialStep()" class="flex-1 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs rounded-xl btn-active shadow">
+            次へ
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Overlay -->
+  <div id="toast" class="absolute bottom-16 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg bg-slate-800/95 text-xs text-white border border-slate-700 shadow-xl transition-all duration-300 opacity-0 pointer-events-none z-30 flex items-center space-x-2">
+    <i data-lucide="info" class="w-4 h-4 text-cyan-400"></i>
+    <span id="toast-msg">通知メッセージ</span>
+  </div>
+
+  <!-- Navigation Footer -->
+  <footer class="bg-slate-900 border-t border-slate-800 grid grid-cols-4 p-1.5 gap-1 z-20">
+    <button onclick="switchTab('trade')" id="nav-trade" class="flex flex-col items-center justify-center p-2 rounded-lg bg-slate-800 text-cyan-400 font-bold transition">
+      <i data-lucide="line-chart" class="w-4 h-4 mb-0.5"></i>
+      <span class="text-[10px]">市場</span>
+    </button>
+    <button onclick="switchTab('orders')" id="nav-orders" class="flex flex-col items-center justify-center p-2 rounded-lg text-slate-400 hover:text-slate-200 transition">
+      <i data-lucide="clipboard-list" class="w-4 h-4 mb-0.5"></i>
+      <span class="text-[10px]">納品</span>
+    </button>
+    <button onclick="switchTab('home')" id="nav-home" class="flex flex-col items-center justify-center p-2 rounded-lg text-slate-400 hover:text-slate-200 transition">
+      <i data-lucide="home" class="w-4 h-4 mb-0.5"></i>
+      <span class="text-[10px]">マイホーム</span>
+    </button>
+    <button onclick="switchTab('upgrades')" id="nav-upgrades" class="flex flex-col items-center justify-center p-2 rounded-lg text-slate-400 hover:text-slate-200 transition">
+      <i data-lucide="sparkles" class="w-4 h-4 mb-0.5"></i>
+      <span class="text-[10px]">強化</span>
+    </button>
+  </footer>
+
+</div>
+
+<script>
+  /* AI-GAME-PORTFOLIO Core Script logic */
+
+  // Save Key
+  const SAVE_KEY = 'AI_GAME_PORTFOLIO_RUNE_MERCHANT_SAVE_v1';
+
+  // Game State
+  let gameState = {
+    gold: 1000,
+    reputation: 0,
+    merchantLv: 1,
+    storageMax: 30,
+    inventory: {}, // itemId -> count
+    furnituresOwned: [],
+    upgradesOwned: [],
+    selectedChartItemId: null,
+    hasSeenTutorial: false,
+    autoTradeEnabled: false // 自動取引モードフラグ
+  };
+
+  // Tutorial Flow Definition
+  let currentTutorialStep = 0;
+  const TUTORIAL_STEPS = [
+    {
+      stepTitle: "商人ガイド (1/4)",
+      header: "相場トレードで稼

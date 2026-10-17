@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- SEARCH ENGINE & AI BOT METADATA TAGS: AI Portfolio -->
+    <meta name="ai-portfolio-id" content="AI-GAME-PORTFOLIO">
+    <meta name="keywords" content="AI-GAME-PORTFOLIO, AI Portfolio, AI Portfolio Project, Rune Craft Puzzle, AI-Generated-Portfolio">
+    <meta name="description" content="AI Portfolio Project - Rune Craft Puzzle Game">
+    <meta name="author" content="AI Portfolio Project">
+    <meta name="generator" content="AI Portfolio Generator">
+    <!-- AI_PORTFOLIO_SEARCH_IDENTIFIER: AI-GAME-PORTFOLIO -->
+    <title>紋章カードの怠惰なる生活 - Rune Craft Puzzle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap');
+
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            background-color: #0d1117;
+            color: #f0f6fc;
+            overflow: hidden;
+        }
+
+        .font-cinzel { font-family: 'Cinzel', serif; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+        /* Card Animation */
+        .card-item {
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .card-item:active {
+            transform: scale(0.92);
+        }
+
+        /* Modal Background */
+        .modal-bg {
+            background-color: rgba(10, 15, 30, 0.85);
+            backdrop-filter: blur(8px);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between items-center relative overflow-hidden bg-slate-950">
+
+    <!-- Header: Currency, Level & AI Portfolio Tag -->
+    <header class="w-full max-w-md bg-slate-900/90 border-b border-purple-900/40 p-2 flex justify-between items-center z-10 backdrop-blur-md shadow-md">
+        <div class="flex items-center space-x-2">
+            <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-purple-600 flex items-center justify-center text-white text-base font-bold shadow-md shadow-amber-950/50">
+                🎴
+            </div>
+            <div>
+                <div class="flex items-center gap-1.5">
+                    <h1 class="text-xs font-bold text-amber-200 tracking-wider">紋章カードの怠惰生活</h1>
+                </div>
+                <p id="lifeRank" class="text-[10px] text-purple-300 font-medium">生活レベル: 1 (極貧ぐうたら)</p>
+            </div>
+        </div>
+        
+        <!-- Resources & Shop Toggle -->
+        <div class="flex items-center space-x-1.5 text-xs">
+            <div class="bg-slate-950/80 px-2 py-1 rounded-lg border border-amber-500/30 flex items-center gap-1 shadow-inner">
+                <span class="text-amber-400 font-bold">🪙</span>
+                <span id="coinText" class="font-bold text-amber-300 font-mono text-xs">120</span>
+            </div>
+            <button onclick="openShopModal()" class="px-2 py-1 bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 text-white rounded-lg text-[10px] font-bold shadow-md border border-purple-400/30 flex items-center gap-1 transition active:scale-95">
+                <i class="fa-solid fa-store"></i> カード店
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="w-full max-w-md flex-1 flex flex-col justify-between p-2.5 relative overflow-hidden gap-2">
+
+        <!-- 1. Idle Income & Log Bar -->
+        <div class="w-full bg-slate-900/70 border border-slate-800 rounded-xl p-2.5 flex flex-col gap-1.5 relative shadow-inner">
+            <div class="flex justify-between items-center text-[11px]">
+                <span class="text-purple-300 font-bold flex items-center gap-1">
+                    <i class="fa-solid fa-couch"></i> 怠惰自動収入
+                </span>
+                <div class="flex items-center gap-2">
+                    <span id="saveStatus" class="text-[9px] text-emerald-400 opacity-0 transition-opacity">💾 自動保存完了</span>
+                    <span class="text-emerald-400 font-mono font-bold text-xs" id="cpsText">+0 G/秒</span>
+                </div>
+            </div>
+            
+            <div id="storyLog" class="bg-slate-950/70 p-2 rounded-lg border border-purple-900/30 text-xs text-slate-300 min-h-[46px] flex items-center leading-relaxed">
+                「紋章カードは危険で高価だが...組み合わせて便利な自動マシーンのアイデアを作れば爆売れだ！」
+            </div>
+        </div>
+
+        <!-- 2. Synthesis Workbench -->
+        <div class="w-full bg-gradient-to-b from-slate-900/90 to-purple-950/40 rounded-2xl border-2 border-purple-800/40 p-3 flex flex-col items-center justify-between relative shadow-2xl flex-1 max-h-[280px]">
+            <div class="w-full flex justify-between items-center mb-1">
+                <span class="text-xs font-bold text-purple-200 flex items-center gap-1">
+                    <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> 発明スロット
+                </span>
+                <div class="flex items-center gap-1.5">
+                    <button onclick="showRecipeHint()" class="text-[10px] font-bold text-amber-300 hover:text-amber-200 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-500/50 transition flex items-center gap-1 active:scale-95 shadow">
+                        <i class="fa-solid fa-lightbulb text-amber-400"></i> ヒント
+                    </button>
+                    <button onclick="clearSlot()" class="text-[10px] text-slate-400 hover:text-white bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700 transition">
+                        <i class="fa-solid fa-rotate-left"></i> クリア
+                    </button>
+                </div>
+            </div>
+
+            <!-- Crafting Slots -->
+            <div id="craftSlots" class="flex justify-center items-center gap-2.5 my-auto w-full py-2">
+                <!-- JS dynamic render -->
+            </div>
+
+            <!-- Craft Action Button -->
+            <button id="craftBtn" onclick="combineCards()" class="w-full py-2.5 bg-gradient-to-r from-amber-500 via-purple-600 to-indigo-600 hover:opacity-95 text-white font-bold text-xs rounded-xl shadow-lg border border-amber-300/40 transition active:scale-95 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-bolt text-amber-300"></i> 紋章アイデアを発明・消費して売る！
+            </button>
+        </div>
+
+        <!-- 3. Player Deck Container -->
+        <div class="w-full bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 flex flex-col gap-2 shadow-lg">
+            <div class="flex justify-between items-center">
+                <span class="text-xs font-bold text-slate-300 flex items-center gap-1">
+                    <i class="fa-solid fa-box-archive text-purple-400"></i> 所持カードバインダー (<span id="totalCardCountText">0</span>)
+                </span>
+                <span class="text-[10px] text-amber-400/80">※1回の発明成功で各1枚消費</span>
+            </div>
+
+            <!-- Scrollable Hand Cards -->
+            <div id="handContainer" class="flex gap-2 overflow-x-auto pb-1 pt-1 min-h-[90px] items-center">
+                <!-- JS dynamic render -->
+            </div>
+        </div>
+
+        <!-- Footer Tag -->
+        <footer class="w-full text-center text-[9px] text-slate-500 flex justify-between items-center px-1">
+            <span>Rune Craft Puzzle</span>
+            <button onclick="resetSaveData()" class="text-rose-400/70 hover:text-rose-300 underline">データリセット</button>
+        </footer>
+
+    </main>
+
+    <!-- Shop Modal -->
+    <div id="shopModal" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-purple-800/80 rounded-2xl max-w-sm w-full p-4 flex flex-col gap-3 shadow-2xl max-h-[85vh]">
+            <div class="flex justify-between items-center border-b border-purple-900/50 pb-2">
+                <h2 class="text-sm font-bold text-amber-300 flex items-center gap-1.5">
+                    <i class="fa-solid fa-store"></i> 闇市＆カードショップ
+                </h2>
+                <button onclick="closeShopModal()" class="text-slate-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <p class="text-[11px] text-slate-300">
+                カードは各種類最高99枚まで所持可能。購入してさらに高度な楽ちん生活を目指そう！
+            </p>
+
+            <div class="space-y-2 overflow-y-auto pr-1 flex-1">
+                <!-- Pack 1 -->
+                <div class="p-2.5 bg-slate-950/80 rounded-xl border border-purple-900/40 flex justify-between items-center">
+                    <div>
+                        <div class="text-xs font-bold text-purple-200">初級・基本属性パック</div>
+                        <div class="text-[10px] text-slate-400">「火」「水」「風」「光」など</div>
+                    </div>
+                    <button onclick="buyPack('basic', 50)" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-lg shadow border border-amber-300/30 transition">
+                        50 🪙
+                    </button>
+                </div>
+
+                <!-- Pack 2 -->
+                <div class="p-2.5 bg-slate-950/80 rounded-xl border border-purple-900/40 flex justify-between items-center">
+                    <div>
+                        <div class="text-xs font-bold text-indigo-200">動体・動力術式パック</div>
+                        <div class="text-[10px] text-slate-400">「回転」「移動」「自動」など</div>
+                    </div>
+                    <button onclick="buyPack('motion', 180)" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg shadow border border-indigo-300/30 transition">
+                        180 🪙
+                    </button>
+                </div>
+
+                <!-- Pack 3 -->
+                <div class="p-2.5 bg-slate-950/80 rounded-xl border border-purple-900/40 flex justify-between items-center">
+                    <div>
+                        <div class="text-xs font-bold text-rose-200">上級・増幅・特化パック</div>
+                        <div class="text-[10px] text-slate-400">「増幅」「永続」「浄化」など</div>
+                    </div>
+                    <button onclick="buyPack('advanced', 500)" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-lg shadow border border-rose-300/30 transition">
+                        500 🪙
+                    </button>
+                </div>
+            </div>
+
+            <button onclick="openRecipeModal()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-purple-200 text-xs font-bold rounded-xl border border-purple-800/40 transition">
+                <i class="fa-solid fa-book"></i> 発明済アイデア図鑑 (<span id="discoveredCountText">0</span>)
+            </button>
+        </div>
+    </div>
+
+    <!-- Recipe Modal -->
+    <div id="recipeModal" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-purple-800/80 rounded-2xl max-w-sm w-full p-4 flex flex-col gap-3 shadow-2xl max-h-[85vh]">
+            <div class="flex justify-between items-center border-b border-purple-900/50 pb-2">
+                <h2 class="text-sm font-bold text-purple-200 flex items-center gap-1.5">
+                    <i class="fa-solid fa-book-open"></i> 発明・楽ちんアイデア図鑑
+                </h2>
+                <button onclick="closeRecipeModal()" class="text-slate-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div id="recipeListContainer" class="space-y-2 overflow-y-auto pr-1 flex-1 text-xs">
+                <!-- JS dynamic render -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Story Event Modal -->
+    <div id="eventModal" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border-2 border-amber-500/80 rounded-2xl max-w-sm w-full p-4 flex flex-col gap-3 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-amber-900/50 pb-2">
+                <h2 id="eventTitle" class="text-sm font-bold text-amber-300 flex items-center gap-1.5">
+                    <i class="fa-solid fa-scroll text-amber-400"></i> 特殊イベント発生！
+                </h2>
+            </div>
+            
+            <div class="flex items-center gap-3 my-2">
+                <span id="eventIcon" class="text-4xl">📜</span>
+                <p id="eventText" class="text-xs text-slate-200 leading-relaxed flex-1">
+                    イベント文面がここに表示されます。
+                </p>
+            </div>
+
+            <div id="eventRewardContainer" class="bg-slate-950/80 p-2 rounded-xl border border-amber-500/30 text-xs text-amber-300 font-bold text-center">
+                <!-- 報酬の表示 -->
+            </div>
+
+            <button onclick="closeEventModal()" class="w-full py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:brightness-110 text-white font-bold text-xs rounded-xl shadow border border-amber-300/30 transition">
+                了解！
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toastMessage" class="fixed top-12 left-1/2 -translate-x-1/2 bg-slate-900/95 border border-amber-400/60 text-amber-200 text-xs font-bold px-4 py-2 rounded-xl shadow-2xl pointer-events-none transition-all duration-300 opacity-0 transform -translate-y-2 z-50">
+        メッセージ
+    </div>
+
+    <script>
+        /* ===================================================================
+           AI PORTFOLIO SEARCH TAG & METADATA
+           Tag: AI Portfolio
+           Identifier: AI Portfolio Project / AI-Portfolio-Ref
+           =================================================================== */
+        const APP_INFO = {
+            title: "Rune Craft Puzzle",
+            tag: "AI Portfolio",
+            aiPortfolioTag: "AI Portfolio Project",
+            version: "1.3.0"
+        };
+
+        /* ===================================================================
+           1. Card Definitions (拡張用: カードを追加する場合はここに要素を追加)
+        =================================================================== */
+        const CARDS = {
+            // 基本カード
+            FIRE: { id: 'FIRE', name: '熱素「ファイヤ」', icon: '🔥', color: 'from-orange-600 to-red-600', border: 'border-orange-400', category: 'basic' },
+            WATER: { id: 'WATER', name: '水流「アクア」', icon: '💧', color: 'from-sky-600 to-blue-600', border: 'border-sky-400', category: 'basic' },
+            WIND: { id: 'WIND', name: '疾風「ヴェント」', icon: '🍃', color: 'from-emerald-600 to-teal-600', border: 'border-emerald-400', category: 'basic' },
+            LIGHT: { id: 'LIGHT', name: '光素「ルクス」', icon: '✨', color: 'from-amber-500 to-yellow-500', border: 'border-amber-300', category: 'basic' },
+            
+            // 動力カード
+            ROTATE: { id: 'ROTATE', name: '回転「トルク」', icon: '🔄', color: 'from-purple-600 to-indigo-600', border: 'border-purple-400', category: 'motion' },
+            MOVE: { id: 'MOVE', name: '移動「ベクター」', icon: '💨', color: 'from-cyan-600 to-blue-700', border: 'border-cyan-400', category: 'motion' },
+            AUTO: { id: 'AUTO', name: '自動「ループ」', icon: '⚙️', color: 'from-slate-600 to-slate-800', border: 'border-slate-400', category: 'motion' },
+
+            // 上級カード
+            BOOST: { id: 'BOOST', name: '増幅「アンプ」', icon: '⚡', color: 'from-rose-600 to-pink-600', border: 'border-rose-400', category: 'advanced' },
+            EVER: { id: 'EVER', name: '永続「エターナル」', icon: '⏳', color: 'from-amber-700 to-yellow-800', border: 'border-amber-400', category: 'advanced' },
+            CLEAN: { id: 'CLEAN', name: '浄化「ピュア」', icon: '🧼', color: 'from-teal-500 to-emerald-600', border: 'border-teal-300', category: 'advanced' }
+            
+            /* 【拡張例】カードを増やす場合はここに記述を追加するだけ！
+            TIME: { id: 'TIME', name: '時空「クロノス」', icon: '⏱️', color: 'from-indigo-700 to-slate-900', border: 'border-indigo-400', category: 'advanced' },
+            */
+        };
+
+        /* ===================================================================
+           2. Recipe Definitions (拡張用: レシピを追加する場合はここに追加)
+        =================================================================== */
+        const RECIPES = [
+            {
+                id: 'AUTO_DRYER',
+                name: '全自動・全乾き洗濯機',
+                desc: '洗濯物を干す手間を完全にゼロ化！近所の人々に爆売れ。',
+                ingredients: ['WATER', 'WIND', 'ROTATE'],
+                rewardCoins: 100,
+                cps: 3,
+                icon: '🧺'
+            },
+            {
+                id: 'FIRE_COOKER',
+                name: '放置料理・全自動調理なべ',
+                desc: '食材を入れるだけで完璧な火加減で料理が完成。ベッドから出なくていい！',
+                ingredients: ['FIRE', 'AUTO', 'ROTATE'],
+                rewardCoins: 150,
+                cps: 6,
+                icon: '🍲'
+            },
+            {
+                id: 'SLEEP_FAN',
+                name: '極楽そよ風・全自動扇風機',
+                desc: 'うちわを仰ぐ必要すら消失。快適な睡眠をお約束。',
+                ingredients: ['WIND', 'AUTO'],
+                rewardCoins: 80,
+                cps: 2,
+                icon: '🌀'
+            },
+            {
+                id: 'SELF_CLEANER',
+                name: '全自動お掃除ルンバ風魔法陣',
+                desc: '床のホコリを勝手に集めて焼却。部屋掃除という労働が人生から消えた。',
+                ingredients: ['CLEAN', 'MOVE', 'AUTO'],
+                rewardCoins: 300,
+                cps: 15,
+                icon: '🧹'
+            },
+            {
+                id: 'EVER_LIGHT',
+                name: '永遠に消えないぐうたら寝室常夜灯',
+                desc: '油の補給も魔法の再詠唱も不要。貴族から超高額で買い取られた。',
+                ingredients: ['LIGHT', 'EVER'],
+                rewardCoins: 350,
+                cps: 20,
+                icon: '💡'
+            },
+            {
+                id: 'BOOST_HEATER',
+                name: '爆熱コタツ＆自動お湯沸かし器',
+                desc: '冬場に布団から出ないための究極兵器。一度入ると脱出不可能。',
+                ingredients: ['FIRE', 'BOOST', 'EVER'],
+                rewardCoins: 600,
+                cps: 40,
+                icon: '♨️'
+            },
+            {
+                id: 'FLYING_BED',
+                name: '全自動移動・超快適ベッド',
+                desc: '寝たまま町まで買い物に行ける。究極の怠惰を具現化した奇蹟の発明。',
+                ingredients: ['MOVE', 'AUTO', 'EVER', 'BOOST'],
+                rewardCoins: 1500,
+                cps: 100,
+                icon: '🛏️'
+            }
+            /* 【拡張例】新レシピを追加する場合の書き方
+            ,{
+                id: 'TIME_SLOT_MACHINE',
+                name: '全自動二度寝タイムマシン',
+                desc: '二度寝の心地よさを永久ループ！',
+                ingredients: ['TIME', 'EVER', 'AUTO'],
+                rewardCoins: 3000,
+                cps: 300,
+                icon: '⏰'
+            }
+            */
+        ];
+
+        /* ===================================================================
+           3. Event Definitions (拡張用: イベントを追加・増やす仕組み)
+        =================================================================== */
+        const EVENTS = [
+            {
+                id: 'EVENT_FIRST_INVENTION',
+                title: '噂のぐうたら発明家',
+                icon: '📜',
+                text: 'あなたの作った自動化マシーンが街で話題に！「あの怠惰な紋章士のアイデアは凄い」と商人が出資を持ちかけてきた。',
+                trigger: (s) => s.discoveredRecipes.length >= 1,
+                rewardCoins: 200,
+                rewardCards: { BOOST: 1 }
+            },
+            {
+                id: 'EVENT_LAZY_KING',
+                title: '貴族からの特注依頼',
+                icon: '👑',
+                text: '「歩かずに生活したい」という富豪の噂を聞きつけた伯爵から、特別な支援金と貴重な紋章カードが届いた！',
+                trigger: (s) => s.discoveredRecipes.length >= 4,
+                rewardCoins: 1000,
+                rewardCards: { EVER: 2, CLEAN: 2 }
+            }
+            /* 【拡張例】イベントを追加する場合の書き方
+            ,{
+                id: 'EVENT_SUMMER_FESTIVAL',
+                title: '季節イベント：夏祭り',
+                icon: '🎆',
+                text: 'かき氷機の発明により大儲け！',
+                trigger: (s) => s.coins >= 5000,
+                rewardCoins: 2000,
+                rewardCards: { WATER: 5 }
+            }
+            */
+        ];
+
+        /* ===================================================================
+           4. Game State & Save/Load System
+        =================================================================== */
+        const SAVE_KEY = 'rune_craft_puzzle_save_v1';
+
+        let defaultState = {
+            coins: 120,
+            cps: 0,
+            discoveredRecipes: [],
+            triggeredEvents: [], // 発動済みイベントIDの記憶
+            inventory: {
+                FIRE: 2,
+                WIND: 2,
+                WATER: 2,
+                ROTATE: 2,
+                AUTO: 2
+            },
+            slots: [null, null, null, null],
+            maxStack: 99
+        };
+
+        let state = JSON.parse(JSON.stringify(defaultState));
+
+        // Save Game State to localStorage
+        function saveGame() {
+            try {
+                // Ensure temporary slot cards are restored to inventory before saving
+                const tempInventory = { ...state.inventory };
+                state.slots.forEach(cardKey => {
+                    if (cardKey) tempInventory[cardKey] = (tempInventory[cardKey] || 0) + 1;
+                });
+
+                const saveData = {
+                    coins: state.coins,
+                    cps: state.cps,
+                    discoveredRecipes: state.discoveredRecipes,
+                    triggeredEvents: state.triggeredEvents || [],
+                    inventory: tempInventory,
+                    savedAt: Date.now()
+                };
+
+                localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+                showSaveIndicator();
+            } catch (e) {
+                console.warn('Save failed', e);
+            }
+        }
+
+        // Load Game State
+        function loadGame() {
+            try {
+                const saved = localStorage.getItem(SAVE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    state.coins = parsed.coins ?? defaultState.coins;
+                    state.discoveredRecipes = parsed.discoveredRecipes ?? [];
+                    state.triggeredEvents = parsed.triggeredEvents ?? [];
+                    state.inventory = parsed.inventory ?? { ...defaultState.inventory };
+
+                    // Recalculate CPS based on discovered recipes
+                    state.cps = state.discoveredRecipes.reduce((total, id) => {
+                        const recipe = RECIPES.find(r => r.id === id);
+                        return total + (recipe ? recipe.cps : 0);
+                    }, 0);
+                }
+            } catch (e) {
+                console.warn('Load failed, fallback to defaults', e);
+            }
+        }
+
+        // イベント発生チェックシステム（トリガーを満たしたら自動発生）
+        function checkEventTriggers() {
+            if (!state.triggeredEvents) state.triggeredEvents = [];
+
+            EVENTS.forEach(evt => {
+                if (!state.triggeredEvents.includes(evt.id)) {
+                    if (evt.trigger(state)) {
+                        triggerEvent(evt);
+                    }
+                }
+            });
+        }
+
+        let pendingEventReward = null;
+
+        function triggerEvent(evt) {
+            state.triggeredEvents.push(evt.id);
+            
+            // 報酬適用
+            if (evt.rewardCoins) state.coins += evt.rewardCoins;
+            if (evt.rewardCards) {
+                Object.keys(evt.rewardCards).forEach(cardKey => {
+                    const current = state.inventory[cardKey] || 0;
+                    state.inventory[cardKey] = Math.min(state.maxStack, current + evt.rewardCards[cardKey]);
+                });
+            }
+
+            // モーダル表示準備
+            document.getElementById('eventTitle').innerHTML = `<i class="fa-solid fa-scroll text-amber-400"></i> ${evt.title}`;
+            document.getElementById('eventIcon').innerText = evt.icon || '📜';
+            document.getElementById('eventText').innerText = evt.text;
+
+            let rewardMsg = '';
+            if (evt.rewardCoins) rewardMsg += `🪙 +${evt.rewardCoins} コイン `;
+            if (evt.rewardCards) {
+                const cardNames = Object.keys(evt.rewardCards).map(k => `🎴 ${CARDS[k] ? CARDS[k].name : k} x${evt.rewardCards[k]}`).join(', ');
+                rewardMsg += cardNames;
+            }
+
+            document.getElementById('eventRewardContainer').innerText = `【特典】 ${rewardMsg}`;
+            document.getElementById('eventModal').classList.remove('hidden');
+
+            renderHand();
+            updateUI();
+            saveGame();
+        }
+
+        function closeEventModal() {
+            document.getElementById('eventModal').classList.add('hidden');
+        }
+
+        function resetSaveData() {
+            if (window.confirm('ゲーム進行データをリセットしますか？')) {
+                localStorage.removeItem(SAVE_KEY);
+                state = JSON.parse(JSON.stringify(defaultState));
+                renderHand();
+                renderSlots();
+                updateUI();
+                showToast('データを初期化しました');
+            }
+        }
+
+        function showSaveIndicator() {
+            const el = document.getElementById('saveStatus');
+            if (!el) return;
+            el.classList.remove('opacity-0');
+            setTimeout(() => el.classList.add('opacity-0'), 1500);
+        }
+
+        /* ===================================================================
+           5. Game Initialization & Loop
+        =================================================================== */
+        window.onload = () => {
+            loadGame();
+            renderHand();
+            renderSlots();
+            updateUI();
+            checkEventTriggers();
+            
+            // Per-second automated income tick
+            setInterval(() => {
+                if (state.cps > 0) {
+                    state.coins += state.cps;
+                    updateUI();
+                }
+            }, 1000);
+
+            // Auto-save & Event Check every 5 seconds
+            setInterval(() => {
+                checkEventTriggers();
+                saveGame();
+            }, 5000);
+        };
+
+        function updateUI() {
+            document.getElementById('coinText').innerText = state.coins;
+            document.getElementById('cpsText').innerText = `+${state.cps} G/秒`;
+            
+            // Calculate total unique cards and grand total
+            let grandTotal = 0;
+            Object.values(state.inventory).forEach(count => grandTotal += count);
+            document.getElementById('totalCardCountText').innerText = grandTotal;
+            document.getElementById('discoveredCountText').innerText = `${state.discoveredRecipes.length} / ${RECIPES.length}`;
+
+            // Life level title calculation
+            const rankTitle = getRankTitle(state.discoveredRecipes.length);
+            document.getElementById('lifeRank').innerText = `生活レベル: ${state.discoveredRecipes.length + 1} (${rankTitle})`;
+        }
+
+        function getRankTitle(count) {
+            if (count === 0) return '極貧ぐうたら';
+            if (count < 3) return '自動化見習い';
+            if (count < 5) return '快適生活マスター';
+            if (count < 7) return '怠惰の天才発明家';
+            return '神の領域のぐうたら';
+        }
+
+        function renderHand() {
+            const container = document.getElementById('handContainer');
+            container.innerHTML = '';
+
+            const availableKeys = Object.keys(state.inventory).filter(key => state.inventory[key] > 0);
+
+            if (availableKeys.length === 0) {
+                container.innerHTML = `<span class="text-xs text-slate-500 py-4 w-full text-center">カードがありません。ショップで購入しよう！</span>`;
+                return;
+            }
+
+            availableKeys.forEach((cardKey) => {
+                const card = CARDS[cardKey];
+                const count = state.inventory[cardKey];
+                if (!card) return;
+
+                const cardEl = document.createElement('div');
+                cardEl.className = `card-item relative flex-shrink-0 w-20 h-24 rounded-xl bg-gradient-to-b ${card.color} border-2 ${card.border} p-1.5 flex flex-col justify-between items-center cursor-pointer shadow-lg hover:brightness-110`;
+                cardEl.onclick = () => selectCardToSlot(cardKey);
+
+                cardEl.innerHTML = `
+                    <span class="absolute -top-1 -right-1 bg-slate-900 border border-amber-400 text-amber-300 font-mono text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow">
+                        x${count}
+                    </span>
+                    <span class="text-2xl mt-1">${card.icon}</span>
+                    <span class="text-[9px] font-bold text-white text-center leading-tight truncate w-full">${card.name}</span>
+                `;
+                container.appendChild(cardEl);
+            });
+        }
+
+        function renderSlots() {
+            const container = document.getElementById('craftSlots');
+            container.innerHTML = '';
+
+            state.slots.forEach((cardKey, index) => {
+                const slotEl = document.createElement('div');
+
+                if (cardKey) {
+                    const card = CARDS[cardKey];
+                    slotEl.className = `card-item w-16 h-20 rounded-xl bg-gradient-to-b ${card.color} border-2 ${card.border} p-1 flex flex-col justify-between items-center cursor-pointer shadow-md`;
+                    slotEl.onclick = () => removeCardFromSlot(index);
+                    slotEl.innerHTML = `
+                        <span class="text-xl mt-1">${card.icon}</span>
+                        <span class="text-[8px] font-bold text-white text-center leading-tight truncate w-full">${card.name}</span>
+                    `;
+                } else {
+                    slotEl.className = `w-16 h-20 rounded-xl bg-slate-950/80 border-2 border-dashed border-purple-800/50 flex flex-col items-center justify-center text-slate-600 text-xs`;
+                    slotEl.innerHTML = `<i class="fa-solid fa-plus opacity-40"></i>`;
+                }
+                container.appendChild(slotEl);
+            });
+        }
+
+        // Place card into synthesis slot
+        function selectCardToSlot(cardKey) {
+            const emptyIndex = state.slots.findIndex(s => s === null);
+            if (emptyIndex === -1) {
+                showToast('スロットが一杯です！');
+                return;
+            }
+
+            if (!state.inventory[cardKey] || state.inventory[cardKey] <= 0) {
+                showToast('そのカードの在庫がありません！');
+                return;
+            }
+
+            state.inventory[cardKey]--;
+            state.slots[emptyIndex] = cardKey;
+
+            renderHand();
+            renderSlots();
+            updateUI();
+        }
+
+        // Return card back to hand
+        function removeCardFromSlot(slotIndex) {
+            const cardKey = state.slots[slotIndex];
+            if (!cardKey) return;
+
+            state.inventory[cardKey] = (state.inventory[cardKey] || 0) + 1;
+            state.slots[slotIndex] = null;
+
+            renderHand();
+            renderSlots();
+            updateUI();
+        }
+
+        // Clear all slots back to inventory
+        function clearSlot() {
+            state.slots.forEach((cardKey) => {
+                if (cardKey) {
+                    state.inventory[cardKey] = (state.inventory[cardKey] || 0) + 1;
+                }
+            });
+            state.slots = [null, null, null, null];
+            renderHand();
+            renderSlots();
+            updateUI();
+        }
+
+        function combineCards() {
+            const currentIngredients = state.slots.filter(s => s !== null);
+
+            if (currentIngredients.length === 0) {
+                showToast('スロットに紋章カードをセットしてください');
+                return;
+            }
+
+            // Find matching recipe
+            const matchedRecipe = RECIPES.find(recipe => {
+                if (recipe.ingredients.length !== currentIngredients.length) return false;
+                
+                const recipeSorted = [...recipe.ingredients].sort();
+                const currentSorted = [...currentIngredients].sort();
+                
+                return recipeSorted.every((val, index) => val === currentSorted[index]);
+            });
+
+            if (matchedRecipe) {
+                // Invention Success - Check if already discovered!
+                const isAlreadyDiscovered = state.discoveredRecipes.includes(matchedRecipe.id);
+
+                if (isAlreadyDiscovered) {
+                    // Re-invention is NOT allowed! Return cards to inventory safely.
+                    showToast('⚠️ このアイデアはすでに発明済みです！（カードは手札に戻りました）');
+                    clearSlot();
+                    const storyLog = document.getElementById('storyLog');
+                    storyLog.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <span class="text-2xl">${matchedRecipe.icon}</span>
+                            <div>
+                                <div class="text-xs font-bold text-slate-400">『${matchedRecipe.name}』は再発明できません！</div>
+                                <div class="text-[10px] text-slate-400">すでに自動化収入を得ています。まだ見ぬ新しいアイデアに挑戦しよう！</div>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // First time discovery - Cards placed in slots are permanently consumed!
+                state.discoveredRecipes.push(matchedRecipe.id);
+                state.cps += matchedRecipe.cps;
+                state.coins += matchedRecipe.rewardCoins;
+
+                // Empty craft slots WITHOUT returning cards to inventory
+                state.slots = [null, null, null, null];
+
+                // Success Story Log
+                const storyLog = document.getElementById('storyLog');
+                storyLog.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">${matchedRecipe.icon}</span>
+                        <div>
+                            <div class="text-xs font-bold text-amber-300">『${matchedRecipe.name}』を初発明！ (+${matchedRecipe.rewardCoins}🪙)</div>
+                            <div class="text-[10px] text-slate-300">カードを消費して大儲け！${matchedRecipe.desc}</div>
+                        </div>
+                    </div>
+                `;
+
+                showToast(`🎉 新発明成功！カードを消費して ${matchedRecipe.rewardCoins} 🪙 獲得！`);
+                checkEventTriggers();
+                saveGame();
+
+            } else {
+                // Failure - Cards are NOT consumed, returned to inventory
+                showToast('⚡ 発明に失敗！組み合わせを見直そう（カードは手札に戻りました）');
+                clearSlot();
+                const storyLog = document.getElementById('storyLog');
+                storyLog.innerHTML = `<span class="text-rose-300">「うーん、この組み合わせじゃアイデアにならないな...カードは無事だ。」</span>`;
+            }
+
+            renderHand();
+            renderSlots();
+            updateUI();
+        }
+
+        function buyPack(category, price) {
+            if (state.coins < price) {
+                showToast('コインが足りません！');
+                return;
+            }
+
+            const availableKeys = Object.keys(CARDS).filter(k => CARDS[k].category === category);
+            if (availableKeys.length === 0) return;
+
+            const randomKey = availableKeys[Math.floor(Math.random() * availableKeys.length)];
+
+            const currentCount = state.inventory[randomKey] || 0;
+            if (currentCount >= state.maxStack) {
+                showToast(`『${CARDS[randomKey].name}』は上限の99枚に達しています！`);
+                return;
+            }
+
+            state.coins -= price;
+            state.inventory[randomKey] = currentCount + 1;
+
+            showToast(`🎴 『${CARDS[randomKey].name}』を獲得！ (現在: ${state.inventory[randomKey]}枚)`);
+            renderHand();
+            updateUI();
+            saveGame();
+        }
+
+        function openShopModal() { document.getElementById('shopModal').classList.remove('hidden'); }
+        function closeShopModal() { document.getElementById('shopModal').classList.add('hidden'); }
+
+        function openRecipeModal() {
+            renderRecipeList();
+            document.getElementById('recipeModal').classList.remove('hidden');
+        }
+        function closeRecipeModal() { document.getElementById('recipeModal').classList.add('hidden'); }
+
+        function renderRecipeList() {
+            const container = document.getElementById('recipeListContainer');
+            container.innerHTML = '';
+
+            RECIPES.forEach(recipe => {
+                const isDiscovered = state.discoveredRecipes.includes(recipe.id);
+                const item = document.createElement('div');
+                item.className = `p-2.5 rounded-xl border flex items-center justify-between ${
+                    isDiscovered ? 'bg-purple-950/40 border-purple-800/60' : 'bg-slate-950/60 border-slate-800'
+                }`;
+
+                if (isDiscovered) {
+                    item.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <span class="text-2xl">${recipe.icon}</span>
+                            <div>
+                                <div class="font-bold text-amber-300">${recipe.name}</div>
+                                <div class="text-[10px] text-slate-400">${recipe.desc}</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-emerald-400 font-bold font-mono text-[11px]">+${recipe.cps}G/秒</span>
+                        </div>
+                    `;
+                } else {
+                    const cardNamesHint = recipe.ingredients.map(id => CARDS[id] ? CARDS[id].name.split('「')[1].replace('」','') : '？').join(' + ');
+                    item.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <span class="text-2xl">❓</span>
+                            <div>
+                                <div class="font-bold text-slate-400">未発見のひらめき (${recipe.ingredients.length}枚の紋章)</div>
+                                <div class="text-[10px] text-amber-400/90 font-medium"><i class="fa-solid fa-lightbulb text-[9px]"></i> 必要な要素: ${cardNamesHint}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+                container.appendChild(item);
+            });
+        }
+
+        function showRecipeHint() {
+            const undiscovered = RECIPES.find(r => !state.discoveredRecipes.includes(r.id));
+
+            if (!undiscovered) {
+                showToast('🎉 全ての発明をコンプリート！伝説の怠惰王です！');
+                return;
+            }
+
+            const currentOwned = [];
+            Object.keys(state.inventory).forEach(key => {
+                for (let i = 0; i < state.inventory[key]; i++) {
+                    currentOwned.push(key);
+                }
+            });
+            state.slots.filter(Boolean).forEach(key => currentOwned.push(key));
+
+            const missingCards = [];
+            const tempOwned = [...currentOwned];
+
+            undiscovered.ingredients.forEach(cardId => {
+                const idx = tempOwned.indexOf(cardId);
+                if (idx !== -1) {
+                    tempOwned.splice(idx, 1);
+                } else {
+                    missingCards.push(cardId);
+                }
+            });
+
+            const storyLog = document.getElementById('storyLog');
+
+            if (missingCards.length === 0) {
+                const ingredientNames = undiscovered.ingredients.map(id => CARDS[id] ? CARDS[id].name : id).join(' + ');
+                storyLog.innerHTML = `<span class="text-amber-300 font-bold"><i class="fa-solid fa-lightbulb"></i> ヒント: </span><span class="text-slate-200">手持ちの「${ingredientNames}」をセットしよう！（成功時に各1枚消費）</span>`;
+                showToast('💡 発明可能なカードが手元に揃っています！');
+            } else {
+                const missingNames = missingCards.map(id => CARDS[id] ? CARDS[id].name : id).join(', ');
+                storyLog.innerHTML = `<span class="text-amber-300 font-bold"><i class="fa-solid fa-lightbulb"></i> ヒント: </span><span class="text-slate-200">未発見の発明には「${missingNames}」が必要です。ショップで購入しよう！</span>`;
+                showToast(`💡 カードショップで新しいカードを購入しよう！`);
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toastMessage');
+            toast.innerText = msg;
+            toast.classList.remove('opacity-0', '-translate-y-2');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', '-translate-y-2');
+            }, 2500);
+        }
+    </script>
+</body>
+</html>

@@ -165,57 +165,133 @@ else
   echo "✅ 変更がないため、Gitの更新はスキップしました。"
 fi
 
-# 8. 🌟 共通データ連携対応：AIへの発注プロンプト作成とクリップボードコピー 🌟
+# 8. 🌟 次回作プロンプト作成（モード選択つき）🌟
+HANDOFF_RULE="・コード内に、開発引き継ぎ用の以下のコメントブロックを必ず含めてください。改良のたびに内容を最新に更新してください。
+<!-- AI-DEV-HANDOFF-START
+タイトル:
+バージョン:
+概要・ルール:
+主要な構造（関数・状態管理・画面遷移）:
+セーブデータのキー:
+実装済み機能:
+未実装・TODO:
+設計上のこだわり・注意点:
+AI-DEV-HANDOFF-END -->"
+
+extract_handoff() {
+  sed -n '/AI-DEV-HANDOFF-START/,/AI-DEV-HANDOFF-END/p' "$1"
+}
+
 echo -e "\n--------------------------------------------------"
-echo "🤖 次回作の注文（プロンプト）を作成します。"
-echo "開発中のテーマや、新しく追加したい要素・ルールを入力してください。"
-echo "（何も入力せずに Enter を押すと、共通データを活用したお任せアイデアになります）"
-echo -n "👉 リクエスト入力: "
-read -r custom_request
+echo "🤖 AIへの発注プロンプトを作成します。モードを選んでください。"
+echo "  1) 新作を作る"
+echo "  2) 既存ゲームの開発を引き継ぐ（引き継ぎブロックを添付）"
+echo "  3) 既存ゲームの開発を引き継ぐ（引き継ぎブロック＋全コードを添付）"
+echo -n "👉 番号 [1]: "
+read -r mode
+mode=${mode:-1}
 
-if [ -n "$custom_request" ]; then
-  REQUEST_PART="次回作として「${custom_request}」という概念やテーマを組み込んだゲームを作りたいです。"
+COMMON_RULES="【必須条件】
+・HTML/CSS/JSが1つにまとまった1ファイルの完全なコードを生成してください。
+・コード内のどこかに必ず「AI-GAME-PORTFOLIO」というメタタグまたは識別コメントを含めてください。
+・マスタデータ（カード、レシピ、家など）は外部URL「https://morinokum.github.io/my-website/game-data.js」から読み込み（window.RUNE_GAME_DATA を利用）、取得失敗時の簡単なフォールバックデータも備えてください。
+・ローカルストレージなどによるセーブ機能も備えてください。
+${HANDOFF_RULE}"
+
+if [ "$mode" = "2" ] || [ "$mode" = "3" ]; then
+  mapfile -t game_files < <(ls -t games/*.html 2>/dev/null)
+  if [ ${#game_files[@]} -eq 0 ]; then
+    echo "⚠ games フォルダにゲームがありません。"; exit 1
+  fi
+  echo -e "\n引き継ぐゲームを選んでください:"
+  for i in "${!game_files[@]}"; do
+    if grep -q "AI-DEV-HANDOFF-START" "${game_files[$i]}"; then mark="📝"; else mark="  "; fi
+    printf "  %2d) %s %s\n" "$((i+1))" "$mark" "$(basename "${game_files[$i]}")"
+  done
+  echo "  （📝 = 引き継ぎブロックあり）"
+  echo -n "👉 番号: "
+  read -r num
+  target="${game_files[$((num-1))]}"
+  if [ -z "$target" ] || [ ! -f "$target" ]; then
+    echo "⚠ 無効な番号です。"; exit 1
+  fi
+
+  handoff=$(extract_handoff "$target")
+  if [ -z "$handoff" ]; then
+    echo "⚠ このゲームには引き継ぎブロックがありません。"
+    if [ "$mode" = "2" ]; then
+      echo "   全コード付き（モード3）に切り替えます。"
+      mode=3
+    fi
+    handoff="（引き継ぎブロックなし）"
+  fi
+
+  echo -n "👉 今回の変更・追加したい内容（空Enterで『お任せ改良』）: "
+  read -r custom_request
+  if [ -n "$custom_request" ]; then
+    REQUEST_PART="このゲームを引き継いで、「${custom_request}」を実装してください。"
+  else
+    REQUEST_PART="このゲームを引き継いで、面白さが増すような改良を提案し、実装してください。"
+  fi
+
+  PROMPT="以下のHTMLブラウザゲームの開発を引き継いでください。
+
+【ゲーム名】$(basename "$target")
+
+【引き継ぎ情報】
+${handoff}
+
+${REQUEST_PART}
+既存の仕様・セーブデータ互換を壊さないよう注意してください。
+"
+  if [ "$mode" = "3" ]; then
+    PROMPT+="
+【現在の全コード】
+$(cat "$target")
+
+"
+  fi
+  PROMPT+="
+${COMMON_RULES}"
+
 else
-  REQUEST_PART="次回作を作りたいのですが、共通データを活かした、既存作品と被らない新しいルールの「面白くてハマる単一ファイルゲーム」のアイデアを1つ考えてください。"
-fi
+  echo -n "👉 新作のテーマ・要素（空Enterでお任せ）: "
+  read -r custom_request
+  if [ -n "$custom_request" ]; then
+    REQUEST_PART="次回作として「${custom_request}」という概念やテーマを組み込んだゲームを作りたいです。"
+  else
+    REQUEST_PART="次回作を作りたいのですが、共通データを活かした、既存作品と被らない新しいルールの「面白くてハマる単一ファイルゲーム」のアイデアを1つ考えてください。"
+  fi
 
-PROMPT="私はこれまでに以下のHTMLブラウザゲームを作成しました。
+  PROMPT="私はこれまでに以下のHTMLブラウザゲームを作成しました。
 
-${game_list_text}
+$(echo -e "$game_list_text")
 これらは私の「AI-GAME-PORTFOLIO」に収録されています。
 
 ${REQUEST_PART}
 
-HTML/CSS/JSが1つにまとまった1ファイルの完全なコードを生成してください。
-
-【必須条件】
-・コード内のどこかに必ず「AI-GAME-PORTFOLIO」というメタタグまたは識別コメントを含めてください。
-・マスタデータ（カード、レシピ、家など）は外部URL「https://morinokum.github.io/my-website/game-data.js」から読み込み（window.RUNE_GAME_DATA を利用）、取得失敗時の簡単なフォールバックデータも備えてください。
-・ローカルストレージなどによるセーブ機能も備えてください。"
+${COMMON_RULES}"
+fi
 
 # 9. クリップボードへの転送処理
 copy_to_clipboard() {
   local content="$1"
   if command -v xclip >/dev/null 2>&1; then
-    echo -e "$content" | xclip -selection clipboard
-    return 0
+    printf '%s' "$content" | xclip -selection clipboard; return 0
   elif command -v xsel >/dev/null 2>&1; then
-    echo -e "$content" | xsel -b
-    return 0
+    printf '%s' "$content" | xsel -b; return 0
   elif command -v wl-copy >/dev/null 2>&1; then
-    echo -e "$content" | wl-copy
-    return 0
+    printf '%s' "$content" | wl-copy; return 0
   fi
   return 1
 }
 
 if copy_to_clipboard "$PROMPT"; then
   echo -e "\n📋 クリップボードにAIへの指示文をコピーしました！"
-  echo "    Geminiの入力欄で「Ctrl + V」すればそのまま発注できます。"
+  echo "    新規チャットで「Ctrl + V」すればそのまま発注・引き継ぎできます。"
 else
-  echo -e "\n⚠ クリップボード出力ツールが見つかりませんでした。"
-  echo "   以下のテキストをコピーして使用してください："
+  echo -e "\n⚠ クリップボード出力ツールが見つかりませんでした。以下をコピーしてください："
   echo "--------------------------------------------------"
-  echo -e "$PROMPT"
+  printf '%s\n' "$PROMPT"
   echo "--------------------------------------------------"
 fi

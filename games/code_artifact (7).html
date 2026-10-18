@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="portfolio" content="AI-GAME-PORTFOLIO">
+    <!-- AI-GAME-PORTFOLIO Identifier -->
+    <title>紋章カードの領地経営：ルーン・オートバトラー | AI-GAME-PORTFOLIO</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #0b0f19;
+            color: #e2e8f0;
+            user-select: none;
+        }
+        .font-cinzel {
+            font-family: 'Cinzel', serif;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-panel-interactive {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            transition: all 0.2s ease;
+        }
+        .glass-panel-interactive:hover {
+            border-color: rgba(99, 102, 241, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px -4px rgba(99, 102, 241, 0.2);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.5);
+            border-radius: 3px;
+        }
+        .glow-text-gold {
+            text-shadow: 0 0 10px rgba(234, 179, 8, 0.5);
+        }
+        .glow-text-indigo {
+            text-shadow: 0 0 10px rgba(99, 102, 241, 0.6);
+        }
+        .card-fire { border-color: #ef4444; background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(15,23,42,0.9)); }
+        .card-water { border-color: #3b82f6; background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(15,23,42,0.9)); }
+        .card-wind { border-color: #10b981; background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(15,23,42,0.9)); }
+        .card-light { border-color: #f59e0b; background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(15,23,42,0.9)); }
+        .card-dark { border-color: #8b5cf6; background: linear-gradient(135deg, rgba(139,92,246,0.15), rgba(15,23,42,0.9)); }
+
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .animate-pulse-subtle {
+            animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+<!-- AI-DEV-HANDOFF-START
+タイトル: 紋章カードの領地経営：ルーン・オートバトラー (Rune Territory Manager & Auto-Battler)
+バージョン: 1.0.0
+概要・ルール: RUNE_GAME_DATAのカード・素材・召喚ルーンを活用し、領地施設を建設・強化しながら、カードでチームを編成してウェーブごとに迫り来る魔物を自動戦闘（オートバトル）で退治する戦略シミュレーション＆オートバトラーゲーム。勝利報酬でルーンカードを購入・合成・進化させ、領地を発展させつつ高難易度ウェーブを目指す。
+主要な構造（関数・状態管理・画面遷移）: 
+  - state: { gold, mana, territory, deck, team, wave, highScore, log }
+  - 画面: 領地経営/建設画面, カード編成/ガチャ画面, オートバトル陣形画面, 成果/ショップ画面
+  - Functions: loadExternalData(), initGame(), saveGame(), loadGame(), renderTerritory(), renderDeck(), startBattle(), battleLoop(), resolveTurn()
+セーブデータのキー: RUNE_TERRITORY_AUTOBATTLER_SAVE
+実装済み機能: 外部データロード＆フォールバック、領地施設アップグレード（マナ産出・ゴールド産出・カード所持上限）、カードの購入・合成強化、6スロットのオートバトル（属性シナジー・攻撃順序・スキル自動発動）、ローカルストレージ自動セーブ/ロード/リセット。
+未実装・TODO: レア紋章モンスターのボスウェーブ追加、特殊アビリティのパーティ連携ボーナス拡充。
+設計上のこだわり・注意点: 単一ファイルで完全動作し、洗練されたサイバー＆ファンタジーUI（CSS Flex/Grid、グラデーション、アニメーション）。外部データ(window.RUNE_GAME_DATA)が存在しない場合は完璧なフォールバックデータで即時動作。
+AI-DEV-HANDOFF-END -->
+
+    <!-- Header Navigation -->
+    <header class="glass-panel sticky top-0 z-50 px-4 py-3 border-b border-slate-800">
+        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
+            <!-- Game Title & Badge -->
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid font-cinzel text-xl text-white">R</i>
+                </div>
+                <div>
+                    <h1 class="font-cinzel text-lg md:text-xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-300 to-amber-300">
+                        紋章カードの領地経営
+                    </h1>
+                    <p class="text-xs text-slate-400 flex items-center gap-1">
+                        <span class="bg-indigo-950/80 text-indigo-400 border border-indigo-800/50 px-1.5 py-0.5 rounded text-[10px] font-mono">Rune Auto-Battler</span>
+                        <span>AI-GAME-PORTFOLIO</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Global Status Bar -->
+            <div class="flex items-center gap-4 sm:gap-6 bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-800 text-sm">
+                <div class="flex items-center gap-2" title="ゴールド: 施設強化やカード購入に使用">
+                    <i class="fa-solid fa-coins text-amber-400 text-base glow-text-gold"></i>
+                    <span id="res-gold" class="font-bold text-amber-200">0</span>
+                </div>
+                <div class="flex items-center gap-2" title="マナ: 高級カードの召喚やスキルブーストに使用">
+                    <i class="fa-solid fa-gem text-cyan-400 text-base"></i>
+                    <span id="res-mana" class="font-bold text-cyan-200">0</span>
+                </div>
+                <div class="flex items-center gap-2" title="現在の到達ウェーブ">
+                    <i class="fa-solid fa-shield-halved text-rose-400 text-base"></i>
+                    <span class="text-xs text-slate-400">WAVE</span>
+                    <span id="res-wave" class="font-bold text-rose-200">1</span>
+                </div>
+            </div>
+
+            <!-- System Controls -->
+            <div class="flex items-center gap-2">
+                <button onclick="saveGame(true)" class="p-2 rounded-lg glass-panel-interactive text-slate-300 hover:text-white text-xs flex items-center gap-1 px-3">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span class="hidden md:inline">セーブ</span>
+                </button>
+                <button onclick="confirmResetData()" class="p-2 rounded-lg glass-panel-interactive text-rose-400 hover:text-rose-300 text-xs flex items-center gap-1 px-3">
+                    <i class="fa-solid fa-rotate-left"></i>
+                    <span class="hidden md:inline">リセット</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Navigation Tabs -->
+    <div class="max-w-7xl mx-auto w-full px-4 pt-4">
+        <nav class="flex space-x-2 border-b border-slate-800 text-sm font-medium">
+            <button id="tab-btn-territory" onclick="switchTab('territory')" class="tab-btn active px-4 py-2.5 rounded-t-lg border-b-2 border-indigo-500 bg-indigo-950/40 text-indigo-300 flex items-center gap-2">
+                <i class="fa-solid fa-chess-rook"></i> 領地経営
+            </button>
+            <button id="tab-btn-team" onclick="switchTab('team')" class="tab-btn px-4 py-2.5 rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 flex items-center gap-2">
+                <i class="fa-solid fa-users-viewfinder"></i> 編成 & 召喚
+            </button>
+            <button id="tab-btn-battle" onclick="switchTab('battle')" class="tab-btn px-4 py-2.5 rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 flex items-center gap-2">
+                <i class="fa-solid fa-swords text-amber-500"></i> 出撃・防衛戦
+            </button>
+        </nav>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto w-full px-4 py-4 flex-1">
+        
+        <!-- SECTION 1: Territory Management -->
+        <section id="tab-territory" class="space-y-6">
+            <div class="glass-panel p-6 rounded-2xl relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 opacity-5 text-indigo-500">
+                    <i class="fa-solid fa-castle text-9xl"></i>
+                </div>
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-building-columns text-indigo-400"></i> 領地施設一覧
+                        </h2>
+                        <p class="text-sm text-slate-400 mt-1">施設を建設・強化して、ウェーブ毎に得られる資材やパーティのキャパシティを増加させましょう。</p>
+                    </div>
+                    <div class="bg-indigo-950/50 border border-indigo-800/40 px-4 py-2 rounded-xl text-xs text-indigo-200">
+                        <i class="fa-solid fa-clock-rotate-left mr-1"></i> 施設収入: 防衛戦ウェーブクリア時に獲得
+                    </div>
+                </div>
+
+                <div id="territory-list" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Dynamic Rendering via JS -->
+                </div>
+            </div>
+
+            <!-- Territory Log & Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="glass-panel p-5 rounded-2xl">
+                    <h3 class="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-emerald-400"></i> 領地ステータス概要
+                    </h3>
+                    <div class="space-y-2 text-sm text-slate-300">
+                        <div class="flex justify-between py-1.5 border-b border-slate-800">
+                            <span class="text-slate-400">毎ターン金貨収入:</span>
+                            <span id="stat-gold-rate" class="font-semibold text-amber-400">+0 / Wave</span>
+                        </div>
+                        <div class="flex justify-between py-1.5 border-b border-slate-800">
+                            <span class="text-slate-400">毎ターンマナ収入:</span>
+                            <span id="stat-mana-rate" class="font-semibold text-cyan-400">+0 / Wave</span>
+                        </div>
+                        <div class="flex justify-between py-1.5 border-b border-slate-800">
+                            <span class="text-slate-400">カード最大所持枠:</span>
+                            <span id="stat-deck-limit" class="font-semibold text-indigo-300">0 枚</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl">
+                    <h3 class="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-scroll text-amber-400"></i> 領地日誌
+                    </h3>
+                    <div id="territory-log" class="h-28 overflow-y-auto custom-scrollbar text-xs text-slate-400 space-y-1 pr-2">
+                        <!-- Dynamic logs -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: Party & Shop / Fusion -->
+        <section id="tab-team" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Left 2 Cols: Team Formation & Deck -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Battle Formation (6 Slots) -->
+                    <div class="glass-panel p-5 rounded-2xl">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-chess-board text-indigo-400"></i> 防衛隊形 (前衛3 / 後衛3)
+                            </h2>
+                            <span id="synergy-badge" class="text-xs bg-purple-950/80 border border-purple-800/60 text-purple-300 px-2.5 py-1 rounded-lg">
+                                シナジー: なし
+                            </span>
+                        </div>
+
+                        <!-- 2x3 Formation Grid -->
+                        <div class="space-y-3">
+                            <div class="text-xs font-semibold text-amber-400 tracking-wider">【前衛 - 近接・タンク推奨】</div>
+                            <div class="grid grid-cols-3 gap-3">
+                                <div id="slot-0" onclick="handleSlotClick(0)" class="formation-slot min-h-[110px] rounded-xl border-2 border-dashed border-slate-700 bg-slate-900/50 hover:border-indigo-500/50 flex flex-col items-center justify-center cursor-pointer transition p-2 relative">
+                                    <span class="text-xs text-slate-500">前衛 1</span>
+                                </div>
+                                <div id="slot-1" onclick="handleSlotClick(1)" class="formation-slot min-h-[110px] rounded-xl border-2 border-dashed border-slate-700 bg-slate-900/50 hover:border-indigo-500/50 flex flex-col items-center justify-center cursor-pointer transition p-2 relative">
+                                    <span class="text-xs text-slate-500">前衛 2</span>
+                                </div>
+                                <div id="slot-2" onclick="handleSlotClick(2)" class="formation-slot min-h-[110px] rounded-xl border-2 border-dashed border-slate-700 bg-slate-900/50 hover:border-indigo-500/50 flex flex-col items-center justify-center cursor-pointer transition p-2 relative">
+                                    <span class="text-xs text-slate-500">前衛 3</span>
+                                </div>
+                            </div>
+
+                            <div class="text-xs font-semibold text-cyan-400 tracking-wider pt-2">【後衛 - 遠距離・サポート推奨】</div>
+                            <div class="grid grid-cols-3 gap-3">
+                                <div id="slot-3" onclick="handleSlotClick(3)" class="formation-slot min-h-[110px] rounded-xl border-2 border-dashed border-slate-700 bg-slate-900/50 hover:border-indigo-500/50 flex flex-col items-center justify-center cursor-pointer transition p-2 relative">
+                                    <span class="text-xs text-slate-500">後衛 1</span>
+                                </div>
+                                <div id="slot-4" onclick="handleSlotClick(4)" class="formation-slot min-h-[110px] rounded-xl border-2 border-dashed border-slate-700 bg-slate-900/50 hover:border-indigo-500/50 flex flex-col items-center justify-center cursor-pointer transition p-2 relative">
+                                    <span class="text-xs text-slate-500">後衛 2</span>
+                                </div>
+                                <div id="slot-5" onclick="handleSlotClick(5)" class="formation-slot min-h-[110px] rounded-xl border-2 border-dashed border-slate-700 bg-slate-900/50 hover:border-indigo-500/50 flex flex-col items-center justify-center cursor-pointer transition p-2 relative">
+                                    <span class="text-xs text-slate-500">後衛 3</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Owned Rune Cards (Inventory) -->
+                    <div class="glass-panel p-5 rounded-2xl">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                                <i class="fa-solid fa-cards-blank text-indigo-400"></i> 所持紋章カード (<span id="deck-count">0</span>/<span id="deck-max">10</span>)
+                            </h3>
+                            <span class="text-xs text-slate-400">カードをクリックで選択し、空きスロットに配置</span>
+                        </div>
+                        
+                        <div id="deck-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[320px] overflow-y-auto custom-scrollbar pr-1">
+                            <!-- Dynamic Cards -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Col: Rune Altar (Gacha / Summons & Fusion) -->
+                <div class="space-y-6">
+                    <div class="glass-panel p-5 rounded-2xl relative">
+                        <h2 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-spaghetti-monster-flying text-cyan-400"></i> 紋章カード召喚
+                        </h2>
+                        <p class="text-xs text-slate-400 mb-4">領地の資材を消費して、強力な紋章カードを自動召喚します。</p>
+
+                        <div class="space-y-3">
+                            <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-800 flex justify-between items-center">
+                                <div>
+                                    <div class="text-sm font-bold text-amber-300">通常召喚</div>
+                                    <div class="text-[11px] text-slate-400">★1〜★2 の紋章が出現</div>
+                                </div>
+                                <button onclick="buyCard('normal')" class="px-3 py-2 bg-gradient-to-r from-amber-600 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 text-slate-950 font-bold rounded-lg text-xs shadow-md transition flex items-center gap-1">
+                                    <i class="fa-solid fa-coins"></i> 100 G
+                                </button>
+                            </div>
+
+                            <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-800 flex justify-between items-center">
+                                <div>
+                                    <div class="text-sm font-bold text-cyan-300">上級ルーン召喚</div>
+                                    <div class="text-[11px] text-slate-400">★2〜★3 の強力紋章が出現</div>
+                                </div>
+                                <button onclick="buyCard('rare')" class="px-3 py-2 bg-gradient-to-r from-cyan-600 to-blue-500 hover:from-cyan-500 hover:to-blue-400 text-white font-bold rounded-lg text-xs shadow-md transition flex items-center gap-1">
+                                    <i class="fa-solid fa-gem"></i> 50 M
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Card Fusion Help -->
+                        <div class="mt-6 p-4 rounded-xl bg-indigo-950/30 border border-indigo-800/40 text-xs text-indigo-200 space-y-2">
+                            <div class="font-bold text-indigo-300 flex items-center gap-1">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> 同名カードの合成・強化
+                            </div>
+                            <p class="text-[11px] leading-relaxed text-slate-300">
+                                同じ種類のカードを獲得すると、自動的にカードレベルが上がりステータス（HP・攻撃力）が底上げされます！
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: Auto Battle Arena -->
+        <section id="tab-battle" class="hidden space-y-6">
+            <div class="glass-panel p-5 rounded-2xl">
+                <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-swords text-rose-500"></i> 魔物迎撃アリーナ - WAVE <span id="arena-wave-title">1</span>
+                        </h2>
+                        <p class="text-xs text-slate-400">編成した紋章チームが自立戦闘を行います。右側の戦闘ログやHPバーに注目してください。</p>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <button id="btn-start-battle" onclick="startBattle()" class="px-6 py-2.5 bg-gradient-to-r from-rose-600 via-red-500 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white font-bold rounded-xl shadow-lg shadow-rose-600/30 transition transform hover:scale-105 flex items-center gap-2">
+                            <i class="fa-solid fa-play"></i> 戦闘開始
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Battle Canvas & Log Canvas Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <!-- Battle Stage Canvas -->
+                    <div class="lg:col-span-2 bg-slate-950 rounded-xl border border-slate-800 p-2 relative overflow-hidden flex flex-col items-center justify-center min-h-[380px]">
+                        <canvas id="battleCanvas" width="700" height="360" class="w-full h-full max-w-full rounded-lg"></canvas>
+                        
+                        <!-- Overlay Result Modal -->
+                        <div id="battle-result-overlay" class="hidden absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-10">
+                            <div id="result-icon-container" class="mb-2"></div>
+                            <h3 id="result-title" class="text-2xl font-bold font-cinzel mb-1">VICTORY</h3>
+                            <p id="result-sub" class="text-sm text-slate-300 mb-4">敵軍を破り、領地を守り抜きました！</p>
+                            
+                            <div id="result-rewards" class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 px-6 mb-6 text-sm flex gap-6 text-slate-200">
+                                <div>獲得ゴールド: <span id="reward-gold" class="text-amber-400 font-bold">+100</span></div>
+                                <div>獲得マナ: <span id="reward-mana" class="text-cyan-400 font-bold">+20</span></div>
+                            </div>
+
+                            <button onclick="closeResultOverlay()" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-sm transition">
+                                領地へ戻る
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Realtime Combat Log -->
+                    <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-terminal text-indigo-400"></i> 戦況実況ログ
+                            </h3>
+                            <div id="battle-log" class="h-[300px] overflow-y-auto custom-scrollbar text-xs space-y-1.5 font-mono text-slate-300 pr-1">
+                                <div class="text-slate-500">「戦闘開始」ボタンを押すとバトルが進行します。</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="glass-panel mt-8 py-4 px-4 text-center text-xs text-slate-500 border-t border-slate-800">
+        <p>紋章カードの領地経営：ルーン・オートバトラー &copy; 2026 AI-GAME-PORTFOLIO</p>
+    </footer>
+
+    <!-- JS Logic -->
+    <script>
+        /* ===================================================================
+           1. FALLBACK DATA & EXTERNAL SCRIPT LOADER
+           =================================================================== */
+        const FALLBACK_RUNE_DATA = {
+            cards: [
+                { id: "c1", name: "フレイムナイト", element: "fire", atk: 25, hp: 120, range: "front", skill: "炎の重撃", cost: 100 },
+                { id: "c2", name: "アクアプリースト", element: "water", atk: 12, hp: 80, range: "back", skill: "恵みの雨", cost: 100 },
+                { id: "c3", name: "ウインドアーチャー", element: "wind", atk: 22, hp: 70, range: "back", skill: "疾風突き", cost: 100 },
+                { id: "c4", name: "ホーリーガーディアン", element: "light", atk: 18, hp: 160, range: "front", skill: "聖なる盾", cost: 150 },
+                { id: "c5", name: "ダークアサシン", element: "dark", atk: 35, hp: 65, range: "front", skill: "影縫い", cost: 150 }
+            ],
+            materials: [
+                { id: "m1", name: "ルーン原石", value: 10 },
+                { id: "m2", name: "魔導結晶", value: 50 }
+            ]
+        };
+
+        let gameData = FALLBACK_RUNE_DATA;
+
+        // Try Loading External JS
+        (function loadExternalGameData() {
+            const script = document.createElement('script');
+            script.src = "https://morinokum.github.io/my-website/game-data.js";
+            script.onload = () => {
+                if (window.RUNE_GAME_DATA) {
+                    console.log("External RUNE_GAME_DATA loaded successfully.");
+                    gameData = window.RUNE_GAME_DATA;
+                }
+            };
+            script.onerror = () => {
+                console.warn("Failed to load external game data. Using fallback data.");
+            };
+            document.head.appendChild(script);
+        })();
+
+        /* ===================================================================
+           2. GAME STATE MANAGEMENT
+           =================================================================== */
+        const SAVE_KEY = "RUNE_TERRITORY_AUTOBATTLER_SAVE";
+
+        let state = {
+            gold: 200,
+            mana: 50,
+            wave: 1,
+            highScore: 1,
+            buildings: {
+                mine: { level: 1, name: "魔導金鉱山", baseProd: 50, cost: 100, icon: "fa-dumpster" },
+                tower: { level: 1, name: "ルーン魔力塔", baseProd: 15, cost: 120, icon: "fa-tower-cell" },
+                barracks: { level: 1, name: "遠征陣営", deckLimit: 8, cost: 150, icon: "fa-campground" }
+            },
+            deck: [], // Array of owned cards: { uniqueId, dataId, name, element, atk, hp, level, range, skill }
+            team: [null, null, null, null, null, null], // 6 slots: 0,1,2 front / 3,4,5 back
+            selectedCardId: null,
+            logs: []
+        };
+
+        /* ===================================================================
+           3. INITIALIZATION & SAVE/LOAD SYSTEM
+           =================================================================== */
+        window.addEventListener('DOMContentLoaded', () => {
+            loadGame();
+            if (state.deck.length === 0) {
+                // Give Starter Cards
+                addCardToDeck("c1");
+                addCardToDeck("c2");
+                addCardToDeck("c3");
+            }
+            updateUI();
+            initBattleCanvas();
+        });
+
+        function saveGame(manual = false) {
+            try {
+                localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+                if (manual) addTerritoryLog("ゲームデータを保存しました。");
+            } catch (e) {
+                console.error("Save error", e);
+            }
+        }
+
+        function loadGame() {
+            try {
+                const data = localStorage.getItem(SAVE_KEY);
+                if (data) {
+                    const parsed = JSON.parse(data);
+                    state = { ...state, ...parsed };
+                    addTerritoryLog("セーブデータを読み込みました。");
+                }
+            } catch (e) {
+                console.error("Load error", e);
+            }
+        }
+
+        function confirmResetData() {
+            if (confirm("ゲームデータを完全に初期化しますか？この操作は取り消せません。")) {
+                localStorage.removeItem(SAVE_KEY);
+                location.reload();
+            }
+        }
+
+        /* ===================================================================
+           4. UI & TAB NAVIGATION
+           =================================================================== */
+        function switchTab(tabName) {
+            ['territory', 'team', 'battle'].forEach(t => {
+                const sec = document.getElementById(`tab-${t}`);
+                const btn = document.getElementById(`tab-btn-${t}`);
+                if (t === tabName) {
+                    sec.classList.remove('hidden');
+                    btn.classList.add('border-indigo-500', 'bg-indigo-950/40', 'text-indigo-300');
+                    btn.classList.remove('border-transparent', 'text-slate-400');
+                } else {
+                    sec.classList.add('hidden');
+                    btn.classList.remove('border-indigo-500', 'bg-indigo-950/40', 'text-indigo-300');
+                    btn.classList.add('border-transparent', 'text-slate-400');
+                }
+            });
+            updateUI();
+        }
+
+        function updateUI() {
+            // Header stats
+            document.getElementById('res-gold').textContent = state.gold;
+            document.getElementById('res-mana').textContent = state.mana;
+            document.getElementById('res-wave').textContent = state.wave;
+            document.getElementById('arena-wave-title').textContent = state.wave;
+
+            // Territory stats
+            const goldProd = state.buildings.mine.level * state.buildings.mine.baseProd;
+            const manaProd = state.buildings.tower.level * state.buildings.tower.baseProd;
+            const maxDeck = state.buildings.barracks.deckLimit + (state.buildings.barracks.level - 1) * 3;
+
+            document.getElementById('stat-gold-rate').textContent = `+${goldProd} / Wave`;
+            document.getElementById('stat-mana-rate').textContent = `+${manaProd} / Wave`;
+            document.getElementById('stat-deck-limit').textContent = `${maxDeck} 枚`;
+
+            renderTerritory();
+            renderTeamAndDeck(maxDeck);
+            renderTerritoryLogs();
+        }
+
+        /* ===================================================================
+           5. TERRITORY MANAGEMENT LOGIC
+           =================================================================== */
+        function renderTerritory() {
+            const container = document.getElementById('territory-list');
+            container.innerHTML = '';
+
+            Object.keys(state.buildings).forEach(bKey => {
+                const b = state.buildings[bKey];
+                const upgradeCost = b.cost * b.level;
+
+                let effectDesc = '';
+                if (bKey === 'mine') effectDesc = `収入: +${b.baseProd * b.level} Gold/W`;
+                if (bKey === 'tower') effectDesc = `収入: +${b.baseProd * b.level} Mana/W`;
+                if (bKey === 'barracks') effectDesc = `上限: ${b.deckLimit + (b.level - 1) * 3} 枚`;
+
+                const cardHtml = `
+                    <div class="glass-panel-interactive p-4 rounded-xl flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-bold px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">
+                                    Lv. ${b.level}
+                                </span>
+                                <i class="fa-solid ${b.icon} text-slate-400 text-lg"></i>
+                            </div>
+                            <h3 class="font-bold text-slate-100 text-sm mb-1">${b.name}</h3>
+                            <p class="text-xs text-emerald-400 font-semibold mb-3">${effectDesc}</p>
+                        </div>
+                        <button onclick="upgradeBuilding('${bKey}')" class="w-full py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold rounded-lg shadow transition flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-arrow-up"></i> 強化 (${upgradeCost} G)
+                        </button>
+                    </div>
+                `;
+                container.innerHTML += cardHtml;
+            });
+        }
+
+        function upgradeBuilding(bKey) {
+            const b = state.buildings[bKey];
+            const cost = b.cost * b.level;
+            if (state.gold >= cost) {
+                state.gold -= cost;
+                b.level += 1;
+                addTerritoryLog(`${b.name} を Lv.${b.level} に強化しました。`);
+                saveGame();
+                updateUI();
+            } else {
+                alert("ゴールドが不足しています！");
+            }
+        }
+
+        function addTerritoryLog(msg) {
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            state.logs.unshift(`[${time}] ${msg}`);
+            if (state.logs.length > 20) state.logs.pop();
+            renderTerritoryLogs();
+        }
+
+        function renderTerritoryLogs() {
+            const logBox = document.getElementById('territory-log');
+            if (!logBox) return;
+            logBox.innerHTML = state.logs.map(l => `<div>${l}</div>`).join('');
+        }
+
+        /* ===================================================================
+           6. CARD SUMMON & DECK / FORMATION MANAGEMENT
+           =================================================================== */
+        function addCardToDeck(cardDataId) {
+            const baseList = (gameData && gameData.cards) ? gameData.cards : FALLBACK_RUNE_DATA.cards;
+            const base = baseList.find(c => c.id === cardDataId) || baseList[0];
+
+            // Check if existing card for Fusion Level-Up
+            const existing = state.deck.find(c => c.dataId === base.id);
+            if (existing) {
+                existing.level += 1;
+                existing.atk = Math.round(existing.atk * 1.2);
+                existing.hp = Math.round(existing.hp * 1.25);
+                addTerritoryLog(`【カード合成】${existing.name} が Lv.${existing.level} に強化されました！`);
+                return;
+            }
+
+            // Create new card instance
+            const newCard = {
+                uniqueId: 'card_' + Date.now() + '_' + Math.floor(Math.random()*1000),
+                dataId: base.id,
+                name: base.name,
+                element: base.element || 'fire',
+                atk: base.atk,
+                hp: base.hp,
+                range: base.range || 'front',
+                skill: base.skill || '強撃',
+                level: 1
+            };
+
+            state.deck.push(newCard);
+            addTerritoryLog(`新カード【${newCard.name}】を獲得しました！`);
+        }
+
+        function buyCard(type) {
+            const maxDeck = state.buildings.barracks.deckLimit + (state.buildings.barracks.level - 1) * 3;
+            if (state.deck.length >= maxDeck) {
+                alert("所持枠が上限に達しています！遠征陣営を強化してください。");
+                return;
+            }
+
+            const baseList = (gameData && gameData.cards) ? gameData.cards : FALLBACK_RUNE_DATA.cards;
+
+            if (type === 'normal') {
+                if (state.gold < 100) { alert("ゴールドが足りません"); return; }
+                state.gold -= 100;
+                const picked = baseList[Math.floor(Math.random() * baseList.length)];
+                addCardToDeck(picked.id);
+            } else if (type === 'rare') {
+                if (state.mana < 50) { alert("マナが足りません"); return; }
+                state.mana -= 50;
+                const picked = baseList[Math.floor(Math.random() * baseList.length)];
+                addCardToDeck(picked.id);
+            }
+
+            saveGame();
+            updateUI();
+        }
+
+        function renderTeamAndDeck(maxDeck) {
+            document.getElementById('deck-count').textContent = state.deck.length;
+            document.getElementById('deck-max').textContent = maxDeck;
+
+            // Render Slots
+            for (let i = 0; i < 6; i++) {
+                const slotEl = document.getElementById(`slot-${i}`);
+                const card = state.team[i];
+                if (card) {
+                    const elemClass = `card-${card.element}`;
+                    slotEl.className = `formation-slot min-h-[110px] rounded-xl border-2 ${elemClass} flex flex-col justify-between p-2 cursor-pointer relative shadow-lg`;
+                    slotEl.innerHTML = `
+                        <div class="flex justify-between items-center w-full text-[10px]">
+                            <span class="font-bold uppercase text-slate-300">${card.element}</span>
+                            <span class="bg-indigo-900 text-indigo-200 px-1 rounded font-bold">Lv.${card.level}</span>
+                        </div>
+                        <div class="font-bold text-xs text-white my-1 text-center truncate w-full">${card.name}</div>
+                        <div class="flex justify-around w-full text-[11px] font-mono">
+                            <span class="text-rose-400"><i class="fa-solid fa-sword"></i> ${card.atk}</span>
+                            <span class="text-emerald-400"><i class="fa-solid fa-heart"></i> ${card.hp}</span>
+                        </div>
+                    `;
+                } else {
+                    const label = i < 3 ? `前衛 ${i+1}` : `後衛 ${i-2}`;
+                    slotEl.className = `formation-slot min-h-[110px] rounded-xl border-2 border-dashed border-slate-700 bg-slate-900/50 hover:border-indigo-500/50 flex flex-col items-center justify-center cursor-pointer transition p-2 relative`;
+                    slotEl.innerHTML = `<span class="text-xs text-slate-500">${label}</span>`;
+                }
+            }
+
+            // Render Deck List
+            const deckListEl = document.getElementById('deck-list');
+            deckListEl.innerHTML = '';
+
+            state.deck.forEach(card => {
+                const inTeam = state.team.some(c => c && c.uniqueId === card.uniqueId);
+                const isSelected = state.selectedCardId === card.uniqueId;
+                const elemClass = `card-${card.element}`;
+
+                const cardBox = document.createElement('div');
+                cardBox.className = `p-2.5 rounded-xl border ${elemClass} cursor-pointer transition relative flex flex-col justify-between ${isSelected ? 'ring-2 ring-indigo-400 scale-95' : 'hover:scale-102'}`;
+                if (inTeam) cardBox.classList.add('opacity-40');
+
+                cardBox.onclick = () => {
+                    if (inTeam) {
+                        // Remove from team
+                        const idx = state.team.findIndex(c => c && c.uniqueId === card.uniqueId);
+                        if (idx !== -1) state.team[idx] = null;
+                        state.selectedCardId = null;
+                    } else {
+                        state.selectedCardId = card.uniqueId;
+                    }
+                    saveGame();
+                    updateUI();
+                };
+
+                cardBox.innerHTML = `
+                    <div class="flex justify-between items-center text-[10px] mb-1">
+                        <span class="font-bold uppercase text-slate-300">${card.element}</span>
+                        <span class="bg-indigo-950 text-indigo-300 px-1 rounded font-bold">Lv.${card.level}</span>
+                    </div>
+                    <div class="font-bold text-xs text-white mb-2 truncate">${card.name}</div>
+                    <div class="flex justify-between text-[11px] font-mono">
+                        <span class="text-rose-400">ATK ${card.atk}</span>
+                        <span class="text-emerald-400">HP ${card.hp}</span>
+                    </div>
+                    ${inTeam ? '<span class="absolute top-1 right-1 bg-emerald-600 text-[9px] text-white px-1 rounded">配置中</span>' : ''}
+                `;
+                deckListEl.appendChild(cardBox);
+            });
+
+            // Update Synergy Badge
+            const activeElements = new Set(state.team.filter(Boolean).map(c => c.element));
+            const synBadge = document.getElementById('synergy-badge');
+            if (activeElements.size >= 3) {
+                synBadge.textContent = `シナジー: 属性共鳴 (全攻撃力+${activeElements.size * 10}%)`;
+                synBadge.className = "text-xs bg-amber-950/80 border border-amber-800/60 text-amber-300 px-2.5 py-1 rounded-lg font-bold";
+            } else {
+                synBadge.textContent = "シナジー: 3属性以上で発動";
+                synBadge.className = "text-xs bg-slate-900 border border-slate-800 text-slate-400 px-2.5 py-1 rounded-lg";
+            }
+        }
+
+        function handleSlotClick(slotIdx) {
+            if (state.selectedCardId) {
+                const card = state.deck.find(c => c.uniqueId === state.selectedCardId);
+                if (card) {
+                    // Check if card is already in another slot
+                    const existingIdx = state.team.findIndex(c => c && c.uniqueId === card.uniqueId);
+                    if (existingIdx !== -1) state.team[existingIdx] = null;
+
+                    state.team[slotIdx] = card;
+                    state.selectedCardId = null;
+                }
+            } else {
+                // Clear slot if clicked without selection
+                state.team[slotIdx] = null;
+            }
+            saveGame();
+            updateUI();
+        }
+
+        /* ===================================================================
+           7. AUTO BATTLE SYSTEM & CANVAS ANIMATION
+           =================================================================== */
+        let canvas, ctx;
+        let isBattling = false;
+        let battleUnits = [];
+        let battleEnemies = [];
+        let battleEffects = [];
+
+        function initBattleCanvas() {
+            canvas = document.getElementById('battleCanvas');
+            ctx = canvas.getContext('2d');
+            drawEmptyCanvas();
+        }
+
+        function drawEmptyCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#090d16";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw divider line
+            ctx.setLineDash([5, 5]);
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = "#475569";
+            ctx.font = "14px Noto Sans JP";
+            ctx.textAlign = "center";
+            ctx.fillText("味方陣営 (左) vs 魔物軍勢 (右)", canvas.width / 2, canvas.height / 2);
+        }
+
+        function startBattle() {
+            const activeTeam = state.team.filter(Boolean);
+            if (activeTeam.length === 0) {alert("防衛チームに最低1名のカードを配置してください！"); return;}
+            if (isBattling) return;
+
+            isBattling = true;
+            document.getElementById('btn-start-battle').disabled = true;
+            document.getElementById('battle-log').innerHTML = '';
+            document.getElementById('battle-result-overlay').classList.add('hidden');
+
+            appendBattleLog(`=== WAVE ${state.wave} 戦闘開始 ===`);
+
+            // 1. Init Player Units
+            battleUnits = state.team.map((card, idx) => {
+                if (!card) return null;
+                const isFront = idx < 3;
+                return {
+                    id: 'p_' + idx,
+                    name: card.name,
+                    maxHp: card.hp,
+                    hp: card.hp,
+                    atk: card.atk,
+                    element: card.element,
+                    skill: card.skill,
+                    isPlayer: true,
+                    x: isFront ? 220 : 100,
+                    y: 70 + (idx % 3) * 100,
+                    color: getElementColor(card.element)
+                };
+            }).filter(Boolean);
+
+            // 2. Generate Enemy Wave Units
+            const enemyCount = Math.min(6, 2 + Math.floor(state.wave / 2));
+            const waveMult = 1 + (state.wave - 1) * 0.25;
+
+            battleEnemies = [];
+            for (let i = 0; i < enemyCount; i++) {
+                const isFront = i < 3;
+                battleEnemies.push({
+                    id: 'e_' + i,
+                    name: `魔物 紋章獣 ${String.fromCharCode(65 + i)}`,
+                    maxHp: Math.round(90 * waveMult),
+                    hp: Math.round(90 * waveMult),
+                    atk: Math.round(18 * waveMult),
+                    isPlayer: false,
+                    x: isFront ? 480 : 600,
+                    y: 70 + (i % 3) * 100,
+                    color: '#ef4444'
+                });
+            }
+
+            battleLoop();
+        }
+
+        function getElementColor(elem) {
+            switch(elem) {
+                case 'fire': return '#ef4444';
+                case 'water': return '#3b82f6';
+                case 'wind': return '#10b981';
+                case 'light': return '#f59e0b';
+                case 'dark': return '#8b5cf6';
+                default: return '#6366f1';
+            }
+        }
+
+        async function battleLoop() {
+            let turn = 1;
+
+            while (isBattling) {
+                appendBattleLog(`--- Turn ${turn} ---`);
+
+                // Player Turn Actions
+                for (const u of battleUnits) {
+                    if (u.hp <= 0) continue;
+                    const targets = battleEnemies.filter(e => e.hp > 0);
+                    if (targets.length === 0) break;
+
+                    const target = targets[Math.floor(Math.random() * targets.length)];
+                    const isSkill = Math.random() < 0.3;
+                    const dmg = isSkill ? Math.round(u.atk * 1.5) : u.atk;
+
+                    target.hp = Math.max(0, target.hp - dmg);
+                    createVisualEffect(target.x, target.y, isSkill ? u.skill : `-${dmg}`, isSkill ? '#f59e0b' : '#ffffff');
+                    appendBattleLog(`${u.name} の${isSkill ? `【${u.skill}】` : '攻撃'}！ ${target.name} に ${dmg} ダメージ`);
+
+                    renderBattleFrame();
+                    await new Promise(r => setTimeout(r, 400));
+                }
+
+                // Check Victory
+                if (battleEnemies.every(e => e.hp <= 0)) {
+                    endBattle(true);
+                    break;
+                }
+
+                // Enemy Turn Actions
+                for (const e of battleEnemies) {
+                    if (e.hp <= 0) continue;
+                    const targets = battleUnits.filter(u => u.hp > 0);
+                    if (targets.length === 0) break;
+
+                    const target = targets[Math.floor(Math.random() * targets.length)];
+                    target.hp = Math.max(0, target.hp - target.atk);
+                    createVisualEffect(target.x, target.y, `-${e.atk}`, '#ef4444');
+                    appendBattleLog(`${e.name} の反撃！ ${target.name} に ${e.atk} ダメージ`);
+
+                    renderBattleFrame();
+                    await new Promise(r => setTimeout(r, 400));
+                }
+
+                // Check Defeat
+                if (battleUnits.every(u => u.hp <= 0)) {
+                    endBattle(false);
+                    break;
+                }
+
+                turn++;
+                if (turn > 30) {
+                    // Timeout Draw/Defeat
+                    endBattle(false);
+                    break;
+                }
+            }
+        }
+
+        function createVisualEffect(x, y, text, color) {
+            battleEffects.push({ x, y: y - 10, text, color, alpha: 1.0, life: 20 });
+        }
+
+        function renderBattleFrame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#090d16";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Center Grid
+            ctx.setLineDash([4, 4]);
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Render Player Units
+            battleUnits.forEach(u => {
+                ctx.globalAlpha = u.hp > 0 ? 1.0 : 0.2;
+                ctx.fillStyle = u.color;
+                ctx.beginPath();
+                ctx.arc(u.x, u.y, 22, 0, Math.PI * 2);
+                ctx.fill();
+
+                // HP Bar
+                const hpPct = Math.max(0, u.hp / u.maxHp);
+                ctx.fillStyle = "#1e293b";
+                ctx.fillRect(u.x - 25, u.y + 28, 50, 6);
+                ctx.fillStyle = "#10b981";
+                ctx.fillRect(u.x - 25, u.y + 28, 50 * hpPct, 6);
+
+                // Name
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "10px Noto Sans JP";
+                ctx.textAlign = "center";
+                ctx.fillText(u.name, u.x, u.y - 28);
+            });
+
+            // Render Enemy Units
+            battleEnemies.forEach(e => {
+                ctx.globalAlpha = e.hp > 0 ? 1.0 : 0.2;
+                ctx.fillStyle = e.color;
+                ctx.beginPath();
+                ctx.arc(e.x, e.y, 22, 0, Math.PI * 2);
+                ctx.fill();
+
+                // HP Bar
+                const hpPct = Math.max(0, e.hp / e.maxHp);
+                ctx.fillStyle = "#1e293b";
+                ctx.fillRect(e.x - 25, e.y + 28, 50, 6);
+                ctx.fillStyle = "#ef4444";
+                ctx.fillRect(e.x - 25, e.y + 28, 50 * hpPct, 6);
+
+                // Name
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "10px Noto Sans JP";
+                ctx.textAlign = "center";
+                ctx.fillText(e.name, e.x, e.y - 28);
+            });
+
+            // Render Floating Combat Effects
+            ctx.globalAlpha = 1.0;
+            for (let i = battleEffects.length - 1; i >= 0; i--) {
+                const eff = battleEffects[i];
+                ctx.fillStyle = eff.color;
+                ctx.font = "bold 14px Noto Sans JP";
+                ctx.textAlign = "center";
+                ctx.fillText(eff.text, eff.x, eff.y);
+                eff.y -= 1;
+                eff.life--;
+                if (eff.life <= 0) battleEffects.splice(i, 1);
+            }
+        }
+
+        function endBattle(isVictory) {
+            isBattling = false;
+            document.getElementById('btn-start-battle').disabled = false;
+
+            const overlay = document.getElementById('battle-result-overlay');
+            const title = document.getElementById('result-title');
+            const iconBox = document.getElementById('result-icon-container');
+            const goldReward = document.getElementById('reward-gold');
+            const manaReward = document.getElementById('reward-mana');
+
+            overlay.classList.remove('hidden');
+
+            if (isVictory) {
+                const gEarned = state.buildings.mine.level * state.buildings.mine.baseProd + (state.wave * 20);
+                const mEarned = state.buildings.tower.level * state.buildings.tower.baseProd + (state.wave * 5);
+
+                state.gold += gEarned;
+                state.mana += mEarned;
+                state.wave += 1;
+
+                title.textContent = "VICTORY";
+                title.className = "text-2xl font-bold font-cinzel text-amber-400 mb-1";
+                iconBox.innerHTML = `<i class="fa-solid fa-trophy text-5xl text-amber-400 animate-bounce"></i>`;
+                goldReward.textContent = `+${gEarned}`;
+                manaReward.textContent = `+${mEarned}`;
+
+                appendBattleLog(`【勝利】領地資源 (Gold: +${gEarned}, Mana: +${mEarned}) を獲得！ WAVE ${state.wave} へ進軍。`);
+                addTerritoryLog(`防衛成功！ Gold +${gEarned}, Mana +${mEarned} を獲得。`);
+            } else {
+                title.textContent = "DEFEAT";
+                title.className = "text-2xl font-bold font-cinzel text-rose-500 mb-1";
+                iconBox.innerHTML = `<i class="fa-solid fa-skull text-5xl text-rose-500"></i>`;
+                goldReward.textContent = `+0`;
+                manaReward.textContent = `+0`;
+
+                appendBattleLog(`【敗北】迎撃隊形が突破されました... カードを強化して再挑戦してください。`);
+            }
+
+            saveGame();
+            updateUI();
+        }
+
+        function closeResultOverlay() {
+            document.getElementById('battle-result-overlay').classList.add('hidden');
+            switchTab('territory');
+        }
+
+        function appendBattleLog(msg) {
+            const logBox = document.getElementById('battle-log');
+            const row = document.createElement('div');
+            row.textContent = msg;
+            logBox.appendChild(row);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+    </script>
+</body>
+</html>

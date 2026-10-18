@@ -23,7 +23,7 @@ elif [ -f "$DOWNLOAD_DIR/game-data.js" ]; then
   cp "$DOWNLOAD_DIR/game-data.js" ./game-data.js
   echo "📦 共通データファイルを更新しました: game-data.js -> ./game-data.js"
 else
-  echo "ℹ️ 共通データファイル(game-data.js)の新規更新はありませんでした。"
+  echo "ℹ 共通データファイル(game-data.js)の新規更新はありませんでした。"
 fi
 
 # ==============================================================================
@@ -239,6 +239,7 @@ echo "🤖 AIへの発注プロンプトを作成します。モードを選ん�
 echo "  1) 🆕 新作を作る"
 echo "  2) 🔧 既存ゲームを引き継ぐ（メタデータのみ添付・トークン節約）"
 echo "  3) 🚀 既存ゲームを引き継ぐ（全コード添付・確実な改良）"
+echo "  4) 📦 共通データ(game-data.js)のみを新しく作る・更新する"
 echo -n "👉 番号 [1]: "
 read -r mode
 mode=${mode:-1}
@@ -250,7 +251,46 @@ COMMON_RULES="【必須条件】
 ・ローカルストレージなどによるセーブ機能も備えてください。
 ${HANDOFF_RULE}"
 
-if [ "$mode" = "2" ] || [ "$mode" = "3" ]; then
+if [ "$mode" = "4" ]; then
+  # ----------------------------------------------------------------------------
+  # モード4：共通データのみを更新する
+  # ----------------------------------------------------------------------------
+  echo -n "👉 新しいデータの世界観・テーマ（例: SF、ゾンビ、現代都市、宇宙、空Enterでお任せ）: "
+  read -r data_theme
+  if [ -n "$data_theme" ]; then
+    THEME_REQUEST="今回は「${data_theme}」というテーマ・世界観でデータを作成してください。"
+  else
+    THEME_REQUEST="今回は『紋章シリーズ』や王道ファンタジーからは完全に離れ、AI自身で「SF」「サイバーパンク」「現代劇」「妖怪」「動物」などの新しい斬新な世界観・テーマを考えてデータを作成してください。"
+  fi
+
+  CURRENT_DATA=""
+  if [ -f "./game-data.js" ]; then
+    CURRENT_DATA="【現在のデータ構造の参考】
+以下の構造（変数名、配列の形など）を参考にしつつ、中身のテキスト（名前、説明文、属性など）を新しいテーマに合わせて**完全に一新**してください。
+\`\`\`javascript
+$(cat ./game-data.js)
+\`\`\`"
+  else
+    CURRENT_DATA="【データ構造について】
+window.RUNE_GAME_DATA などのグローバル変数に、キャラクター、アイテム、マップ情報などの配列・オブジェクトを格納する形式にしてください。"
+  fi
+
+  PROMPT="現在、ゲームの共通データとして『game-data.js』を使用していますが、このデータに引っ張られて同じようなテーマ（紋章シリーズなど）のゲームばかり生成されてしまう問題が起きています。
+
+そこで、今回はゲーム本体のコードではなく、【共通データ（game-data.js）のみ】を新しく作成してください。
+
+${THEME_REQUEST}
+
+【データ作成の必須条件】
+1. 出力はJavaScriptのコードのみとし、単一のコードブロックで提供してください。
+2. コードのどこかに必ず「AI_PORTFOLIO_DATA_FILE」という文字列をコメントで含めてください（自動収集スクリプトの目印になります）。
+3. 既存のゲームとの互換性を保つため、データの階層構造（プロパティ名など）はなるべく維持しつつ、中身の世界観をガラッと変えてください。
+
+${CURRENT_DATA}
+
+ダウンロードしてそのまま使える形式で出力をお願いします。"
+
+elif [ "$mode" = "2" ] \vert{}\vert{} [ "$mode" = "3" ]; then
   # ----------------------------------------------------------------------------
   # モード2・3：既存ゲームを引き継ぐ処理
   # ----------------------------------------------------------------------------
@@ -267,7 +307,7 @@ if [ "$mode" = "2" ] || [ "$mode" = "3" ]; then
   echo -n "👉 番号: "
   read -r num
   target="${game_files[$((num-1))]}"
-  if [ -z "$target" ] || [ ! -f "$target" ]; then
+  if [ -z "$target" ] \vert{}\vert{} [ ! -f "$target" ]; then
     echo "⚠ 無効な番号です。"; exit 1
   fi
 
@@ -311,14 +351,14 @@ ${COMMON_RULES}"
 
 else
   # ----------------------------------------------------------------------------
-  # モード1：新作を作る処理（★ちゃんとここにあります！）
+  # モード1：新作を作る処理
   # ----------------------------------------------------------------------------
   echo -n "👉 新作のテーマ・要素（空Enterでお任せ）: "
   read -r custom_request
   if [ -n "$custom_request" ]; then
-    REQUEST_PART="次回作として「${custom_request}」という概念やテーマを組み込んだゲームを作りたいです。"
+    REQUEST_PART="次回作として「${custom_request}」という概念やテーマを組み込んだゲームを作りたいです。※既存の『紋章シリーズ』とは異なるアプローチでお願いします。"
   else
-    REQUEST_PART="次回作を作りたいのですが、共通データを活かした、既存作品と被らない新しいルールの「面白くてハマる単一ファイルゲーム」のアイデアを1つ考えてください。"
+    REQUEST_PART="次回作を作りたいのですが、共通データを活かしつつも、既存作品（特に『紋章シリーズ』）とは全く被らない新しいルールの「面白くてハマる単一ファイルゲーム」のアイデアを1つ考えてください。"
   fi
 
   PROMPT="私はこれまでに以下のHTMLブラウザゲームを作成しました。
@@ -337,15 +377,15 @@ fi
 copy_to_clipboard() {
   local content="$1"
   if command -v pbcopy >/dev/null 2>&1; then
-    printf '%s' "$content" | pbcopy; return 0       # Mac
+    printf '%s' "$content" | pbcopy; return 0        # Mac
   elif command -v clip.exe >/dev/null 2>&1; then
-    printf '%s' "$content" | clip.exe; return 0     # Windows(WSL)
+    printf '%s' "$content" | clip.exe; return 0      # Windows(WSL)
   elif command -v xclip >/dev/null 2>&1; then
     printf '%s' "$content" | xclip -selection clipboard; return 0 # Linux X11
   elif command -v xsel >/dev/null 2>&1; then
-    printf '%s' "$content" | xsel -b; return 0      # Linux X11
+    printf '%s' "$content" | xsel -b; return 0       # Linux X11
   elif command -v wl-copy >/dev/null 2>&1; then
-    printf '%s' "$content" | wl-copy; return 0      # Linux Wayland
+    printf '%s' "$content" | wl-copy; return 0       # Linux Wayland
   fi
   return 1
 }

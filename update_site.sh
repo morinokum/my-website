@@ -1,22 +1,35 @@
 #!/bin/bash
+# ※ set -e は予期せぬ強制終了を招くため削除しました
 
-echo "🔍 ダウンロードフォルダから新しいゲームおよび共通データを探索中..."
+# ==============================================================================
+# 設定・初期化
+# ==============================================================================
+DOWNLOAD_DIR="$HOME/Downloads"
+[ -d "$HOME/ダウンロード" ] && DOWNLOAD_DIR="$HOME/ダウンロード"
 
-# 1. games フォルダを準備
+echo "🔍 [$DOWNLOAD_DIR] から新しいゲームおよび共通データを探索中..."
+
 mkdir -p games
 
-# 2. 共通データファイル（game-data.js）の探索と自動更新
-data_file_found=$(grep -rl "AI_PORTFOLIO_DATA_FILE" ~/ダウンロード --include="*.js" 2>/dev/null | head -n 1)
+# ==============================================================================
+# 1. 共通データファイル（game-data.js）の探索と自動更新
+# ==============================================================================
+data_file_found=$(find "$DOWNLOAD_DIR" -maxdepth 1 -name "*.js" -type f -exec grep -l "AI_PORTFOLIO_DATA_FILE" {} + 2>/dev/null | head -n 1)
+
 if [ -n "$data_file_found" ]; then
   cp "$data_file_found" ./game-data.js
   echo "📦 共通データファイルを更新しました: $(basename "$data_file_found") -> ./game-data.js"
-elif [ -f "$HOME/ダウンロード/game-data.js" ]; then
-  cp "$HOME/ダウンロード/game-data.js" ./game-data.js
+elif [ -f "$DOWNLOAD_DIR/game-data.js" ]; then
+  cp "$DOWNLOAD_DIR/game-data.js" ./game-data.js
   echo "📦 共通データファイルを更新しました: game-data.js -> ./game-data.js"
+else
+  echo "ℹ️ 共通データファイル(game-data.js)の新規更新はありませんでした。"
 fi
 
-# 3. ダウンロードフォルダから目印のあるHTMLファイルだけを探索・収集
-grep -rl "AI-GAME-PORTFOLIO" ~/ダウンロード --include="*.html" --exclude-dir="my-website" 2>/dev/null | while read -r file; do
+# ==============================================================================
+# 2. 目印のあるHTMLファイルだけを探索・収集
+# ==============================================================================
+find "$DOWNLOAD_DIR" -maxdepth 1 -name "*.html" -type f -exec grep -l "AI-GAME-PORTFOLIO" {} + 2>/dev/null | while read -r file; do
   filename=$(basename "$file")
   
   if [ -f "games/$filename" ]; then
@@ -27,7 +40,9 @@ grep -rl "AI-GAME-PORTFOLIO" ~/ダウンロード --include="*.html" --exclude-d
   cp "$file" games/
 done
 
-# 4. index.html のデザイン部分を生成
+# ==============================================================================
+# 3. index.html の生成（ヘッダー・CSS）
+# ==============================================================================
 cat << 'HTMLEOF' > index.html
 <!DOCTYPE html>
 <html lang="ja">
@@ -36,26 +51,30 @@ cat << 'HTMLEOF' > index.html
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Game Portfolio</title>
   <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1e1e1e; color: #f0f0f0; margin: 0; padding: 0; }
-    header { text-align: center; padding: 50px 20px; background-color: #252526; border-bottom: 2px solid #007acc; }
-    h1 { margin: 0; font-size: 2.5em; color: #007acc; }
-    header p { color: #cccccc; margin-top: 10px; }
-    .controls { max-width: 1000px; margin: 20px auto 0; padding: 0 20px; }
-    #searchInput { width: 100%; max-width: 300px; padding: 10px; border-radius: 4px; border: 1px solid #3e3e42; background: #2d2d30; color: #fff; }
-    .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; }
-    .card { background: #2d2d30; border-radius: 8px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.2s; border: 1px solid #3e3e42; display: flex; flex-direction: column; justify-content: space-between; }
-    .card:hover { transform: translateY(-5px); border-color: #007acc; }
-    .card h3 { margin-top: 0; color: #ffffff; font-size: 1.4em; }
-    .tag { display: inline-block; background: #007acc; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75em; margin-bottom: 10px; }
-    .card p { font-size: 0.95em; line-height: 1.6; color: #d4d4d4; }
-    .button-group { display: flex; gap: 10px; margin-top: 15px; }
-    a.button, button.button { flex: 1; text-align: center; padding: 10px; background: #007acc; color: #ffffff; text-decoration: none; border-radius: 4px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9em; transition: background 0.2s; }
-    a.button:hover, button.button:hover { background: #005999; }
-    button.copy-btn { background: #3e3e42; }
+    :root { --bg: #1e1e1e; --panel: #2d2d30; --border: #3e3e42; --primary: #007acc; --primary-hover: #005999; --text: #f0f0f0; --text-muted: #cccccc; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; }
+    header { text-align: center; padding: 60px 20px; background-color: #252526; border-bottom: 2px solid var(--primary); }
+    h1 { margin: 0; font-size: 2.8em; color: var(--primary); letter-spacing: 1px; }
+    header p { color: var(--text-muted); margin-top: 10px; font-size: 1.1em; }
+    .controls { max-width: 1000px; margin: 30px auto 10px; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
+    #searchInput { width: 100%; max-width: 350px; padding: 12px 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--panel); color: #fff; font-size: 1em; outline: none; transition: border-color 0.2s; }
+    #searchInput:focus { border-color: var(--primary); }
+    .container { max-width: 1000px; margin: 0 auto; padding: 20px; min-height: 50vh; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; }
+    .card { background: var(--panel); border-radius: 12px; padding: 25px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); transition: transform 0.2s, box-shadow 0.2s; border: 1px solid var(--border); display: flex; flex-direction: column; justify-content: space-between; }
+    .card:hover { transform: translateY(-5px); box-shadow: 0 12px 20px rgba(0,0,0,0.3); border-color: var(--primary); }
+    .card h3 { margin: 0 0 10px 0; color: #ffffff; font-size: 1.4em; }
+    .tag { display: inline-block; background: var(--primary); color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.75em; margin-bottom: 15px; font-weight: bold; }
+    .desc { font-size: 0.95em; line-height: 1.5; color: #d4d4d4; flex-grow: 1; margin-bottom: 20px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .meta { font-size: 0.8em; color: #888; margin-bottom: 15px; }
+    .button-group { display: flex; gap: 10px; }
+    a.button, button.button { flex: 1; text-align: center; padding: 12px; background: var(--primary); color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9em; transition: background 0.2s; }
+    a.button:hover, button.button:hover { background: var(--primary-hover); }
+    button.copy-btn { background: var(--border); }
     button.copy-btn:hover { background: #505055; }
-    #toast { visibility: hidden; min-width: 200px; background-color: #333; color: #fff; text-align: center; border-radius: 4px; padding: 12px; position: fixed; z-index: 1000; left: 50%; bottom: 30px; transform: translateX(-50%); box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-    #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+    #noResults { display: none; text-align: center; color: var(--text-muted); padding: 50px; font-size: 1.2em; grid-column: 1 / -1; }
+    #toast { visibility: hidden; min-width: 250px; background-color: var(--primary); color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 1000; left: 50%; bottom: 30px; transform: translateX(-50%); box-shadow: 0 4px 12px rgba(0,0,0,0.4); font-weight: bold; }
+    #toast.show { visibility: visible; animation: fadein 0.3s, fadeout 0.4s 2.5s; }
     @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
     @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
   </style>
@@ -67,17 +86,23 @@ cat << 'HTMLEOF' > index.html
   </header>
   
   <div class="controls">
-    <input type="text" id="searchInput" placeholder="ゲームを検索..." onkeyup="filterGames()">
+    <input type="text" id="searchInput" placeholder="🔍 タイトルや内容で検索..." onkeyup="filterGames()">
+    <span id="gameCount" style="color: var(--text-muted); font-size: 0.9em; font-weight: bold;"></span>
   </div>
 
   <div class="container">
     <div class="grid" id="gameGrid">
+      <div id="noResults">見つかりませんでした 😢</div>
 HTMLEOF
 
-# 5. games フォルダ内のHTMLを読み込んでカードを追加＆AI用のリスト作成
+# ==============================================================================
+# 4. games フォルダ内のHTMLを解析しカードを追加
+# ==============================================================================
 declare -A seen_titles
 game_list_text=""
+game_count=0
 
+# 更新日時の新しい順に処理
 while IFS= read -r file; do
   [ -e "$file" ] || continue
   filename=$(basename "$file")
@@ -93,53 +118,76 @@ while IFS= read -r file; do
   
   seen_titles["$gametitle"]=1
   game_list_text+="- ${gametitle}\n"
+  ((game_count++))
+
+  # AI-DEV-HANDOFF から「概要・ルール」を抽出
+  summary=$(sed -n '/AI-DEV-HANDOFF-START/,/AI-DEV-HANDOFF-END/p' "$file" | grep -i "^概要・ルール:" | sed 's/^概要・ルール:[  ]*//' | head -n 1)
+  if [ -z "$summary" ]; then
+    summary="このゲームの概要はまだ記載されていません。"
+  fi
 
   # エスケープ処理
-  safe_title=$(echo "$gametitle" | sed 's/"/\&quot;/g')
+  safe_title=$(echo "$gametitle" | sed 's/"/\&quot;/g; s/</\&lt;/g; s/>/\&gt;/g')
+  safe_summary=$(echo "$summary" | sed 's/"/\&quot;/g; s/</\&lt;/g; s/>/\&gt;/g')
 
-  # カード出力
   cat << HTMLEOF >> index.html
-      <div class="card" data-title="${safe_title}">
+      <div class="card" data-title="${safe_title}" data-desc="${safe_summary}">
         <div>
           <h3>${safe_title}</h3>
           <span class="tag">Web Game</span>
-          <p>ファイル: ${filename}</p>
+          <div class="desc">${safe_summary}</div>
+          <div class="meta">📁 ${filename}</div>
         </div>
         <div class="button-group">
-          <a href="games/${filename}" class="button" target="_blank">Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('${filename}')">コードコピー</button>
+          <a href="games/${filename}" class="button" target="_blank">▶ Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('${filename}')">📋 Code</button>
         </div>
       </div>
 HTMLEOF
 done < <(ls -t games/*.html 2>/dev/null)
 
-# 6. フッターとJavaScriptを追加
-cat << 'HTMLEOF' >> index.html
+# ==============================================================================
+# 5. フッターとJavaScriptを追加
+# ==============================================================================
+cat << HTMLEOF >> index.html
     </div>
   </div>
 
-  <div id="toast">コードをクリップボードにコピーしました！</div>
+  <div id="toast">コードをコピーしました！</div>
 
   <script>
+    document.getElementById('gameCount').textContent = "全 ${game_count} 作品";
+
     function filterGames() {
       const input = document.getElementById('searchInput').value.toLowerCase();
       const cards = document.querySelectorAll('.card');
+      let visibleCount = 0;
+
       cards.forEach(card => {
         const title = card.getAttribute('data-title').toLowerCase();
-        card.style.display = title.includes(input) ? '' : 'none';
+        const desc = card.getAttribute('data-desc').toLowerCase();
+        
+        if (title.includes(input) || desc.includes(input)) {
+          card.style.display = '';
+          visibleCount++;
+        } else {
+          card.style.display = 'none';
+        }
       });
+
+      document.getElementById('noResults').style.display = visibleCount === 0 ? 'block' : 'none';
     }
 
     async function copyGameCode(filename) {
       try {
         const response = await fetch('games/' + filename);
-        if (!response.ok) throw new Error('Network response was not ok');
+        if (!response.ok) throw new Error('Network response error');
         const text = await response.text();
         
         await navigator.clipboard.writeText(text);
-        showToast(filename + ' のコードをコピーしました！');
+        showToast('📋 ' + filename + ' のコードをコピーしました！');
       } catch (err) {
-        console.error('コピーに失敗しました', err);
+        console.error('コピー失敗:', err);
         alert('コードの読み込みに失敗しました。');
       }
     }
@@ -148,24 +196,28 @@ cat << 'HTMLEOF' >> index.html
       const toast = document.getElementById('toast');
       toast.textContent = message;
       toast.className = 'show';
-      setTimeout(() => { toast.className = ''; }, 3000);
+      setTimeout(() => { toast.className = ''; }, 2800);
     }
   </script>
 </body>
 </html>
 HTMLEOF
 
-# 7. Gitで自動コミット＆プッシュ
-if [ -n "$(git status --porcelain)" ]; then
+# ==============================================================================
+# 6. Git自動コミット＆プッシュ
+# ==============================================================================
+if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
   git add .
-  git commit -m "ポートフォリオ更新: $(date +'%Y-%m-%d %H:%M:%S')"
+  git commit -m "🚀 ポートフォリオ更新: $(date +'%Y-%m-%d %H:%M:%S')"
   git push origin main
-  echo "🎉 サイトの自動収集・ビルド・公開が完了しました！"
+  echo "🎉 サイトの自動収集・ビルド・公開が完了しました！（計 ${game_count} 作品）"
 else
-  echo "✅ 変更がないため、Gitの更新はスキップしました。"
+  echo "✅ 変更がないため、Gitの更新はスキップしました。（計 ${game_count} 作品）"
 fi
 
-# 8. 🌟 次回作プロンプト作成（モード選択つき）🌟
+# ==============================================================================
+# 7. AIプロンプト作成（クリップボード用）
+# ==============================================================================
 HANDOFF_RULE="・コード内に、開発引き継ぎ用の以下のコメントブロックを必ず含めてください。改良のたびに内容を最新に更新してください。
 <!-- AI-DEV-HANDOFF-START
 タイトル:
@@ -184,9 +236,9 @@ extract_handoff() {
 
 echo -e "\n--------------------------------------------------"
 echo "🤖 AIへの発注プロンプトを作成します。モードを選んでください。"
-echo "  1) 新作を作る"
-echo "  2) 既存ゲームの開発を引き継ぐ（引き継ぎブロックを添付）"
-echo "  3) 既存ゲームの開発を引き継ぐ（引き継ぎブロック＋全コードを添付）"
+echo "  1) 🆕 新作を作る"
+echo "  2) 🔧 既存ゲームを引き継ぐ（メタデータのみ添付・トークン節約）"
+echo "  3) 🚀 既存ゲームを引き継ぐ（全コード添付・確実な改良）"
 echo -n "👉 番号 [1]: "
 read -r mode
 mode=${mode:-1}
@@ -199,6 +251,9 @@ COMMON_RULES="【必須条件】
 ${HANDOFF_RULE}"
 
 if [ "$mode" = "2" ] || [ "$mode" = "3" ]; then
+  # ----------------------------------------------------------------------------
+  # モード2・3：既存ゲームを引き継ぐ処理
+  # ----------------------------------------------------------------------------
   mapfile -t game_files < <(ls -t games/*.html 2>/dev/null)
   if [ ${#game_files[@]} -eq 0 ]; then
     echo "⚠ games フォルダにゲームがありません。"; exit 1
@@ -220,7 +275,7 @@ if [ "$mode" = "2" ] || [ "$mode" = "3" ]; then
   if [ -z "$handoff" ]; then
     echo "⚠ このゲームには引き継ぎブロックがありません。"
     if [ "$mode" = "2" ]; then
-      echo "   全コード付き（モード3）に切り替えます。"
+      echo "    全コード付き（モード3）に切り替えます。"
       mode=3
     fi
     handoff="（引き継ぎブロックなし）"
@@ -231,7 +286,7 @@ if [ "$mode" = "2" ] || [ "$mode" = "3" ]; then
   if [ -n "$custom_request" ]; then
     REQUEST_PART="このゲームを引き継いで、「${custom_request}」を実装してください。"
   else
-    REQUEST_PART="このゲームを引き継いで、面白さが増すような改良を提案し、実装してください。"
+    REQUEST_PART="このゲームを引き継いで、面白さが増すような改良や機能追加を提案し、実装してください。"
   fi
 
   PROMPT="以下のHTMLブラウザゲームの開発を引き継いでください。
@@ -255,6 +310,9 @@ $(cat "$target")
 ${COMMON_RULES}"
 
 else
+  # ----------------------------------------------------------------------------
+  # モード1：新作を作る処理（★ちゃんとここにあります！）
+  # ----------------------------------------------------------------------------
   echo -n "👉 新作のテーマ・要素（空Enterでお任せ）: "
   read -r custom_request
   if [ -n "$custom_request" ]; then
@@ -273,22 +331,28 @@ ${REQUEST_PART}
 ${COMMON_RULES}"
 fi
 
-# 9. クリップボードへの転送処理
+# ==============================================================================
+# 8. クリップボードへの転送処理
+# ==============================================================================
 copy_to_clipboard() {
   local content="$1"
-  if command -v xclip >/dev/null 2>&1; then
-    printf '%s' "$content" | xclip -selection clipboard; return 0
+  if command -v pbcopy >/dev/null 2>&1; then
+    printf '%s' "$content" | pbcopy; return 0       # Mac
+  elif command -v clip.exe >/dev/null 2>&1; then
+    printf '%s' "$content" | clip.exe; return 0     # Windows(WSL)
+  elif command -v xclip >/dev/null 2>&1; then
+    printf '%s' "$content" | xclip -selection clipboard; return 0 # Linux X11
   elif command -v xsel >/dev/null 2>&1; then
-    printf '%s' "$content" | xsel -b; return 0
+    printf '%s' "$content" | xsel -b; return 0      # Linux X11
   elif command -v wl-copy >/dev/null 2>&1; then
-    printf '%s' "$content" | wl-copy; return 0
+    printf '%s' "$content" | wl-copy; return 0      # Linux Wayland
   fi
   return 1
 }
 
 if copy_to_clipboard "$PROMPT"; then
   echo -e "\n📋 クリップボードにAIへの指示文をコピーしました！"
-  echo "    新規チャットで「Ctrl + V」すればそのまま発注・引き継ぎできます。"
+  echo "    新規チャットにペーストして発注してください。"
 else
   echo -e "\n⚠ クリップボード出力ツールが見つかりませんでした。以下をコピーしてください："
   echo "--------------------------------------------------"

@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="ai-portfolio" content="AI-GAME-PORTFOLIO">
+    <title>紋章カードと漆黒の狙撃手 - Mouse Aim Rune Action | AI-GAME-PORTFOLIO</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- External Game Data Script -->
+    <script src="https://morinokum.github.io/my-website/game-data.js"></script>
+    <!-- FontAwesome for UI Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+JP:wght@400;700;900&display=swap');
+
+        body {
+            font-family: 'Noto Sans JP', 'Orbitron', sans-serif;
+            background-color: #080a12;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        .orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Neon Glow Effects */
+        .neon-text-cyan {
+            text-shadow: 0 0 8px rgba(6, 182, 212, 0.8), 0 0 20px rgba(6, 182, 212, 0.4);
+        }
+        .neon-text-magenta {
+            text-shadow: 0 0 8px rgba(236, 72, 153, 0.8), 0 0 20px rgba(236, 72, 153, 0.4);
+        }
+        .neon-text-gold {
+            text-shadow: 0 0 8px rgba(234, 179, 8, 0.8), 0 0 20px rgba(234, 179, 8, 0.4);
+        }
+
+        .neon-border-cyan {
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.4), inset 0 0 15px rgba(6, 182, 212, 0.2);
+            border-color: #06b6d4;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #06b6d4;
+        }
+
+        /* Game Canvas Cursor */
+        #gameCanvas {
+            cursor: none; /* Custom reticle inside canvas */
+        }
+
+        /* Card Hover Effects */
+        .rune-card {
+            transition: all 0.2s ease-out;
+        }
+        .rune-card:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 10px 20px -5px rgba(6, 182, 212, 0.5);
+        }
+
+        /* Glassmorphism */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-slate-950 text-slate-100 selection:bg-cyan-500 selection:text-black">
+
+<!-- AI Development Handoff Block -->
+<!-- AI-DEV-HANDOFF-START
+タイトル: 紋章カードと漆黒の狙撃手 - Mouse Aim Rune Action (AI-GAME-PORTFOLIO)
+バージョン: 1.0.2
+概要・ルール: プレイヤーはマウスカーソルで「精度と照準（マウスエイム）」をコントロールし、画面を飛び交うルーン（紋章カード）や襲来する魔物を狙い撃つハイスピード・マウスエイムアクションゲーム。RUNE_GAME_DATAのカード・ルーン素材を活用し、狙撃・コンボ・合成・装備強化を行いつつ階層（ステージ）を攻略していく。
+主要な構造（関数・状態管理・画面遷移）:
+- 画面構成: タイトル画面 / マイホーム・工房（RUNE_GAME_DATA連動のクラフト・装備・マイホーム拡張）/ マウスエイムバトル画面 / 結果画面
+- 状態管理: gameState (title, home, battle, result), playerState (hp, maxHp, exp, gold, level, equippedRunes, inventory, homeLevel), battleState (score, combo, targets, timer, wave, totalKills)
+- 主要関数: initGame(), loadExternalData(), saveGame(), loadGame(), renderCanvas(), spawnTargets(), handleMouseMove(), handleCanvasClick(), updateBattle(), processCrafting(), upgradeHome()
+セーブデータのキー: AI_GAME_PORTFOLIO_MOUSE_AIM_RUNE_SAVE_v1
+実装済み機能: マウス照準・弾道ライン表示、エイム作動（各種ターゲットの物理挙動・描画・判定・撃退ループ修復）、エイムアシスト（精度向上アップグレード）、ルーン錬金・合成・装備システム、マイホーム機能（連動データ）、ローカルストレージ自動セーブ、演出エフェクト（パーティクル、ヒットストップ、シェイク）
+設計上のこだわり・注意点: Canvasにおける60FPSスムーズ描画とマウス座標同期の低遅延化。座標の無限発散やNaN発生によるエイム制御不全の防止策導入。照準の遊び・反動・精度強化のパラメータバランス調整。外部データ参照失敗時の即時フォールバック補償。
+AI-DEV-HANDOFF-END -->
+
+    <!-- Navigation Header -->
+    <header class="w-full bg-slate-900/90 border-b border-slate-800 px-4 py-3 flex justify-between items-center z-50 sticky top-0 backdrop-blur-md">
+        <div class="flex items-center gap-3">
+            <i class="fa-solid fa-crosshairs text-cyan-400 text-2xl animate-pulse"></i>
+            <div>
+                <h1 class="font-bold orbitron text-lg tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">
+                    RUNE SNIPER
+                </h1>
+                <span class="text-xs text-slate-400 font-mono">AI-GAME-PORTFOLIO SERIES</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-6 text-sm font-semibold">
+            <div class="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-full border border-slate-700">
+                <i class="fa-solid fa-coins text-yellow-400"></i>
+                <span id="headerGold" class="orbitron text-yellow-300">0</span>
+            </div>
+            <div class="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-full border border-slate-700">
+                <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+                <span id="headerLevel" class="orbitron text-emerald-300">LV.1</span>
+            </div>
+            <button id="btnSaveGame" class="bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1 shadow-lg shadow-cyan-900/30">
+                <i class="fa-solid fa-floppy-disk"></i> セーブ
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 flex justify-center items-center p-2 sm:p-4 relative overflow-hidden">
+        
+        <!-- TITLE SCREEN -->
+        <section id="screenTitle" class="w-full max-w-4xl glass-panel rounded-2xl p-6 sm:p-10 text-center flex flex-col items-center gap-6 shadow-2xl relative z-10">
+            <div class="inline-block bg-cyan-950/60 border border-cyan-500/40 text-cyan-400 px-4 py-1 rounded-full text-xs orbitron font-bold tracking-widest uppercase mb-2">
+                Mouse Aim Precision Action Game
+            </div>
+            <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-white neon-text-cyan">
+                紋章カードと漆黒の狙撃手
+            </h1>
+            <p class="text-slate-300 max-w-xl text-sm sm:text-base leading-relaxed">
+                高精度のマウス照準で画面を舞う【ルーンカード】と魔物を撃ち抜け！<br>
+                コンボを叩き込み、素材を集めて最高峰の錬金工房と魔法弾をビルドせよ。
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl my-2">
+                <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl text-left">
+                    <div class="text-cyan-400 text-lg mb-1"><i class="fa-solid fa-crosshairs"></i> マウスエイム</div>
+                    <p class="text-xs text-slate-400">カーソルで瞬時に照準。クリックで精密射撃。手ブレと反動を克服せよ。</p>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl text-left">
+                    <div class="text-purple-400 text-lg mb-1"><i class="fa-solid fa-wand-magic-sparkles"></i> ルーン錬金</div>
+                    <p class="text-xs text-slate-400">戦利品から強力なルーンカードを合成・装備。エイム補正や追加ダメージを獲得。</p>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl text-left">
+                    <div class="text-amber-400 text-lg mb-1"><i class="fa-solid fa-house-chimney"></i> マイホーム拡張</div>
+                    <p class="text-xs text-slate-400">アトリエを成長させてステータス底上げ＆自動報酬をロック解除。</p>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap justify-center gap-4 mt-2">
+                <button id="btnStartGame" class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold px-8 py-4 rounded-xl text-lg transition shadow-xl shadow-cyan-500/20 flex items-center gap-3 transform hover:scale-105 active:scale-95">
+                    <i class="fa-solid fa-play"></i> アトリエへ入る
+                </button>
+            </div>
+            
+            <div id="dataStatusBadge" class="text-xs text-slate-500 mt-4 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                <span id="dataStatusText">RUNE_GAME_DATA 読込完了</span>
+            </div>
+        </section>
+
+        <!-- HOME / ATELIER SCREEN -->
+        <section id="screenHome" class="w-full max-w-5xl glass-panel rounded-2xl p-4 sm:p-6 hidden flex-col gap-6 relative z-10">
+            <!-- Top Nav inside Home -->
+            <div class="flex flex-wrap justify-between items-center border-b border-slate-800 pb-4 gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-cyan-300 flex items-center gap-2">
+                        <i class="fa-solid fa-flask"></i> 錬金アトリエ & マイホーム
+                    </h2>
+                    <p class="text-xs text-slate-400">次のミッション出撃準備、ルーンカードの合成・装備を行ってください。</p>
+                </div>
+                <div class="flex gap-2">
+                    <button id="btnGoBattle" class="bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-400 hover:to-red-500 text-white font-bold px-6 py-2.5 rounded-xl transition shadow-lg shadow-rose-900/40 flex items-center gap-2 transform hover:scale-105">
+                        <i class="fa-solid fa-crosshairs"></i> 狙撃出撃 (Stage <span id="homeCurrentStage">1</span>)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Home Content Tabs / Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Left Column: Equipment & Stats -->
+                <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-800 flex flex-col gap-4">
+                    <h3 class="font-bold text-slate-200 text-sm flex items-center gap-2 border-b border-slate-800 pb-2">
+                        <i class="fa-solid fa-shield"></i> 狙撃手ステータス & 装備ルーン
+                    </h3>
+                    
+                    <div class="space-y-2 text-xs">
+                        <div class="flex justify-between text-slate-400">
+                            <span>エイム精度 (揺れ軽減):</span>
+                            <span id="statAccuracy" class="font-bold text-cyan-400 orbitron">80%</span>
+                        </div>
+                        <div class="flex justify-between text-slate-400">
+                            <span>狙撃攻撃力:</span>
+                            <span id="statAtk" class="font-bold text-rose-400 orbitron">25</span>
+                        </div>
+                        <div class="flex justify-between text-slate-400">
+                            <span>弾丸速度 / 判定幅:</span>
+                            <span id="statBullet" class="font-bold text-amber-400 orbitron">100% / +0px</span>
+                        </div>
+                        <div class="flex justify-between text-slate-400">
+                            <span>クリティカル率:</span>
+                            <span id="statCrit" class="font-bold text-purple-400 orbitron">10%</span>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-800 pt-3">
+                        <div class="text-xs text-slate-400 mb-2 font-semibold">装備ルーンスロット</div>
+                        <div class="grid grid-cols-3 gap-2" id="equipSlotsContainer">
+                            <!-- JS Dyn Render -->
+                        </div>
+                    </div>
+
+                    <!-- Atelier Upgrade -->
+                    <div class="border-t border-slate-800 pt-3 mt-auto">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-bold text-slate-300">アトリエ拡張 (Lv.<span id="homeLevelText">1</span>)</span>
+                            <span id="homeUpgradeCost" class="text-xs text-yellow-400 font-mono">100G</span>
+                        </div>
+                        <button id="btnUpgradeHome" class="w-full bg-slate-800 hover:bg-slate-700 text-xs py-2 rounded-lg border border-slate-700 text-slate-200 transition flex justify-center items-center gap-1">
+                            <i class="fa-solid fa-arrow-up text-emerald-400"></i> マイホームを拡張する
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Center & Right: Inventory & Crafting -->
+                <div class="lg:col-span-2 flex flex-col gap-4">
+                    <!-- Cards / Materials Inventory -->
+                    <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-800">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-bold text-slate-200 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-boxes-stacked"></i> 所持ルーンカード & 素材
+                            </h3>
+                            <span class="text-xs text-slate-500">クリックで装備 / 合成</span>
+                        </div>
+                        <div id="inventoryContainer" class="grid grid-cols-2 sm:grid-cols-4 gap-3 max-h-52 overflow-y-auto pr-1">
+                            <!-- JS Dyn Render -->
+                        </div>
+                    </div>
+
+                    <!-- Crafting Alchemic Workbench -->
+                    <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-800 flex-1 flex flex-col justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-200 text-sm flex items-center gap-2 border-b border-slate-800 pb-2 mb-3">
+                                <i class="fa-solid fa-vial-circle-check text-purple-400"></i> ルーン錬金・作成 (RUNE_GAME_DATA連動)
+                            </h3>
+                            <div id="recipeList" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-40 overflow-y-auto pr-1">
+                                <!-- Recipe items generated JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- BATTLE SCREEN (CANVAS) -->
+        <section id="screenBattle" class="w-full max-w-5xl hidden flex-col items-center gap-2 relative z-10">
+            <!-- HUD -->
+            <div class="w-full bg-slate-900/90 border border-slate-800 rounded-xl px-4 py-2 flex flex-wrap justify-between items-center text-xs sm:text-sm">
+                <div class="flex items-center gap-4">
+                    <div class="text-rose-400 font-bold flex items-center gap-1">
+                        <i class="fa-solid fa-heart"></i> HP: <span id="hudHp" class="orbitron text-white">100/100</span>
+                    </div>
+                    <div class="text-cyan-400 font-bold flex items-center gap-1">
+                        <i class="fa-solid fa-crosshairs"></i> SCORE: <span id="hudScore" class="orbitron text-white">0</span>
+                    </div>
+                    <div class="text-amber-400 font-bold flex items-center gap-1">
+                        <i class="fa-solid fa-bolt"></i> COMBO: <span id="hudCombo" class="orbitron text-amber-300">0</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-slate-400">
+                        TIME: <span id="hudTimer" class="orbitron text-cyan-300 font-bold">30.0</span>s
+                    </div>
+                    <div class="text-purple-400 font-bold">
+                        STAGE: <span id="hudStage" class="orbitron">1</span>
+                    </div>
+                    <button id="btnRetreat" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded border border-slate-700 text-xs">
+                        撤退
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas Wrapper -->
+            <div class="relative w-full aspect-[16/9] max-h-[70vh] bg-slate-950 rounded-xl overflow-hidden border-2 border-cyan-900 shadow-2xl neon-border-cyan">
+                <canvas id="gameCanvas" class="w-full h-full block"></canvas>
+                
+                <!-- Ultimate Rune Burst Trigger Overlay -->
+                <div id="runeBurstPrompt" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-amber-500/90 text-black font-extrabold px-4 py-1.5 rounded-full text-xs shadow-lg animate-bounce pointer-events-none hidden">
+                    [ SPACE ] または 右クリック で「ルーンバースト」発動可能！
+                </div>
+            </div>
+        </section>
+
+        <!-- RESULT SCREEN -->
+        <section id="screenResult" class="w-full max-w-lg glass-panel rounded-2xl p-6 sm:p-8 hidden flex-col items-center text-center gap-6 shadow-2xl relative z-10">
+            <div id="resultHeaderIcon" class="text-5xl text-amber-400 animate-bounce">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+            <div>
+                <h2 id="resultTitle" class="text-3xl font-black orbitron text-white mb-1">STAGE CLEARED!</h2>
+                <p id="resultSubtitle" class="text-xs text-slate-400">ミッション完了。戦利品を獲得しました。</p>
+            </div>
+
+            <div class="w-full bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-2 text-sm">
+                <div class="flex justify-between text-slate-400">
+                    <span>撃破ルーン/敵数:</span>
+                    <span id="resKills" class="orbitron font-bold text-white">0</span>
+                </div>
+                <div class="flex justify-between text-slate-400">
+                    <span>最大コンボ:</span>
+                    <span id="resMaxCombo" class="orbitron font-bold text-amber-400">0</span>
+                </div>
+                <div class="flex justify-between text-slate-400">
+                    <span>獲得スコア:</span>
+                    <span id="resScore" class="orbitron font-bold text-cyan-400">0</span>
+                </div>
+                <div class="flex justify-between text-slate-400 border-t border-slate-800 pt-2">
+                    <span>獲得ゴールド:</span>
+                    <span id="resGold" class="orbitron font-bold text-yellow-300">+0 G</span>
+                </div>
+                <div class="flex justify-between text-slate-400">
+                    <span>獲得ドロップ品:</span>
+                    <span id="resDrops" class="font-bold text-purple-300">ルーン片 x3</span>
+                </div>
+            </div>
+
+            <button id="btnReturnHome" class="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-cyan-500/20">
+                アトリエに帰還する
+            </button>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full bg-slate-950 border-t border-slate-900 py-3 text-center text-xs text-slate-600 z-50">
+        AI-GAME-PORTFOLIO &copy; 2026 - 紋章カードと漆黒の狙撃手 (Mouse Aim Rune Action)
+    </footer>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-16 right-4 bg-slate-900/95 border border-cyan-500 text-cyan-200 px-4 py-2 rounded-lg text-xs shadow-xl transition-all duration-300 transform translate-x-full opacity-0 z-50 flex items-center gap-2">
+        <i class="fa-solid fa-circle-info"></i>
+        <span id="toastMsg">通知メッセージ</span>
+    </div>
+
+    <!-- GAME LOGIC SCRIPT -->
+    <script>
+        /**
+         * 紋章カードと漆黒の狙撃手 - Mouse Aim Rune Action
+         * AI-GAME-PORTFOLIO Series
+         */
+
+        const SAVE_KEY = 'AI_GAME_PORTFOLIO_MOUSE_AIM_RUNE_SAVE_v1';
+
+        const FALLBACK_RUNE_DATA = {
+            cards: [
+                { id: 'rune_fire', name: '火炎のルーン', type: 'attack', power: 15, rarity: 'R', desc: '攻撃力+15, 爆破ダメージ追加' },
+                { id: 'rune_wind', name: '疾風のルーン', type: 'aim', power: 10, rarity: 'N', desc: '照準のブレを15%軽減' },
+                { id: 'rune_light', name: '閃光のルーン', type: 'crit', power: 12, rarity: 'SR', desc: 'クリティカル率+15%' },
+                { id: 'rune_gold', name: '強欲のルーン', type: 'utility', power: 8, rarity: 'N', desc: '獲得ゴールド+25%' }
+            ],
+            materials: [
+                { id: 'mat_dust', name: 'ルーンの粉末', desc: '基本的な錬金素材' },
+                { id: 'mat_crystal', name: '魔導結晶', desc: '高純度の魔力を秘めた晶石' },
+                { id: 'mat_core', name: '黒炎の核', desc: '強力な武器を作るレア素材' }
+            ],
+            recipes: [
+                { id: 'rec_fire', resultId: 'rune_fire', name: '火炎ルーン合成', req: { mat_dust: 5, mat_crystal: 2 } },
+                { id: 'rec_light', resultId: 'rune_light', name: '閃光ルーン錬成', req: { mat_crystal: 5, mat_core: 1 } },
+                { id: 'rec_wind', resultId: 'rune_wind', name: '疾風ルーン錬成', req: { mat_dust: 3 } }
+            ]
+        };
+
+        let runeData = FALLBACK_RUNE_DATA;
+
+        let player = {
+            level: 1,
+            exp: 0,
+            gold: 200,
+            stage: 1,
+            homeLevel: 1,
+            inventory: {
+                'rune_wind': 1,
+                'mat_dust': 10,
+                'mat_crystal': 3
+            },
+            equipped: [null, null, null]
+        };
+
+        let battle = {
+            active: false,
+            score: 0,
+            combo: 0,
+            maxCombo: 0,
+            kills: 0,
+            hp: 100,
+            maxHp: 100,
+            timer: 30.0,
+            burstGauge: 0,
+            targets: [],
+            particles: [],
+            bullets: [],
+            floatingTexts: [],
+            lastSpawnTime: 0,
+            mousePos: { x: 400, y: 225 },
+            rawMousePos: { x: 400, y: 225 },
+            recoil: { x: 0, y: 0 },
+            shakeTimer: 0
+        };
+
+        let screens, canvas, ctx;
+
+        // Global functions for inline HTML events
+        window.equipRune = function(cardId) {
+            const emptyIdx = player.equipped.findIndex(slot => slot === null);
+            if (emptyIdx !== -1) {
+                player.equipped[emptyIdx] = cardId;
+                player.inventory[cardId]--;
+                showToast("ルーンを装備しました");
+                renderHomeUI();
+            } else {
+                showToast("スロットが満杯です");
+            }
+        };
+
+        window.unequipRune = function(slotIdx) {
+            const cardId = player.equipped[slotIdx];
+            if (cardId) {
+                player.inventory[cardId] = (player.inventory[cardId] || 0) + 1;
+                player.equipped[slotIdx] = null;
+                showToast("装備を外しました");
+                renderHomeUI();
+            }
+        };
+
+        window.craftRecipe = function(recipeId) {
+            const rec = runeData.recipes.find(r => r.id === recipeId);
+            if (!rec) return;
+
+            const canCraft = Object.entries(rec.req).every(([mId, qty]) => (player.inventory[mId] || 0) >= qty);
+            if (!canCraft) return;
+
+            Object.entries(rec.req).forEach(([mId, qty]) => {
+                player.inventory[mId] -= qty;
+            });
+
+            player.inventory[rec.resultId] = (player.inventory[rec.resultId] || 0) + 1;
+            showToast(`${rec.name} に成功！`);
+            renderHomeUI();
+        };
+
+        // Initialize Game
+        window.addEventListener('load', () => {
+            screens = {
+                title: document.getElementById('screenTitle'),
+                home: document.getElementById('screenHome'),
+                battle: document.getElementById('screenBattle'),
+                result: document.getElementById('screenResult')
+            };
+
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+
+            loadExternalData();
+            loadGame();
+            initCanvasResize();
+            setupEventListeners();
+            updateUI();
+        });
+
+        function loadExternalData() {
+            if (window.RUNE_GAME_DATA) {
+                runeData = {
+                    cards: window.RUNE_GAME_DATA.cards || FALLBACK_RUNE_DATA.cards,
+                    materials: window.RUNE_GAME_DATA.materials || FALLBACK_RUNE_DATA.materials,
+                    recipes: window.RUNE_GAME_DATA.recipes || FALLBACK_RUNE_DATA.recipes
+                };
+                document.getElementById('dataStatusText').innerText = "RUNE_GAME_DATA 連携完了";
+            } else {
+                document.getElementById('dataStatusText').innerText = "標準フォールバックデータ稼働中";
+            }
+        }
+
+        function initCanvasResize() {
+            function resize() {
+                const rect = canvas.parentElement.getBoundingClientRect();
+                canvas.width = rect.width || 800;
+                canvas.height = rect.height || 450;
+                if (!battle.active) {
+                    battle.rawMousePos = { x: canvas.width / 2, y: canvas.height / 2 };
+                    battle.mousePos = { x: canvas.width / 2, y: canvas.height / 2 };
+                }
+            }
+            window.addEventListener('resize', resize);
+            resize();
+        }
+
+        function saveGame() {
+            try {
+                localStorage.setItem(SAVE_KEY, JSON.stringify(player));
+                showToast("ゲーム状況を保存しました");
+            } catch (e) {
+                console.error("Save error", e);
+            }
+        }
+
+        function loadGame() {
+            try {
+                const data = localStorage.getItem(SAVE_KEY);
+                if (data) {
+                    const parsed = JSON.parse(data);
+                    player = { ...player, ...parsed };
+                }
+            } catch (e) {
+                console.error("Load error", e);
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 2500);
+        }
+
+        function switchScreen(targetScreen) {
+            Object.values(screens).forEach(s => {
+                s.classList.add('hidden');
+                s.classList.remove('flex');
+            });
+            screens[targetScreen].classList.remove('hidden');
+            screens[targetScreen].classList.add('flex');
+            
+            if (targetScreen === 'home') {
+                renderHomeUI();
+            }
+        }
+
+        function setupEventListeners() {
+            document.getElementById('btnStartGame').addEventListener('click', () => switchScreen('home'));
+            document.getElementById('btnGoBattle').addEventListener('click', startBattle);
+            document.getElementById('btnRetreat').addEventListener('click', endBattleFailed);
+            document.getElementById('btnReturnHome').addEventListener('click', () => switchScreen('home'));
+            document.getElementById('btnSaveGame').addEventListener('click', saveGame);
+            document.getElementById('btnUpgradeHome').addEventListener('click', upgradeHome);
+
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                battle.rawMousePos.x = e.clientX - rect.left;
+                battle.rawMousePos.y = e.clientY - rect.top;
+            });
+
+            canvas.addEventListener('mousedown', (e) => {
+                if (!battle.active) return;
+                if (e.button === 0) {
+                    fireBullet();
+                } else if (e.button === 2) {
+                    triggerRuneBurst();
+                }
+            });
+
+            canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+            window.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && battle.active) {
+                    triggerRuneBurst();
+                }
+            });
+        }
+
+        function getPlayerStats() {
+            let baseAtk = 20 + player.level * 3 + player.homeLevel * 2;
+            let accuracy = 80 + player.homeLevel * 2;
+            let critRate = 10;
+            let bulletRadius = 6;
+
+            player.equipped.forEach(cardId => {
+                if (!cardId) return;
+                const card = runeData.cards.find(c => c.id === cardId);
+                if (card) {
+                    if (card.type === 'attack') baseAtk += card.power;
+                    if (card.type === 'aim') accuracy += card.power;
+                    if (card.type === 'crit') critRate += card.power;
+                }
+            });
+
+            return {
+                atk: Math.min(999, baseAtk),
+                accuracy: Math.min(98, accuracy),
+                critRate: Math.min(75, critRate),
+                bulletRadius
+            };
+        }
+
+        function updateUI() {
+            document.getElementById('headerGold').innerText = player.gold;
+            document.getElementById('headerLevel').innerText = `LV.${player.level}`;
+            document.getElementById('homeCurrentStage').innerText = player.stage;
+        }
+
+        function renderHomeUI() {
+            updateUI();
+            const stats = getPlayerStats();
+
+            document.getElementById('statAtk').innerText = stats.atk;
+            document.getElementById('statAccuracy').innerText = `${stats.accuracy}%`;
+            document.getElementById('statCrit').innerText = `${stats.critRate}%`;
+            document.getElementById('homeLevelText').innerText = player.homeLevel;
+            document.getElementById('homeUpgradeCost').innerText = `${player.homeLevel * 150}G`;
+
+            // Equip Slots
+            const equipContainer = document.getElementById('equipSlotsContainer');
+            equipContainer.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                const cardId = player.equipped[i];
+                const card = cardId ? runeData.cards.find(c => c.id === cardId) : null;
+                
+                const slotEl = document.createElement('div');
+                slotEl.className = `p-2 rounded-lg border text-center text-xs flex flex-col justify-between items-center h-20 ${card ? 'border-cyan-500 bg-cyan-950/40' : 'border-dashed border-slate-700 bg-slate-900/50'}`;
+                
+                if (card) {
+                    slotEl.innerHTML = `
+                        <span class="text-[10px] font-bold text-cyan-400">${card.rarity}</span>
+                        <span class="font-bold text-slate-200 truncate w-full">${card.name}</span>
+                        <button onclick="unequipRune(${i})" class="text-[10px] text-rose-400 hover:underline">外す</button>
+                    `;
+                } else {
+                    slotEl.innerHTML = `
+                        <span class="text-slate-600 text-lg my-auto"><i class="fa-solid fa-plus"></i></span>
+                        <span class="text-[10px] text-slate-500">空きスロット</span>
+                    `;
+                }
+                equipContainer.appendChild(slotEl);
+            }
+
+            // Inventory
+            const invContainer = document.getElementById('inventoryContainer');
+            invContainer.innerHTML = '';
+            
+            Object.entries(player.inventory).forEach(([itemId, count]) => {
+                if (count <= 0) return;
+                const card = runeData.cards.find(c => c.id === itemId);
+                const mat = runeData.materials ? runeData.materials.find(m => m.id === itemId) : null;
+                const name = card ? card.name : (mat ? mat.name : itemId);
+                const isCard = !!card;
+
+                const itemEl = document.createElement('div');
+                itemEl.className = `rune-card p-2 rounded-lg border ${isCard ? 'border-cyan-500/60 bg-slate-900' : 'border-slate-800 bg-slate-900/80'} text-xs flex flex-col justify-between cursor-pointer`;
+                itemEl.innerHTML = `
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-bold ${isCard ? 'text-cyan-300' : 'text-slate-400'} truncate">${name}</span>
+                        <span class="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">x${count}</span>
+                    </div>
+                    <p class="text-[10px] text-slate-500 line-clamp-2">${card ? card.desc : (mat ? mat.desc : '')}</p>
+                    ${isCard ? `<button onclick="equipRune('${itemId}')" class="mt-2 w-full bg-cyan-900/60 hover:bg-cyan-600 text-cyan-200 text-[10px] py-1 rounded">装備する</button>` : ''}
+                `;
+                invContainer.appendChild(itemEl);
+            });
+
+            // Recipes
+            const recipeList = document.getElementById('recipeList');
+            recipeList.innerHTML = '';
+            runeData.recipes.forEach(rec => {
+                const canCraft = Object.entries(rec.req).every(([mId, qty]) => (player.inventory[mId] || 0) >= qty);
+
+                const reqStr = Object.entries(rec.req).map(([mId, qty]) => {
+                    const mat = runeData.materials.find(m => m.id === mId);
+                    return `${mat ? mat.name : mId}: ${player.inventory[mId] || 0}/${qty}`;
+                }).join(' / ');
+
+                const recEl = document.createElement('div');
+                recEl.className = 'p-2.5 rounded-lg border border-slate-800 bg-slate-950 flex justify-between items-center text-xs';
+                recEl.innerHTML = `
+                    <div>
+                        <div class="font-bold text-slate-200">${rec.name}</div>
+                        <div class="text-[10px] text-slate-500">${reqStr}</div>
+                    </div>
+                    <button onclick="craftRecipe('${rec.id}')" ${canCraft ? '' : 'disabled'} class="px-3 py-1.5 rounded text-xs font-bold ${canCraft ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-md' : 'bg-slate-800 text-slate-600 cursor-not-allowed'}">
+                        錬成
+                    </button>
+                `;
+                recipeList.appendChild(recEl);
+            });
+        }
+
+        function upgradeHome() {
+            const cost = player.homeLevel * 150;
+            if (player.gold >= cost) {
+                player.gold -= cost;
+                player.homeLevel++;
+                showToast("マイホーム・アトリエを拡張しました！");
+                renderHomeUI();
+            } else {
+                showToast("ゴールドが不足しています");
+            }
+        }
+
+        function startBattle() {
+            switchScreen('battle');
+
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width || 800;
+            canvas.height = rect.height || 450;
+
+            const initX = canvas.width / 2;
+            const initY = canvas.height / 2;
+
+            battle.active = true;
+            battle.score = 0;
+            battle.combo = 0;
+            battle.maxCombo = 0;
+            battle.kills = 0;
+            battle.hp = 100;
+            battle.timer = 35.0;
+            battle.burstGauge = 0;
+            battle.targets = [];
+            battle.particles = [];
+            battle.bullets = [];
+            battle.floatingTexts = [];
+            battle.recoil = { x: 0, y: 0 };
+            battle.shakeTimer = 0;
+            battle.rawMousePos = { x: initX, y: initY };
+            battle.mousePos = { x: initX, y: initY };
+
+            spawnTarget();
+            spawnTarget();
+            battle.lastSpawnTime = Date.now();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function spawnTarget() {
+            const r = Math.random();
+            let type = 'normal';
+            if (r < 0.15) type = 'gold';
+            else if (r < 0.35) type = 'fast';
+            else if (r < 0.45) type = 'bomb';
+
+            if (battle.kills > 0 && battle.kills % 15 === 0 && !battle.targets.some(t => t.type === 'boss')) {
+                type = 'boss';
+            }
+
+            const radius = type === 'boss' ? 45 : (type === 'fast' ? 16 : 24);
+            const w = canvas.width || 800;
+            const h = canvas.height || 450;
+
+            const x = radius + Math.random() * Math.max(10, w - radius * 2);
+            const y = radius + Math.random() * Math.max(10, h - radius * 2);
+
+            let vx = (Math.random() - 0.5) * (type === 'fast' ? 4.5 : 2.0);
+            let vy = (Math.random() - 0.5) * (type === 'fast' ? 4.5 : 2.0);
+            if (Math.abs(vx) < 0.5) vx = vx < 0 ? -1.2 : 1.2;
+            if (Math.abs(vy) < 0.5) vy = vy < 0 ? -1.2 : 1.2;
+
+            battle.targets.push({
+                x, y, vx, vy, radius,
+                type,
+                hp: type === 'boss' ? 300 + player.stage * 100 : (type === 'normal' ? 30 : 15),
+                maxHp: type === 'boss' ? 300 + player.stage * 100 : 30,
+                color: type === 'gold' ? '#eab308' : (type === 'fast' ? '#38bdf8' : (type === 'bomb' ? '#f43f5e' : (type === 'boss' ? '#a855f7' : '#22c55e'))),
+                spawnTime: Date.now()
+            });
+        }
+
+        function fireBullet() {
+            const stats = getPlayerStats();
+            
+            battle.recoil.x += (Math.random() - 0.5) * (100 - stats.accuracy) * 0.1;
+            battle.recoil.y += (Math.random() - 0.5) * (100 - stats.accuracy) * 0.1;
+
+            const targetX = battle.mousePos.x;
+            const targetY = battle.mousePos.y;
+
+            let hitTarget = null;
+            let hitDist = Infinity;
+
+            battle.targets.forEach(t => {
+                const dist = Math.hypot(t.x - targetX, t.y - targetY);
+                if (dist <= t.radius + stats.bulletRadius) {
+                    if (dist < hitDist) {
+                        hitDist = dist;
+                        hitTarget = t;
+                    }
+                }
+            });
+
+            battle.bullets.push({
+                x1: canvas.width / 2,
+                y1: canvas.height,
+                x2: targetX,
+                y2: targetY,
+                life: 1.0
+            });
+
+            if (hitTarget) {
+                const isCrit = Math.random() * 100 < stats.critRate;
+                let damage = stats.atk * (isCrit ? 1.8 : 1.0);
+
+                if (hitTarget.type === 'bomb') {
+                    createExplosion(hitTarget.x, hitTarget.y, '#f43f5e');
+                    hitTarget.hp = 0;
+                    battle.hp = Math.max(0, battle.hp - 15);
+                    addFloatingText(hitTarget.x, hitTarget.y, "TRAP!", "#f43f5e");
+                    battle.combo = 0;
+                } else {
+                    hitTarget.hp -= damage;
+                    battle.combo++;
+                    battle.maxCombo = Math.max(battle.maxCombo, battle.combo);
+                    battle.score += Math.floor(100 * (1 + battle.combo * 0.1));
+                    battle.burstGauge = Math.min(100, battle.burstGauge + 5);
+
+                    createSparkles(hitTarget.x, hitTarget.y, hitTarget.color);
+                    addFloatingText(targetX, targetY, `${Math.round(damage)}${isCrit ? '!' : ''}`, isCrit ? '#c084fc' : '#ffffff');
+
+                    if (hitTarget.hp <= 0) {
+                        battle.kills++;
+                        if (hitTarget.type === 'gold') player.gold += 35;
+                        if (hitTarget.type === 'boss') player.gold += 150;
+                    }
+                }
+            } else {
+                battle.combo = 0;
+                addFloatingText(targetX, targetY, "MISS", "#64748b");
+            }
+        }
+
+        function triggerRuneBurst() {
+            if (battle.burstGauge < 100) return;
+            battle.burstGauge = 0;
+            battle.shakeTimer = 20;
+
+            battle.targets.forEach(t => {
+                createExplosion(t.x, t.y, t.color);
+                t.hp = 0;
+                battle.kills++;
+                battle.score += 200;
+            });
+
+            addFloatingText(canvas.width / 2, canvas.height / 2, "RUNE BURST!!", "#fbbf24", 28);
+        }
+
+        function createSparkles(x, y, color) {
+            for (let i = 0; i < 10; i++) {
+                battle.particles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    radius: Math.random() * 3 + 1,
+                    color,
+                    life: 1.0
+                });
+            }
+        }
+
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 25; i++) {
+                battle.particles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 12,
+                    vy: (Math.random() - 0.5) * 12,
+                    radius: Math.random() * 5 + 2,
+                    color,
+                    life: 1.0
+                });
+            }
+        }
+
+        function addFloatingText(x, y, text, color = '#ffffff', size = 16) {
+            battle.floatingTexts.push({ x, y, text, color, size, life: 1.0 });
+        }
+
+        function gameLoop() {
+            if (!battle.active) return;
+
+            updateBattle();
+            renderBattle();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateBattle() {
+            battle.timer -= 1 / 60;
+            if (battle.timer <= 0 || battle.hp <= 0) {
+                endBattleSuccess();
+                return;
+            }
+
+            const stats = getPlayerStats();
+            const driftFactor = (100 - stats.accuracy) * 0.05;
+            
+            let nextMx = battle.mousePos.x + (battle.rawMousePos.x + battle.recoil.x - battle.mousePos.x) * 0.4 + (Math.random() - 0.5) * driftFactor;
+            let nextMy = battle.mousePos.y + (battle.rawMousePos.y + battle.recoil.y - battle.mousePos.y) * 0.4 + (Math.random() - 0.5) * driftFactor;
+
+            if (!isNaN(nextMx) && isFinite(nextMx)) battle.mousePos.x = nextMx;
+            if (!isNaN(nextMy) && isFinite(nextMy)) battle.mousePos.y = nextMy;
+
+            battle.recoil.x *= 0.8;
+            battle.recoil.y *= 0.8;
+
+            if (Date.now() - battle.lastSpawnTime > Math.max(400, 1200 - player.stage * 80)) {
+                spawnTarget();
+                battle.lastSpawnTime = Date.now();
+            }
+
+            battle.targets.forEach((t) => {
+                t.x += t.vx;
+                t.y += t.vy;
+
+                if (t.x - t.radius < 0) {
+                    t.x = t.radius;
+                    t.vx = Math.abs(t.vx);
+                } else if (t.x + t.radius > canvas.width) {
+                    t.x = canvas.width - t.radius;
+                    t.vx = -Math.abs(t.vx);
+                }
+
+                if (t.y - t.radius < 0) {
+                    t.y = t.radius;
+                    t.vy = Math.abs(t.vy);
+                } else if (t.y + t.radius > canvas.height) {
+                    t.y = canvas.height - t.radius;
+                    t.vy = -Math.abs(t.vy);
+                }
+            });
+
+            battle.targets = battle.targets.filter(t => t.hp > 0);
+
+            battle.particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.03;
+            });
+            battle.particles = battle.particles.filter(p => p.life > 0);
+
+            battle.bullets.forEach(b => b.life -= 0.1);
+            battle.bullets = battle.bullets.filter(b => b.life > 0);
+
+            battle.floatingTexts.forEach(ft => {
+                ft.y -= 0.8;
+                ft.life -= 0.02;
+            });
+            battle.floatingTexts = battle.floatingTexts.filter(ft => ft.life > 0);
+
+            if (battle.shakeTimer > 0) battle.shakeTimer--;
+
+            document.getElementById('hudHp').innerText = `${Math.ceil(battle.hp)}/100`;
+            document.getElementById('hudScore').innerText = battle.score;
+            document.getElementById('hudCombo').innerText = battle.combo;
+            document.getElementById('hudTimer').innerText = Math.max(0, battle.timer).toFixed(1);
+            document.getElementById('hudStage').innerText = player.stage;
+
+            const burstPrompt = document.getElementById('runeBurstPrompt');
+            if (battle.burstGauge >= 100) {
+                burstPrompt.classList.remove('hidden');
+            } else {
+                burstPrompt.classList.add('hidden');
+            }
+        }
+
+        function renderBattle() {
+            ctx.save();
+
+            if (battle.shakeTimer > 0) {
+                ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
+            }
+
+            ctx.fillStyle = '#090d16';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = 'rgba(14, 165, 233, 0.05)';
+            ctx.lineWidth = 1;
+            const gridSize = 40;
+            for (let x = 0; x < canvas.width; x += gridSize) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += gridSize) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+
+            battle.targets.forEach(t => {
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, t.radius, 0, Math.PI * 2);
+                ctx.fillStyle = t.color;
+                ctx.shadowColor = t.color;
+                ctx.shadowBlur = 12;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                if (t.type === 'boss') {
+                    ctx.fillStyle = '#1e293b';
+                    ctx.fillRect(t.x - 30, t.y - t.radius - 12, 60, 6);
+                    ctx.fillStyle = '#a855f7';
+                    ctx.fillRect(t.x - 30, t.y - t.radius - 12, (t.hp / t.maxHp) * 60, 6);
+                }
+            });
+
+            battle.bullets.forEach(b => {
+                ctx.strokeStyle = `rgba(56, 189, 248, ${b.life})`;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(b.x1, b.y1);
+                ctx.lineTo(b.x2, b.y2);
+                ctx.stroke();
+            });
+
+            battle.particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = Math.max(0, p.life);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            });
+
+            battle.floatingTexts.forEach(ft => {
+                ctx.font = `bold ${ft.size}px Orbitron, sans-serif`;
+                ctx.fillStyle = ft.color;
+                ctx.globalAlpha = Math.max(0, ft.life);
+                ctx.fillText(ft.text, ft.x - 10, ft.y);
+                ctx.globalAlpha = 1.0;
+            });
+
+            const mx = battle.mousePos.x;
+            const my = battle.mousePos.y;
+
+            ctx.strokeStyle = '#06b6d4';
+            ctx.lineWidth = 2;
+            
+            ctx.beginPath();
+            ctx.arc(mx, my, 16, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(mx - 22, my); ctx.lineTo(mx - 8, my);
+            ctx.moveTo(mx + 8, my); ctx.lineTo(mx + 22, my);
+            ctx.moveTo(mx, my - 22); ctx.lineTo(mx, my - 8);
+            ctx.moveTo(mx, my + 8); ctx.lineTo(mx, my + 22);
+            ctx.stroke();
+
+            ctx.fillStyle = '#f43f5e';
+            ctx.beginPath();
+            ctx.arc(mx, my, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function endBattleSuccess() {
+            battle.active = false;
+
+            const earnedGold = Math.floor(battle.score * 0.15) + player.stage * 50;
+            const matDustGain = Math.floor(battle.kills * 0.8) + 2;
+
+            player.gold += earnedGold;
+            player.inventory['mat_dust'] = (player.inventory['mat_dust'] || 0) + matDustGain;
+            
+            if (battle.kills > 10) {
+                player.inventory['mat_crystal'] = (player.inventory['mat_crystal'] || 0) + 1;
+            }
+
+            player.stage++;
+
+            document.getElementById('resultTitle').innerText = "STAGE CLEARED!";
+            document.getElementById('resultSubtitle').innerText = "アトリエへの新たな素材と報酬を解放しました。";
+            document.getElementById('resKills').innerText = battle.kills;
+            document.getElementById('resMaxCombo').innerText = `${battle.maxCombo} Combo`;
+            document.getElementById('resScore').innerText = battle.score;
+            document.getElementById('resGold').innerText = `+${earnedGold} G`;
+            document.getElementById('resDrops').innerText = `ルーンの粉末 x${matDustGain}`;
+
+            switchScreen('result');
+            saveGame();
+        }
+
+        function endBattleFailed() {
+            battle.active = false;
+
+            document.getElementById('resultTitle').innerText = "MISSION FAILED";
+            document.getElementById('resultSubtitle').innerText = "撤退しました。装備を強化して再挑戦しましょう。";
+            document.getElementById('resKills').innerText = battle.kills;
+            document.getElementById('resMaxCombo').innerText = battle.maxCombo;
+            document.getElementById('resScore').innerText = battle.score;
+            document.getElementById('resGold').innerText = "+0 G";
+            document.getElementById('resDrops').innerText = "なし";
+
+            switchScreen('result');
+        }
+    </script>
+</body>
+</html>

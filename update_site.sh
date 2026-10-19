@@ -62,7 +62,8 @@ update_game_data() {
 }
 
 collect_html_games() {
-  find "$DOWNLOAD_DIR" -maxdepth 1 -name "*.html" -type f -exec grep -l "AI-GAME-PORTFOLIO" {} + 2>/dev/null | while read -r file; do
+  # findの出力を安全に読み込む
+  while IFS= read -r file; do
     local filename
     filename=$(basename "$file")
     
@@ -72,7 +73,7 @@ collect_html_games() {
 
     echo "✨ 新しいゲームを発見して収集: $filename"
     cp "$file" "$GAMES_DIR/"
-  done
+  done < <(find "$DOWNLOAD_DIR" -maxdepth 1 -name "*.html" -type f -exec grep -l "AI-GAME-PORTFOLIO" {} + 2>/dev/null)
 }
 
 build_index_html() {
@@ -239,10 +240,20 @@ HTMLEOF
 }
 
 sync_with_git() {
+  # Gitリポジトリかどうかの簡易チェック
+  if [ ! -d ".git" ]; then
+    echo "ℹ 現在のディレクトリはGitリポジトリではありません。Git連携をスキップします。"
+    return
+  fi
+
   if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+    # 現在のブランチ名を取得（取得できない場合はmainとする）
+    local current_branch
+    current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+
     git add .
     git commit -m "🚀 ポートフォリオ更新: $(date +'%Y-%m-%d %H:%M:%S')"
-    git push origin main
+    git push origin "$current_branch"
     echo "🎉 サイトの自動収集・ビルド・公開が完了しました！（計 ${GAME_COUNT} 作品）"
   else
     echo "✅ 変更がないため、Gitの更新はスキップしました。（計 ${GAME_COUNT} 作品）"
@@ -284,7 +295,6 @@ ${HANDOFF_RULE}"
   local PROMPT=""
 
   if [ "$mode" = "4" ]; then
-    # モード4
     echo -n "👉 新しいデータの世界観・テーマ（例: SF、ゾンビ、現代都市、宇宙、空Enterでお任せ）: "
     local data_theme
     read -r data_theme
@@ -324,9 +334,12 @@ ${CURRENT_DATA}
 ダウンロードしてそのまま使える形式で出力をお願いします。"
 
   elif [ "$mode" = "2" ] \vert{}\vert{} [ "$mode" = "3" ]; then
-    # モード2・3
-    local game_files
-    mapfile -t game_files < <(ls -t "$GAMES_DIR"/*.html 2>/dev/null)
+    # MacのBash 3.2互換のためmapfileを使用せずwhileで配列に格納
+    local game_files=()
+    while IFS= read -r f; do
+      [ -n "$f" ] && game_files+=("$f")
+    done < <(ls -t "$GAMES_DIR"/*.html 2>/dev/null)
+    
     if [ ${#game_files[@]} -eq 0 ]; then
       echo "⚠ $GAMES_DIR フォルダにゲームがありません。"; exit 1
     fi
@@ -342,6 +355,12 @@ ${CURRENT_DATA}
     
     local num
     read -r num
+    # 不正な入力（文字など）や範囲外を弾く簡易チェック
+   
+    if [ "$num" =~ ^[0-9]+$ ]] \vert{}\vert{} [ "$num" -le 0 ] || [ "$num" -gt "${#game_files[@]}" ]; then
+      echo "⚠ 無効な番号です。"; exit 1
+    fi
+
     local target="${game_files[$((num-1))]}"
     if [ -z "$target" ] \vert{}\vert{} [ ! -f "$target" ]; then
       echo "⚠ 無効な番号です。"; exit 1
@@ -427,7 +446,6 @@ ${COMMON_RULES}"
 # ==============================================================================
 # 4. 設計図（メイン処理）
 # ==============================================================================
-# ここがスクリプトの「目次」になります。処理の順番が一目でわかります。
 main() {
   setup_environment
   update_game_data

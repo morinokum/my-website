@@ -1,4 +1,4 @@
-k#!/bin/bash
+#!/bin/bash
 
 # ==============================================================================
 # AI-EXTENDABLE WRAPPER SCRIPT
@@ -23,23 +23,19 @@ echo "🚀 [Wrapper] 拡張版アップデーターを起動します..."
 # ------------------------------------------------------------------------------
 # 【フェーズ1】事前処理エリア（元のスクリプトが走る前に行う処理）
 # ------------------------------------------------------------------------------
-# 例: 念のため現在の index.html のバックアップを取っておく
 if [ -f "index.html" ]; then
   cp index.html index_backup.html
   echo "📦 [Wrapper] index.html のバックアップを作成しました。"
 fi
-
 
 # ------------------------------------------------------------------------------
 # 【フェーズ2】コアシステムの実行
 # ------------------------------------------------------------------------------
 echo "⚙  [Wrapper] コアスクリプト (update_site.sh) を呼び出します..."
 
-# ここで元のプログラムを読み込み・実行します。
 source ./update_site.sh
 
 echo -e "\n⚙  [Wrapper] コアスクリプトの実行が完了しました。"
-
 
 # ------------------------------------------------------------------------------
 # 【フェーズ3】拡張コード追加エリア（AIはここから下に追記していくこと）
@@ -51,7 +47,6 @@ if [ -n "$PROMPT" ]; then
   mkdir -p prompt_history
   timestamp=$(date +'%Y%m%d_%H%M%S')
   history_file="prompt_history/prompt_${timestamp}_mode${mode}.txt"
-  
   echo "$PROMPT" > "$history_file"
   echo "💾 [Extension] プロンプトのバックアップを保存しました: $history_file"
 fi
@@ -61,27 +56,30 @@ log_file="update_wrapper.log"
 echo "[$(date +'\%Y-\%m-\%d \%H:\%M:\%S')] Mode:$mode | Games: $game_count" >> "$log_file"
 echo "📝 [Extension] 実行ログを $log_file に追記しました。"
 
-
 # ==============================================================================
 # ↓↓↓ AIは今後の追加リクエストをここから下に追記してください ↓↓↓
 # ==============================================================================
 
-# --- 拡張機能3: 任意のMP3を手動選択し、指定したゲームに組み込む ---
-echo "🎵 [Extension] MP3音楽ファイルの組み込み処理を開始します..."
+# --- 拡張機能3: 任意のMP3とHTMLファイルを手動選択し、配置・アップロード ---
+echo "🎵 [Extension] MP3とゲーム(HTML)の組み込み処理を開始します..."
 
-# 検索先ディレクトリをダウンロードフォルダに変更
 SEARCH_DIR="/home/hirosi/ダウンロード"
 
-# フォルダが存在するか確認してから検索を実行
 if [ -d "$SEARCH_DIR" ]; then
-  # 名前を問わず、すべてのMP3ファイルを検索し配列に格納する
-  mapfile -t all_mp3_files < <(find "$SEARCH_DIR" -type f -iname "*.mp3")
+  # MP3ファイルを検索
+  mapfile -t all_mp3_files < <(find "$SEARCH_DIR" -maxdepth 1 -type f -iname "*.mp3")
   audio_count_found=${#all_mp3_files[@]}
+  
+  # HTMLファイルを検索
+  mapfile -t all_html_files < <(find "$SEARCH_DIR" -maxdepth 1 -type f -iname "*.html")
+  html_count_found=${#all_html_files[@]}
 else
   echo "⚠ 検索先ディレクトリ ($SEARCH_DIR) が見つかりません。"
   audio_count_found=0
+  html_count_found=0
 fi
 
+# 1. MP3の選択
 if [ "$audio_count_found" -gt 0 ]; then
   echo "🔍 [Extension] ${audio_count_found} 件のMP3ファイルを発見しました。"
   echo "--------------------------------------------------"
@@ -94,71 +92,67 @@ if [ "$audio_count_found" -gt 0 ]; then
 
   read -p "選択 (0-${audio_count_found}): " mp3_choice
 
-  # 入力が正しい数字かチェックし、0でなければ処理を進める
   if [[ "$mp3_choice" =~ ^[0-9]+$ ]] && [ "$mp3_choice" -gt 0 ] && [ "$mp3_choice" -le "$audio_count_found" ]; then
     selected_idx=$((mp3_choice-1))
     selected_bgm="${all_mp3_files[$selected_idx]}"
-    echo "🎵 選択されたMP3: $(basename "$selected_bgm")"
+    bgm_filename=$(basename "$selected_bgm")
+    echo "🎵 選択されたMP3: $bgm_filename"
     
-    # 対象のゲームディレクトリ一覧を取得・選択
-    if [ -d "$DOWNLOAD_DIR" ]; then
-      mapfile -t game_dirs < <(find "$DOWNLOAD_DIR" -mindepth 1 -maxdepth 1 -type d)
-      game_count_found=${#game_dirs[@]}
+    # 2. HTML(ゲーム)の選択
+    if [ "$html_count_found" -gt 0 ]; then
+      echo ""
+      echo "--------------------------------------------------"
+      echo " どのゲーム(HTML)に組み込みますか？（0でスキップ）"
+      echo "--------------------------------------------------"
+      echo "0) スキップする"
+      for i in "${!all_html_files[@]}"; do
+        echo "$((i+1)))$(basename "${all_html_files[$i]}")"
+      done
       
-      if [ "$game_count_found" -gt 0 ]; then
+      read -p "選択 (0-${html_count_found}): " html_choice
+      
+      if [[ "$html_choice" =~ ^[0-9]+$ ]] && [ "$html_choice" -gt 0 ] && [ "$html_choice" -le "$html_count_found" ]; then
+        html_idx=$((html_choice-1))
+        selected_html="${all_html_files[$html_idx]}"
+        html_filename=$(basename "$selected_html")
+        game_name="${html_filename%.*}" # 拡張子を除いたファイル名
+        
+        echo "🎮 選択されたゲーム: $html_filename"
+        
+        # 3. カレントディレクトリへのコピー実行
+        # 現在のフォルダ(Gitリポジトリ)に両方のファイルをコピーします
+        cp "$selected_bgm" .
+        cp "$selected_html" .
+        echo "✅ 配置完了: 現在のフォルダに ${html_filename} と ${bgm_filename} をコピーしました！"
+        
+        # --- 拡張機能4: GitHubへのアップロード処理 ---
         echo ""
-        echo "--------------------------------------------------"
-        echo " どのゲームに組み込みますか？（0でスキップ）"
-        echo "--------------------------------------------------"
-        echo "0) スキップする"
-        for i in "${!game_dirs[@]}"; do
-          echo "$((i+1)))$(basename "${game_dirs[$i]}")"
-        done
-        
-        read -p "選択 (0-${game_count_found}): " game_choice
-        
-        if [[ "$game_choice" =~ ^[0-9]+$ ]] && [ "$game_choice" -gt 0 ] && [ "$game_choice" -le "$game_count_found" ]; then
-          game_idx=$((game_choice-1))
-          selected_game_dir="${game_dirs[$game_idx]}"
-          game_name=$(basename "$selected_game_dir")
+        echo "🚀 [Extension] ゲームのアップロード(Git Push)を開始します..."
+        read -p "GitHub Pagesに変更をアップロードしますか？ (y/n): " upload_choice
+        if [[ "$upload_choice" == [yY]* ]]; then
+          echo "📦 変更をステージング(git add)しています..."
+          git add .
           
-          echo "🎮 選択されたゲーム: $game_name"
+          echo "📝 コミット(git commit)しています..."
+          git commit -m "Update: Add game ${html_filename} and BGM${bgm_filename}"
           
-          # コピー実行 (bgm.mp3として配置)
-          cp "$selected_bgm" "${selected_game_dir}/bgm.mp3"
-          echo "✅ 組み込み完了: [${game_name}] に $(basename "$selected_bgm") を bgm.mp3 として設定しました！"
+          echo "☁️ アップロード(git push)しています..."
+          git push
           
-          # --- 拡張機能4: GitHubへのアップロード処理 ---
-          echo ""
-          echo "🚀 [Extension] ゲームのアップロード(Git Push)を開始します..."
-          read -p "GitHub Pagesに変更をアップロードしますか？ (y/n): " upload_choice
-          if [[ "$upload_choice" == [yY]* ]]; then
-            echo "📦 変更をステージング(git add)しています..."
-            git add .
-            
-            echo "📝 コミット(git commit)しています..."
-            git commit -m "Update: Add BGM to ${game_name} and update site"
-            
-            echo "☁️ アップロード(git push)しています..."
-            git push
-            
-            if [ $? -eq 0 ]; then
-              echo "✅ アップロード成功！ 数分後にGitHub Pagesに反映されます。"
-            else
-              echo "❌ アップロードに失敗しました。Gitの接続設定等を確認してください。"
-            fi
+          if [ $? -eq 0 ]; then
+            echo "✅ アップロード成功！ 数分後にGitHub Pagesに反映されます。"
           else
-            echo "⏭ アップロードをスキップしました。"
+            echo "❌ アップロードに失敗しました。Gitの接続設定等を確認してください。"
           fi
-          
         else
-          echo "⏭ ゲームの選択がスキップされたか、無効な入力です。組み込みを中止します。"
+          echo "⏭ アップロードをスキップしました。"
         fi
+        
       else
-        echo "⚠ ゲームディレクトリが見つかりません。"
+        echo "⏭ ゲーム(HTML)の選択がスキップされたか、無効な入力です。処理を中止します。"
       fi
     else
-      echo "⚠ ダウンロードディレクトリ ($DOWNLOAD_DIR) が見つかりません。"
+      echo "⚠ HTMLファイルが指定のフォルダ内に見つかりませんでした。"
     fi
   else
     echo "⏭ MP3の選択がスキップされたか、無効な入力です。処理を中止します。"

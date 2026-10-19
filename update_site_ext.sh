@@ -1,4 +1,4 @@
-#!/bin/bash
+k#!/bin/bash
 
 # ==============================================================================
 # AI-EXTENDABLE WRAPPER SCRIPT
@@ -36,7 +36,6 @@ fi
 echo "⚙  [Wrapper] コアスクリプト (update_site.sh) を呼び出します..."
 
 # ここで元のプログラムを読み込み・実行します。
-# ※ sourceコマンドを使うことで、元のプログラム内で作られた変数が全てこのスクリプトに引き継がれます。
 source ./update_site.sh
 
 echo -e "\n⚙  [Wrapper] コアスクリプトの実行が完了しました。"
@@ -67,52 +66,99 @@ echo "📝 [Extension] 実行ログを $log_file に追記しました。"
 # ↓↓↓ AIは今後の追加リクエストをここから下に追記してください ↓↓↓
 # ==============================================================================
 
-# --- 拡張機能3: Gemini生成MP3の自動検索とランダム組み込み ---
-echo "🎵 [Extension] Gemini生成の音楽ファイルを検索し、組み込み処理を開始します..."
+# --- 拡張機能3: 任意のMP3を手動選択し、指定したゲームに組み込む ---
+echo "🎵 [Extension] MP3音楽ファイルの組み込み処理を開始します..."
 
-# 検索対象のディレクトリ（とりあえずこのスクリプトがあるフォルダ全体を下層まで探します）
-# ※もし特定のフォルダ（例: ~/Downloads）だけを探したい場合は、以下の "." を "~/Downloads" に変更してください。
 SEARCH_DIR="."
+# 名前を問わず、すべてのMP3ファイルを検索し配列に格納する
+mapfile -t all_mp3_files < <(find "$SEARCH_DIR" -type f -iname "*.mp3")
 
-# ファイル名に「gemini」を含むMP3を大文字小文字問わず(-iname)検索し、配列に格納する
-mapfile -t gemini_audio_files < <(find "$SEARCH_DIR" -type f -iname "*gemini*.mp3")
-
-# 見つかったファイル数をカウント
-audio_count_found=${#gemini_audio_files[@]}
+audio_count_found=${#all_mp3_files[@]}
 
 if [ "$audio_count_found" -gt 0 ]; then
-  echo "🔍 [Extension] ${audio_count_found} 件のGemini作曲MP3ファイルを発見しました。"
-  
-  # 対象のゲームディレクトリが存在するかチェック
-  if [ -d "$DOWNLOAD_DIR" ]; then
-    for game_dir in "$DOWNLOAD_DIR"/*/; do
-      # ディレクトリが存在する場合のみ処理
-      if [ -d "$game_dir" ]; then
-        game_name=$(basename "$game_dir")
+  echo "🔍 [Extension] ${audio_count_found} 件のMP3ファイルを発見しました。"
+  echo "--------------------------------------------------"
+  echo " どのMP3ファイルを組み込みますか？（0でスキップ）"
+  echo "--------------------------------------------------"
+  echo "0) スキップする"
+  for i in "${!all_mp3_files[@]}"; do
+    echo "$((i+1))) ${all_mp3_files[$i]}"
+  done
+
+  read -p "選択 (0-${audio_count_found}): " mp3_choice
+
+  # 入力が正しい数字かチェックし、0でなければ処理を進める
+  if [[ "$mp3_choice" =~ ^[0-9]+$ ]] && [ "$mp3_choice" -gt 0 ] && [ "$mp3_choice" -le "$audio_count_found" ]; then
+    selected_idx=$((mp3_choice-1))
+    selected_bgm="${all_mp3_files[$selected_idx]}"
+    echo "🎵 選択されたMP3: $selected_bgm"
+    
+    # 対象のゲームディレクトリ一覧を取得・選択
+    if [ -d "$DOWNLOAD_DIR" ]; then
+      mapfile -t game_dirs < <(find "$DOWNLOAD_DIR" -mindepth 1 -maxdepth 1 -type d)
+      game_count_found=${#game_dirs[@]}
+      
+      if [ "$game_count_found" -gt 0 ]; then
+        echo ""
+        echo "--------------------------------------------------"
+        echo " どのゲームに組み込みますか？（0でスキップ）"
+        echo "--------------------------------------------------"
+        echo "0) スキップする"
+        for i in "${!game_dirs[@]}"; do
+          echo "$((i+1)))$(basename "${game_dirs[$i]}")"
+        done
         
-        # フォルダ内に既に音声ファイル(.mp3, .ogg, .wav)が含まれているかチェック
-        existing_audio=$(find "$game_dir" -maxdepth 1 -type f \( -name "*.mp3" -o -name "*.ogg" -o -name "*.wav" \) 2>/dev/null | wc -l)
+        read -p "選択 (0-${game_count_found}): " game_choice
         
-        if [ "$existing_audio" -eq 0 ]; then
-          # 見つかったGeminiのMP3群の中から、ランダムに1曲を選ぶ
-          rand_idx=$((RANDOM % audio_count_found))
-          selected_bgm="${gemini_audio_files[$rand_idx]}"
+        if [[ "$game_choice" =~ ^[0-9]+$ ]] && [ "$game_choice" -gt 0 ] && [ "$game_choice" -le "$game_count_found" ]; then
+          game_idx=$((game_choice-1))
+          selected_game_dir="${game_dirs[$game_idx]}"
+          game_name=$(basename "$selected_game_dir")
           
-          # コピーして bgm.mp3 として配置
-          cp "$selected_bgm" "${game_dir}/bgm.mp3"
-          echo "  -> 🎵 組み込み: [${game_name}] に $(basename "$selected_bgm") をセットしました"
+          echo "🎮 選択されたゲーム: $game_name"
+          
+          # コピー実行 (bgm.mp3として配置)
+          cp "$selected_bgm" "${selected_game_dir}/bgm.mp3"
+          echo "✅ 組み込み完了: [${game_name}] に $(basename "$selected_bgm") を bgm.mp3 として設定しました！"
+          
+          # --- 拡張機能4: GitHubへのアップロード処理 ---
+          echo ""
+          echo "🚀 [Extension] ゲームのアップロード(Git Push)を開始します..."
+          read -p "GitHub Pagesに変更をアップロードしますか？ (y/n): " upload_choice
+          if [[ "$upload_choice" == [yY]* ]]; then
+            echo "📦 変更をステージング(git add)しています..."
+            # update_site.sh で更新された index.html 等もまとめて add します
+            git add .
+            
+            echo "📝 コミット(git commit)しています..."
+            git commit -m "Update: Add BGM to ${game_name} and update site"
+            
+            echo "☁️ アップロード(git push)しています..."
+            git push
+            
+            if [ $? -eq 0 ]; then
+              echo "✅ アップロード成功！ 数分後にGitHub Pagesに反映されます。"
+            else
+              echo "❌ アップロードに失敗しました。Gitの接続設定等を確認してください。"
+            fi
+          else
+            echo "⏭ アップロードをスキップしました。"
+          fi
+          
         else
-          echo "  -> ⏭️ スキップ: [${game_name}] には既に音声ファイルが存在します"
+          echo "⏭ ゲームの選択がスキップされたか、無効な入力です。組み込みを中止します。"
         fi
+      else
+        echo "⚠ ゲームディレクトリが見つかりません。"
       fi
-    done
-    echo "✨ [Extension] 全ゲームへのGemini音楽の組み込みが完了しました！"
+    else
+      echo "⚠ ダウンロードディレクトリ ($DOWNLOAD_DIR) が見つかりません。"
+    fi
   else
-    echo "⚠️ [Extension] ダウンロードディレクトリ ($DOWNLOAD_DIR) が見つかりません。"
+    echo "⏭ MP3の選択がスキップされたか、無効な入力です。処理を中止します。"
   fi
 else
-  echo "⚠️ [Extension] 「gemini」という名前が含まれるMP3ファイルが現在のフォルダ内に見つかりませんでした。"
-  echo "   (※MP3ファイルが別の場所にある場合は SEARCH_DIR を変更するか、ファイルを移動してください)"
+  echo "⚠ MP3ファイルが現在のフォルダ内に見つかりませんでした。"
 fi
 
 echo "✨ [Wrapper] すべての処理が正常に完了しました！"

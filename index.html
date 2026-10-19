@@ -38,7 +38,7 @@
     <h1>AI Game Portfolio</h1>
     <p>AIと共に制作したゲーム・プロトタイプの展示室</p>
   </header>
-  
+
   <div class="controls">
     <input type="text" id="searchInput" placeholder="🔍 タイトルや内容で検索..." onkeyup="filterGames()">
     <span id="gameCount" style="color: var(--text-muted); font-size: 0.9em; font-weight: bold;"></span>
@@ -459,7 +459,7 @@
       cards.forEach(card => {
         const title = card.getAttribute('data-title').toLowerCase();
         const desc = card.getAttribute('data-desc').toLowerCase();
-        
+
         if (title.includes(input) || desc.includes(input)) {
           card.style.display = '';
           visibleCount++;
@@ -476,7 +476,7 @@
         const response = await fetch('games/' + filename);
         if (!response.ok) throw new Error('Network response error');
         const text = await response.text();
-        
+
         await navigator.clipboard.writeText(text);
         showToast('📋 ' + filename + ' のコードをコピーしました！');
       } catch (err) {

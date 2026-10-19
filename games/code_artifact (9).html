@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="AI-GAME-PORTFOLIO, Rune Conveyor Automation, 紋章カード, 自動化工場, パズル">
+    <meta name="description" content="コンベアと錬金窯を繋いで自動化ラインを構築し、高級紋章ルーンを量産・出荷するファクトリーパズルゲーム">
+    <title>紋章カードの自動化工場：ルーン・コンベア・オートメーション | AI-GAME-PORTFOLIO</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0b0f19',
+                        panelBg: '#151c2e',
+                        panelBorder: '#232f48',
+                        neonBlue: '#00f3ff',
+                        neonGold: '#ffd700',
+                        neonPurple: '#b026ff',
+                        neonGreen: '#00ff88',
+                        neonRed: '#ff3366',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- External Game Data Script -->
+    <script src="https://morinokum.github.io/my-website/game-data.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #0b0f19;
+            color: #e2e8f0;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Glowing text & borders */
+        .glow-blue {
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.6);
+        }
+        .glow-gold {
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+        }
+        .border-glow {
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.15);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #232f48;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00f3ff;
+        }
+
+        /* Canvas Grid Styling */
+        #factoryCanvas {
+            background: radial-gradient(circle at center, #111726 0%, #080b12 100%);
+            touch-action: none;
+        }
+
+        .tool-btn.active {
+            border-color: #00f3ff;
+            background-color: rgba(0, 243, 255, 0.15);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.4);
+        }
+
+        /* Modal backdrop */
+        .modal-bg {
+            background-color: rgba(5, 8, 15, 0.85);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+<!-- AI-DEV-HANDOFF-START
+タイトル: 紋章カードの自動化工場：ルーン・コンベア・オートメーション
+バージョン: 1.0.0
+概要・ルール: 画面上にコンベア・分岐器・錬金窯・フィルターを自由に配置し、搬送・合成・出荷を自動化するファクトリーパズル。マスターデータのレシピに従って高級ルーンをクラフトし、出荷して納品クエストをクリアしてゴールドを稼ぐ。ゴールドで領地/マイホームを強化して工場をパワーアップ。
+主要な構造（関数・状態管理・画面遷移）:
+- データ読み込み＆フォールバック initGameData()
+- ゲームループ loop() & Canvasレンダリング renderFactory()
+- 工場グリッド＆配線ロジック UpdateConveyors(), ProcessCrucibles()
+- 注文＆クエスト管理 SystemOrders
+- 領地＆マイホーム購入/バフ適用 BuyTerritory()
+- LocalStorage Save/Load (saveGame, loadGame)
+セーブデータのキー: rune_conveyor_automation_save_v1
+実装済み機能: 外部データ取得/フォールバック, Canvasリアルタイムコンベア物理・アニメーション, コンベア・分岐・合成器設置・回転・削除, 注文納品システム, マイホーム/領地購入・強化, 総合ステータス表示, 音響エフェクト(Web Audio API), 自動セーブ
+未実装・TODO: コンベア倍速切替ボタン, パイプ詰まり（トラブル発生）イベント, サウンドON/OFFトグル
+設計上のこだわり・注意点: 単一ファイル完全動作, 視覚的なルーン搬送の滑らかさ, Web Audio APIによる効果音生成, 非同期データ読み込みのフォールバックの堅牢化
+AI-DEV-HANDOFF-END -->
+
+<!-- Top Navigation Bar -->
+<header class="bg-panelBg border-b border-panelBorder px-4 py-2 flex flex-wrap justify-between items-center z-10 shrink-0">
+    <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-700 flex items-center justify-center font-bold text-xl shadow-lg border border-cyan-300">
+            ⚙️
+        </div>
+        <div>
+            <h1 class="text-base sm:text-lg font-bold font-orbitron tracking-wide text-cyan-400 glow-blue leading-tight">
+                RUNE CONVEYOR
+            </h1>
+            <p class="text-xs text-slate-400 hidden sm:block">紋章カードの自動化工場 | <span class="text-amber-400">AI-GAME-PORTFOLIO</span></p>
+        </div>
+    </div>
+
+    <!-- Stats Display -->
+    <div class="flex items-center space-x-4 text-sm font-orbitron">
+        <!-- Gold -->
+        <div class="bg-darkBg/80 px-3 py-1.5 rounded-lg border border-amber-500/40 flex items-center space-x-2">
+            <span class="text-amber-400 text-base">🪙</span>
+            <div>
+                <div class="text-[10px] text-slate-400 leading-none">GOLD</div>
+                <div id="goldDisplay" class="text-amber-300 font-bold glow-gold">0</div>
+            </div>
+        </div>
+
+        <!-- Multiplier Buff -->
+        <div class="bg-darkBg/80 px-3 py-1.5 rounded-lg border border-cyan-500/40 hidden md:flex items-center space-x-2">
+            <span class="text-cyan-400 text-base">⚡</span>
+            <div>
+                <div class="text-[10px] text-slate-400 leading-none">BUFF</div>
+                <div id="buffDisplay" class="text-cyan-300 font-bold">x1.0</div>
+            </div>
+        </div>
+
+        <!-- Controls / Buttons -->
+        <div class="flex items-center space-x-2">
+            <button id="btnSpeed" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded border border-slate-600 text-xs font-bold transition">
+                ⏩ 1x
+            </button>
+            <button id="btnSound" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded border border-slate-600 text-xs transition">
+                🔊 ON
+            </button>
+            <button id="btnEncyclopedia" class="px-3 py-1.5 bg-cyan-900/60 hover:bg-cyan-800 border border-cyan-500/60 text-cyan-200 rounded text-xs font-bold flex items-center space-x-1 transition">
+                <span>📖</span> <span class="hidden sm:inline">図鑑</span>
+            </button>
+            <button id="btnTerritory" class="px-3 py-1.5 bg-amber-900/60 hover:bg-amber-800 border border-amber-500/60 text-amber-200 rounded text-xs font-bold flex items-center space-x-1 transition">
+                <span>🏰</span> <span class="hidden sm:inline">領地/マイホーム</span>
+            </button>
+            <button id="btnReset" class="p-1.5 text-slate-400 hover:text-red-400 transition" title="リセット">
+                🔄
+            </button>
+        </div>
+    </div>
+</header>
+
+<!-- Main Workspace Layout -->
+<div class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+
+    <!-- Left/Center: Canvas Game Viewport -->
+    <div class="flex-1 relative bg-darkBg flex flex-col items-center justify-center p-2 sm:p-4 overflow-hidden">
+        
+        <!-- Canvas Container -->
+        <div id="canvasWrapper" class="relative w-full h-full flex items-center justify-center">
+            <canvas id="factoryCanvas" class="rounded-xl border border-panelBorder shadow-2xl cursor-crosshair max-w-full max-h-full"></canvas>
+
+            <!-- Floating Info Overlay (Hover / Select Info) -->
+            <div id="cellInfoTooltip" class="absolute bottom-4 left-4 bg-panelBg/90 border border-panelBorder px-3 py-2 rounded-lg text-xs pointer-events-none hidden backdrop-blur shadow-lg">
+                <div id="tooltipTitle" class="font-bold text-cyan-300">セル情報</div>
+                <div id="tooltipDesc" class="text-slate-300 mt-0.5">---</div>
+            </div>
+
+            <!-- Direction Indicator Overlay -->
+            <div class="absolute top-4 left-4 bg-panelBg/80 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-orbitron flex items-center space-x-2 text-slate-300 pointer-events-none">
+                <span>ROTATION:</span>
+                <span id="currentDirText" class="text-cyan-400 font-bold">⬆️ NORTH (0°)</span>
+                <span class="text-slate-500 text-[10px]">(Press R to Rotate)</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Right: Control Panel & Quests -->
+    <div class="w-full md:w-80 lg:w-96 bg-panelBg border-t md:border-t-0 md:border-l border-panelBorder flex flex-col shrink-0 h-64 md:h-auto overflow-y-auto">
+        
+        <!-- Tool Selection Palette -->
+        <div class="p-3 border-b border-panelBorder">
+            <h2 class="text-xs font-bold font-orbitron text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center">
+                <span>🛠️ 工場パーツ</span>
+                <span id="rotateBtn" class="cursor-pointer text-cyan-400 hover:text-cyan-200 text-xs lowercase px-2 py-0.5 bg-slate-800 rounded border border-slate-700">Rキーで回転</span>
+            </h2>
+
+            <!-- Palette Grid -->
+            <div class="grid grid-cols-4 gap-2">
+                <!-- Straight Conveyor -->
+                <button class="tool-btn active flex flex-col items-center p-2 rounded-lg bg-darkBg border border-panelBorder hover:border-cyan-500 transition" data-tool="conveyor">
+                    <span class="text-xl mb-1">⬆️</span>
+                    <span class="text-[10px] font-bold text-slate-300">直進コンベア</span>
+                    <span class="text-[9px] text-amber-400 font-orbitron">10G</span>
+                </button>
+
+                <!-- Curve Right Conveyor -->
+                <button class="tool-btn flex flex-col items-center p-2 rounded-lg bg-darkBg border border-panelBorder hover:border-cyan-500 transition" data-tool="curveRight">
+                    <span class="text-xl mb-1">↗️</span>
+                    <span class="text-[10px] font-bold text-slate-300">右カーブ</span>
+                    <span class="text-[9px] text-amber-400 font-orbitron">15G</span>
+                </button>
+
+                <!-- Curve Left Conveyor -->
+                <button class="tool-btn flex flex-col items-center p-2 rounded-lg bg-darkBg border border-panelBorder hover:border-cyan-500 transition" data-tool="curveLeft">
+                    <span class="text-xl mb-1">↖️</span>
+                    <span class="text-[10px] font-bold text-slate-300">左カーブ</span>
+                    <span class="text-[9px] text-amber-400 font-orbitron">15G</span>
+                </button>
+
+                <!-- Splitter -->
+                <button class="tool-btn flex flex-col items-center p-2 rounded-lg bg-darkBg border border-panelBorder hover:border-cyan-500 transition" data-tool="splitter">
+                    <span class="text-xl mb-1">🔀</span>
+                    <span class="text-[10px] font-bold text-slate-300">方向分岐器</span>
+                    <span class="text-[9px] text-amber-400 font-orbitron">30G</span>
+                </button>
+
+                <!-- Combiner / Crucible -->
+                <button class="tool-btn flex flex-col items-center p-2 rounded-lg bg-darkBg border border-panelBorder hover:border-cyan-500 transition" data-tool="combiner">
+                    <span class="text-xl mb-1">🧪</span>
+                    <span class="text-[10px] font-bold text-slate-300">錬金合成釜</span>
+                    <span class="text-[9px] text-amber-400 font-orbitron">100G</span>
+                </button>
+
+                <!-- Spawner -->
+                <button class="tool-btn flex flex-col items-center p-2 rounded-lg bg-darkBg border border-panelBorder hover:border-cyan-500 transition" data-tool="spawner">
+                    <span class="text-xl mb-1">🔮</span>
+                    <span class="text-[10px] font-bold text-slate-300">ルーン発生器</span>
+                    <span class="text-[9px] text-amber-400 font-orbitron">150G</span>
+                </button>
+
+                <!-- Exporter -->
+                <button class="tool-btn flex flex-col items-center p-2 rounded-lg bg-darkBg border border-panelBorder hover:border-cyan-500 transition" data-tool="exporter">
+                    <span class="text-xl mb-1">📦</span>
+                    <span class="text-[10px] font-bold text-slate-300">出荷ポート</span>
+                    <span class="text-[9px] text-amber-400 font-orbitron">50G</span>
+                </button>
+
+                <!-- Eraser -->
+                <button class="tool-btn flex flex-col items-center p-2 rounded-lg bg-darkBg border border-panelBorder hover:border-red-500 transition" data-tool="eraser">
+                    <span class="text-xl mb-1">🧹</span>
+                    <span class="text-[10px] font-bold text-red-400">撤去/削除</span>
+                    <span class="text-[9px] text-slate-500 font-orbitron">無料</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Quests & Orders Section -->
+        <div class="p-3 flex-1 flex flex-col">
+            <h2 class="text-xs font-bold font-orbitron text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+                <span>📜 王立ルーン納品注文 (ORDERS)</span>
+                <span class="text-[10px] text-cyan-400 font-normal">達成でボーナス報酬</span>
+            </h2>
+
+            <div id="ordersContainer" class="space-y-2 flex-1 overflow-y-auto pr-1">
+                <!-- Dynamic Order Cards inserted by JS -->
+            </div>
+        </div>
+
+        <!-- Footer Stats Quick Summary -->
+        <div class="p-3 bg-darkBg border-t border-panelBorder text-xs text-slate-400 flex justify-between items-center">
+            <div>出荷総数: <span id="statExported" class="text-cyan-300 font-bold font-orbitron">0</span></div>
+            <div>総クラフト数: <span id="statCrafted" class="text-purple-300 font-bold font-orbitron">0</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Recipe Encyclopedia (図鑑) -->
+<div id="modalEncyclopedia" class="fixed inset-0 modal-bg z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-panelBg border border-panelBorder w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+        <div class="p-4 border-b border-panelBorder flex justify-between items-center">
+            <h3 class="text-lg font-bold font-orbitron text-cyan-400 flex items-center space-x-2">
+                <span>📖</span> <span>錬金術レシピ・ルーン図鑑</span>
+            </h3>
+            <button class="close-modal text-slate-400 hover:text-white text-xl px-2">✕</button>
+        </div>
+        
+        <div class="p-4 overflow-y-auto space-y-4 flex-1">
+            <p class="text-xs text-slate-300">
+                2つ以上の要素ルーンを錬金合成釜(🧪)に導くことで、新しい高級紋章ルーンを生成できます。
+            </p>
+
+            <div id="recipesList" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <!-- Recipe Items dynamically generated -->
+            </div>
+        </div>
+        
+        <div class="p-3 border-t border-panelBorder bg-darkBg flex justify-end">
+            <button class="close-modal px-4 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-xs font-bold text-white transition">
+                閉じる
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Territory & My Home Shop -->
+<div id="modalTerritory" class="fixed inset-0 modal-bg z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-panelBg border border-panelBorder w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+        <div class="p-4 border-b border-panelBorder flex justify-between items-center">
+            <h3 class="text-lg font-bold font-orbitron text-amber-400 flex items-center space-x-2">
+                <span>🏰</span> <span>領地＆マイホーム管理</span>
+            </h3>
+            <button class="close-modal text-slate-400 hover:text-white text-xl px-2">✕</button>
+        </div>
+        
+        <div class="p-4 overflow-y-auto space-y-4 flex-1">
+            <p class="text-xs text-slate-300">
+                獲得したゴールドで領地やマイホームを購入・改築すると、工場の生産速度向上や売却倍率UPなどの永続バフを獲得できます。
+            </p>
+
+            <div id="territoryList" class="space-y-3">
+                <!-- Territory Items dynamically generated -->
+            </div>
+        </div>
+        
+        <div class="p-3 border-t border-panelBorder bg-darkBg flex justify-end">
+            <button class="close-modal px-4 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-xs font-bold text-white transition">
+                閉じる
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Spawner Config (ルーン発生器の湧き出し切り替え) -->
+<div id="modalSpawner" class="fixed inset-0 modal-bg z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-panelBg border border-panelBorder w-full max-w-md rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div class="p-4 border-b border-panelBorder flex justify-between items-center">
+            <h3 class="text-base font-bold font-orbitron text-cyan-400 flex items-center space-x-2">
+                <span>🔮</span> <span>ルーン発生器 設定</span>
+            </h3>
+            <button class="close-spawner-modal text-slate-400 hover:text-white text-xl px-2">✕</button>
+        </div>
+        
+        <div class="p-4 space-y-3">
+            <p class="text-xs text-slate-300">
+                この発生器から生成させる基本エレメントルーンを選択してください。
+            </p>
+
+            <div id="spawnerOptions" class="grid grid-cols-2 gap-2">
+                <!-- Dynamic Spawner Rune Select Options -->
+            </div>
+        </div>
+        
+        <div class="p-3 border-t border-panelBorder bg-darkBg flex justify-end">
+            <button class="close-spawner-modal px-4 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-xs font-bold text-white transition">
+                決定
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- JavaScript Logic -->
+<script>
+/**
+ * 紋章カードの自動化工場：ルーン・コンベア・オートメーション
+ * AI-GAME-PORTFOLIO Single File Engine
+ */
+
+// ==========================================
+// 1. GAME DATA & FALLBACK
+// ==========================================
+const DEFAULT_GAME_DATA = {
+    cards: [
+        { id: 'rune_fire', name: '火のルーン', element: '🔥 Fire', color: '#ff4d4d', value: 10, icon: '🔥' },
+        { id: 'rune_water', name: '水のルーン', element: '💧 Water', color: '#3399ff', value: 10, icon: '💧' },
+        { id: 'rune_earth', name: '地のルーン', element: '🌿 Earth', color: '#4dff4d', value: 10, icon: '🌿' },
+        { id: 'rune_wind', name: '風のルーン', element: '🌪️ Wind', color: '#ffff4d', value: 10, icon: '🌪️' },
+        
+        // Tier 2 Crafted Runes
+        { id: 'rune_steam', name: '蒸気のルーン', element: '♨️ Steam', color: '#cc99ff', value: 35, icon: '♨️' },
+        { id: 'rune_magma', name: '溶岩のルーン', element: '🌋 Magma', color: '#ff6600', value: 35, icon: '🌋' },
+        { id: 'rune_ice', name: '氷結のルーン', element: '❄️ Ice', color: '#99ffff', value: 35, icon: '❄️' },
+        { id: 'rune_storm', name: '嵐のルーン', element: '⚡ Storm', color: '#ccff33', value: 35, icon: '⚡' },
+        
+        // Tier 3 Advanced Crests
+        { id: 'crest_sun', name: '太陽の紋章', element: '☀️ Sun Crest', color: '#ffcc00', value: 120, icon: '☀️' },
+        { id: 'crest_ocean', name: '大海の紋章', element: '🌊 Ocean Crest', color: '#0066ff', value: 120, icon: '🌊' },
+        { id: 'crest_void', name: '虚無の紋章', element: '🌀 Void Crest', color: '#9900ff', value: 300, icon: '🌀' },
+        { id: 'crest_philosopher', name: '賢者の石', element: '💎 Philosopher', color: '#ff007f', value: 1000, icon: '💎' }
+    ],
+    recipes: [
+        { id: 'rec_steam', name: '蒸気クラフト', inputs: ['rune_fire', 'rune_water'], output: 'rune_steam', time: 1.2 },
+        { id: 'rec_magma', name: '溶岩クラフト', inputs: ['rune_fire', 'rune_earth'], output: 'rune_magma', time: 1.2 },
+        { id: 'rec_ice', name: '氷結クラフト', inputs: ['rune_water', 'rune_wind'], output: 'rune_ice', time: 1.2 },
+        { id: 'rec_storm', name: '嵐クラフト', inputs: ['rune_earth', 'rune_wind'], output: 'rune_storm', time: 1.2 },
+        
+        { id: 'rec_sun', name: '太陽の紋章錬成', inputs: ['rune_steam', 'rune_magma'], output: 'crest_sun', time: 2.0 },
+        { id: 'rec_ocean', name: '大海の紋章錬成', inputs: ['rune_ice', 'rune_storm'], output: 'crest_ocean', time: 2.0 },
+        { id: 'rec_void', name: '虚無の紋章錬成', inputs: ['crest_sun', 'crest_ocean'], output: 'crest_void', time: 3.0 },
+        { id: 'rec_philosopher', name: '賢者の石創生', inputs: ['crest_void', 'crest_sun', 'crest_ocean'], output: 'crest_philosopher', time: 5.0 }
+    ],
+    territories: [
+        { id: 'home_cottage', name: '小さな工房小屋', cost: 100, buffDesc: '基本生産速度 +15%', speedBuff: 0.15, priceBuff: 0 },
+        { id: 'home_lab', name: 'ルーン研究所', cost: 500, buffDesc: '出荷ルーン価格 +25%', speedBuff: 0, priceBuff: 0.25 },
+        { id: 'home_manor', name: '錬金術師の館', cost: 2000, buffDesc: '全工場効率 +30%', speedBuff: 0.20, priceBuff: 0.20 },
+        { id: 'home_fortress', name: '魔導領主の城塞', cost: 10000, buffDesc: '出荷金額 2倍 (x2.0)', speedBuff: 0.25, priceBuff: 1.0 },
+        { id: 'home_sky_city', name: '賢者の天空都市', cost: 50000, buffDesc: '神聖錬金術 (価格x3.0, 速度+50%)', speedBuff: 0.50, priceBuff: 2.0 }
+    ]
+};
+
+// Global Master Data Reference
+let masterData = DEFAULT_GAME_DATA;
+
+function initGameData() {
+    if (window.RUNE_GAME_DATA && typeof window.RUNE_GAME_DATA === 'object') {
+        // Integrate external data safely
+        if (window.RUNE_GAME_DATA.cards && window.RUNE_GAME_DATA.cards.length > 0) {
+            masterData.cards = window.RUNE_GAME_DATA.cards;
+        }
+        if (window.RUNE_GAME_DATA.recipes && window.RUNE_GAME_DATA.recipes.length > 0) {
+            masterData.recipes = window.RUNE_GAME_DATA.recipes;
+        }
+        if (window.RUNE_GAME_DATA.territories && window.RUNE_GAME_DATA.territories.length > 0) {
+            masterData.territories = window.RUNE_GAME_DATA.territories;
+        }
+    }
+}
+
+
+// ==========================================
+// 2. AUDIO SYNTHESIZER (Web Audio API)
+// ==========================================
+class SoundFX {
+    constructor() {
+        this.ctx = null;
+        this.enabled = true;
+    }
+
+    init() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    }
+
+    playTone(freq, type = 'sine', duration = 0.1, gainVal = 0.1) {
+        if (!this.enabled) return;
+        try {
+            this.init();
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+            gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start();
+            osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {}
+    }
+
+    playPlace() {
+        this.playTone(440, 'sine', 0.08, 0.15);
+        setTimeout(() => this.playTone(880, 'sine', 0.08, 0.12), 40);
+    }
+
+    playRemove() {
+        this.playTone(300, 'sawtooth', 0.1, 0.1);
+        setTimeout(() => this.playTone(150, 'sawtooth', 0.1, 0.1), 50);
+    }
+
+    playCraft() {
+        this.playTone(523.25, 'triangle', 0.12, 0.15); // C5
+        setTimeout(() => this.playTone(659.25, 'triangle', 0.12, 0.15), 60); // E5
+        setTimeout(() => this.playTone(783.99, 'triangle', 0.18, 0.2), 120); // G5
+    }
+
+    playExport() {
+        this.playTone(987.77, 'sine', 0.08, 0.15); // B5
+        setTimeout(() => this.playTone(1318.51, 'sine', 0.15, 0.2), 50); // E6
+    }
+
+    playQuest() {
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+            setTimeout(() => this.playTone(freq, 'sine', 0.2, 0.2), idx * 80);
+        });
+    }
+}
+
+const sfx = new SoundFX();
+
+
+// ==========================================
+// 3. GAME STATE & FACTORY ENGINE
+// ==========================================
+const SAVE_KEY = 'rune_conveyor_automation_save_v1';
+const GRID_SIZE = 12; // 12x12 Factory Grid
+
+// Directions: 0: Up (North), 1: Right (East), 2: Down (South), 3: Left (West)
+const DIR_OFFSET = [
+    { x: 0, y: -1 }, // 0: North
+    { x: 1, y: 0 },  // 1: East
+    { x: 0, y: 1 },  // 2: South
+    { x: -1, y: 0 }  // 3: West
+];
+
+const DIR_NAMES = ['⬆️ NORTH', '↗️ EAST', '⬇️ SOUTH', '↖️ WEST'];
+
+class Game {
+    constructor() {
+        this.gold = 200;
+        this.gameSpeed = 1;
+        this.selectedTool = 'conveyor';
+        this.currentDir = 0; // 0..3
+        
+        // Grid Data: 12x12
+        this.grid = Array(GRID_SIZE).fill(null).map(() => 
+            Array(GRID_SIZE).fill(null).map(() => ({
+                type: 'empty',
+                dir: 0,
+                data: {}
+            }))
+        );
+
+        // Active Items moving on conveyors
+        this.items = []; // array of { id, runeId, x, y, progress, dir, targetCellX, targetCellY, pathType }
+        
+        // Particle Effects
+        this.particles = [];
+
+        // Orders System
+        this.orders = [];
+
+        // Purchased Territories / Homes
+        this.ownedTerritories = [];
+
+        // Selected Spawner Cell for Config Modal
+        this.activeSpawnerCoord = null;
+
+        // Statistics
+        this.stats = {
+            totalExported: 0,
+            totalCrafted: 0
+        };
+
+        this.lastTime = performance.now();
+    }
+
+    // Cost table
+    getToolCost(tool) {
+        switch (tool) {
+            case 'conveyor': return 10;
+            case 'curveRight': return 15;
+            case 'curveLeft': return 15;
+            case 'splitter': return 30;
+            case 'combiner': return 100;
+            case 'spawner': return 150;
+            case 'exporter': return 50;
+            case 'eraser': return 0;
+            default: return 0;
+        }
+    }
+
+    // Calculate total buffs from owned territories
+    getBuffs() {
+        let speedBuff = 1.0;
+        let priceBuff = 1.0;
+        this.ownedTerritories.forEach(id => {
+            const t = masterData.territories.find(x => x.id === id);
+            if (t) {
+                speedBuff += t.speedBuff || 0;
+                priceBuff += t.priceBuff || 0;
+            }
+        });
+        return { speedBuff, priceBuff };
+    }
+
+    // Default Starting Setup
+    setupDefaultFactory() {
+        // Default Spawner at (1, 5) facing East
+        this.grid[5][1] = { type: 'spawner', dir: 1, data: { runeId: 'rune_fire', timer: 0 } };
+        
+        // Conveyors
+        this.grid[5][2] = { type: 'conveyor', dir: 1, data: {} };
+        this.grid[5][3] = { type: 'conveyor', dir: 1, data: {} };
+        this.grid[5][4] = { type: 'conveyor', dir: 1, data: {} };
+
+        // Exporter at (5, 5)
+        this.grid[5][5] = { type: 'exporter', dir: 1, data: {} };
+    }
+
+    generateNewOrder() {
+        // Pick random rune from tier 1 or tier 2
+        const availableRunes = masterData.cards.filter(c => c.value <= 120);
+        const targetCard = availableRunes[Math.floor(Math.random() * availableRunes.length)];
+        const targetAmount = Math.floor(Math.random() * 5) + 3;
+        
+        this.orders.push({
+            id: 'ord_' + Date.now() + '_' + Math.random(),
+            runeId: targetCard.id,
+            required: targetAmount,
+            current: 0,
+            reward: Math.floor(targetCard.value * targetAmount * 1.8)
+        });
+    }
+
+    checkOrders(runeId) {
+        this.orders.forEach(order => {
+            if (order.runeId === runeId && order.current < order.required) {
+                order.current++;
+                if (order.current >= order.required) {
+                    // Order Complete!
+                    this.gold += order.reward;
+                    sfx.playQuest();
+                    this.spawnFloatingText(`ORDER COMPLETE! +${order.reward}G`, canvas.width / 2, 80, '#ffd700');
+                    // Regenerate order after slight delay
+                    setTimeout(() => {
+                        this.orders = this.orders.filter(o => o.id !== order.id);
+                        if (this.orders.length < 3) this.generateNewOrder();
+                        renderOrdersUI();
+                    }, 800);
+                }
+            }
+        });
+        renderOrdersUI();
+    }
+
+    spawnFloatingText(text, x, y, color = '#00f3ff') {
+        this.particles.push({
+            type: 'text',
+            text: text,
+            x: x,
+            y: y,
+            vx: 0,
+            vy: -0.8,
+            life: 1.0,
+            color: color
+        });
+    }
+
+    spawnSparkles(x, y, color = '#00f3ff') {
+        for (let i = 0; i < 12; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 2 + 1;
+            this.particles.push({
+                type: 'spark',
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life: 0.6,
+                color: color,
+                radius: Math.random() * 3 + 2
+            });
+        }
+    }
+}
+
+const game = new Game();
+
+
+// ==========================================
+// 4. CANVAS & UI RENDERING ENGINE
+// ==========================================
+const canvas = document.getElementById('factoryCanvas');
+const ctx = canvas.getContext('2d');
+
+let cellSize = 48; // dynamically resized
+
+function resizeCanvas() {
+    const wrapper = document.getElementById('canvasWrapper');
+    const availableWidth = wrapper.clientWidth - 16;
+    const availableHeight = wrapper.clientHeight - 16;
+    
+    const minDim = Math.min(availableWidth, availableHeight, 640);
+    canvas.width = minDim;
+    canvas.height = minDim;
+    
+    cellSize = canvas.width / GRID_SIZE;
+}
+
+window.addEventListener('resize', resizeCanvas);
+
+
+// Helper: Draw Arrow / Conveyor Direction
+function drawArrow(x, y, dir, color = '#00f3ff') {
+    ctx.save();
+    ctx.translate(x + cellSize / 2, y + cellSize / 2);
+    ctx.rotate(dir * Math.PI / 2);
+    
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, cellSize * 0.2);
+    ctx.lineTo(0, -cellSize * 0.2);
+    ctx.lineTo(-cellSize * 0.12, -cellSize * 0.05);
+    ctx.moveTo(0, -cellSize * 0.2);
+    ctx.lineTo(cellSize * 0.12, -cellSize * 0.05);
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+
+// MAIN RENDER LOOP
+function renderFactory() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 1. Draw Grid Cells & Factory Components
+    for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+            const cell = game.grid[r][c];
+            const x = c * cellSize;
+            const y = r * cellSize;
+
+            // Background cell
+            ctx.fillStyle = (r + c) % 2 === 0 ? '#111827' : '#0d131f';
+            ctx.fillRect(x, y, cellSize, cellSize);
+            ctx.strokeStyle = '#1f293d';
+            ctx.strokeRect(x, y, cellSize, cellSize);
+
+            // Draw Building/Piece
+            if (cell.type === 'conveyor') {
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
+                drawArrow(x, y, cell.dir, '#00f3ff');
+            } 
+            else if (cell.type === 'curveRight') {
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
+                drawArrow(x, y, cell.dir, '#38bdf8');
+                // Curve indicator
+                ctx.fillStyle = '#38bdf8';
+                ctx.beginPath();
+                ctx.arc(x + cellSize * 0.7, y + cellSize * 0.3, 3, 0, Math.PI * 2);
+                ctx.fill();
+            } 
+            else if (cell.type === 'curveLeft') {
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
+                drawArrow(x, y, cell.dir, '#38bdf8');
+                ctx.fillStyle = '#38bdf8';
+                ctx.beginPath();
+                ctx.arc(x + cellSize * 0.3, y + cellSize * 0.3, 3, 0, Math.PI * 2);
+                ctx.fill();
+            } 
+            else if (cell.type === 'splitter') {
+                ctx.fillStyle = '#312e81';
+                ctx.fillRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
+                drawArrow(x, y, cell.dir, '#818cf8');
+                ctx.fillStyle = '#a5b4fc';
+                ctx.font = `${cellSize * 0.35}px font-orbitron`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🔀', x + cellSize / 2, y + cellSize / 2);
+            } 
+            else if (cell.type === 'spawner') {
+                ctx.fillStyle = '#064e3b';
+                ctx.fillRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
+                
+                const rune = masterData.cards.find(card => card.id === (cell.data.runeId || 'rune_fire'));
+                const icon = rune ? rune.icon : '🔮';
+                
+                ctx.font = `${cellSize * 0.45}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(icon, x + cellSize / 2, y + cellSize / 2);
+                
+                drawArrow(x, y, cell.dir, '#34d399');
+            } 
+            else if (cell.type === 'combiner') {
+                ctx.fillStyle = '#4c1d95';
+                ctx.fillRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
+                
+                ctx.font = `${cellSize * 0.4}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🧪', x + cellSize / 2, y + cellSize / 2);
+
+                // Show stored items count indicator
+                const storedCount = (cell.data.storedItems || []).length;
+                if (storedCount > 0) {
+                    ctx.fillStyle = '#f43f5e';
+                    ctx.beginPath();
+                    ctx.arc(x + cellSize * 0.8, y + cellSize * 0.2, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                drawArrow(x, y, cell.dir, '#c084fc');
+            } 
+            else if (cell.type === 'exporter') {
+                ctx.fillStyle = '#78350f';
+                ctx.fillRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
+                
+                ctx.font = `${cellSize * 0.45}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('📦', x + cellSize / 2, y + cellSize / 2);
+            }
+        }
+    }
+
+    // 2. Render Conveyor Moving Items
+    game.items.forEach(item => {
+        const rune = masterData.cards.find(c => c.id === item.runeId) || masterData.cards[0];
+        const screenX = item.x * cellSize + cellSize / 2;
+        const screenY = item.y * cellSize + cellSize / 2;
+
+        // Glowing Rune Circle
+        ctx.save();
+        ctx.shadowColor = rune.color;
+        ctx.shadowBlur = 8;
+
+        ctx.fillStyle = rune.color;
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, cellSize * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.restore();
+
+        // Icon text inside item
+        ctx.font = `${cellSize * 0.25}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(rune.icon, screenX, screenY);
+    });
+
+    // 3. Render Particles & Floating Text
+    for (let i = game.particles.length - 1; i >= 0; i--) {
+        const p = game.particles[i];
+        p.x += p.vx || 0;
+        p.y += p.vy || 0;
+        p.life -= 0.02;
+
+        if (p.life <= 0) {
+            game.particles.splice(i, 1);
+            continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = p.life;
+        if (p.type === 'text') {
+            ctx.font = 'bold 13px Orbitron, sans-serif';
+            ctx.fillStyle = p.color;
+            ctx.textAlign = 'center';
+            ctx.fillText(p.text, p.x, p.y);
+        } else if (p.type === 'spark') {
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+}
+
+
+// ==========================================
+// 5. UPDATE PHYSICS & LOGIC LOOP
+// ==========================================
+function updateGameLogic(dt) {
+    const { speedBuff, priceBuff } = game.getBuffs();
+    const effectiveSpeed = game.gameSpeed * speedBuff;
+
+    // A. Update Spawners
+    for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+            const cell = game.grid[r][c];
+            if (cell.type === 'spawner') {
+                cell.data.timer = (cell.data.timer || 0) + dt * effectiveSpeed;
+                const spawnInterval = 2.0; // 2 seconds per item
+                
+                if (cell.data.timer >= spawnInterval) {
+                    cell.data.timer = 0;
+                    
+                    // Check if adjacent cell in direction is open/conveyor
+                    const offset = DIR_OFFSET[cell.dir];
+                    const targetC = c + offset.x;
+                    const targetR = r + offset.y;
+
+                    if (targetC >= 0 && targetC < GRID_SIZE && targetR >= 0 && targetR < GRID_SIZE) {
+                        // Spawn new item
+                        game.items.push({
+                            id: 'item_' + Date.now() + '_' + Math.random(),
+                            runeId: cell.data.runeId || 'rune_fire',
+                            x: c,
+                            y: r,
+                            progress: 0,
+                            dir: cell.dir,
+                            targetC: targetC,
+                            targetR: targetR
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // B. Update Items Movement along Conveyors
+    for (let i = game.items.length - 1; i >= 0; i--) {
+        const item = game.items[i];
+        item.progress += dt * 1.5 * effectiveSpeed;
+
+        // Linear interpolation from cell (x,y) to (targetC, targetR)
+        const offset = DIR_OFFSET[item.dir];
+        const startX = Math.floor(item.x);
+        const startY = Math.floor(item.y);
+        
+        item.x = startX + offset.x * item.progress;
+        item.y = startY + offset.y * item.progress;
+
+        // When item reaches center of target cell
+        if (item.progress >= 1.0) {
+            const currentC = Math.round(item.x);
+            const currentR = Math.round(item.y);
+
+            // Check grid boundary
+            if (currentC < 0 || currentC >= GRID_SIZE || currentR < 0 || currentR >= GRID_SIZE) {
+                game.items.splice(i, 1);
+                continue;
+            }
+
+            const targetCell = game.grid[currentR][currentC];
+
+            // 1. Reached Exporter (出荷口)
+            if (targetCell.type === 'exporter') {
+                const rune = masterData.cards.find(card => card.id === item.runeId) || { value: 10 };
+                const earned = Math.floor(rune.value * priceBuff);
+                game.gold += earned;
+                game.stats.totalExported++;
+                
+                sfx.playExport();
+                game.spawnSparkles(currentC * cellSize + cellSize / 2, currentR * cellSize + cellSize / 2, '#ffd700');
+                game.spawnFloatingText(`+${earned}G`, currentC * cellSize + cellSize / 2, currentR * cellSize, '#ffd700');
+
+                // Check active delivery orders
+                game.checkOrders(item.runeId);
+
+                game.items.splice(i, 1);
+                updateUIHeader();
+                continue;
+            }
+
+            // 2. Reached Combiner (錬金釜)
+            if (targetCell.type === 'combiner') {
+                targetCell.data.storedItems = targetCell.data.storedItems || [];
+                targetCell.data.storedItems.push(item.runeId);
+                
+                // Check if any recipe matches
+                let matchedRecipe = null;
+                for (const rec of masterData.recipes) {
+                    const required = [...rec.inputs].sort();
+                    const currentStored = [...targetCell.data.storedItems].sort();
+                    
+                    if (JSON.stringify(required) === JSON.stringify(currentStored)) {
+                        matchedRecipe = rec;
+                        break;
+                    }
+                }
+
+                if (matchedRecipe) {
+                    // Craft success!
+                    targetCell.data.storedItems = [];
+                    game.stats.totalCrafted++;
+                    sfx.playCraft();
+
+                    game.spawnSparkles(currentC * cellSize + cellSize / 2, currentR * cellSize + cellSize / 2, '#b026ff');
+                    game.spawnFloatingText(`CRAFT: ${matchedRecipe.name}!`, currentC * cellSize + cellSize / 2, currentR * cellSize, '#c084fc');
+
+                    // Output new crafted item in combiner's facing direction
+                    const outOffset = DIR_OFFSET[targetCell.dir];
+                    item.runeId = matchedRecipe.output;
+                    item.x = currentC;
+                    item.y = currentR;
+                    item.progress = 0;
+                    item.dir = targetCell.dir;
+                    item.targetC = currentC + outOffset.x;
+                    item.targetR = currentR + outOffset.y;
+                } else if (targetCell.data.storedItems.length >= 3) {
+                    // Overflow or wrong combination: reset crucible
+                    targetCell.data.storedItems = [];
+                    game.spawnFloatingText(`FAILED! Reset`, currentC * cellSize + cellSize / 2, currentR * cellSize, '#ff3366');
+                    game.items.splice(i, 1);
+                } else {
+                    // Absorbed into combiner, waiting for second item
+                    game.items.splice(i, 1);
+                }
+                continue;
+            }
+
+            // 3. Reached Conveyor or Curve
+            if (['conveyor', 'curveRight', 'curveLeft', 'splitter'].includes(targetCell.type)) {
+                let nextDir = targetCell.dir;
+
+                if (targetCell.type === 'curveRight') {
+                    nextDir = (targetCell.dir + 1) % 4;
+                } else if (targetCell.type === 'curveLeft') {
+                    nextDir = (targetCell.dir + 3) % 4;
+                } else if (targetCell.type === 'splitter') {
+                    // Alternate direction
+                    targetCell.data.toggle = !targetCell.data.toggle;
+                    nextDir = targetCell.data.toggle ? (targetCell.dir + 1) % 4 : (targetCell.dir + 3) % 4;
+                }
+
+                const nextOffset = DIR_OFFSET[nextDir];
+                item.x = currentC;
+                item.y = currentR;
+                item.progress = 0;
+                item.dir = nextDir;
+                item.targetC = currentC + nextOffset.x;
+                item.targetR = currentR + nextOffset.y;
+            } else {
+                // Blocked or empty cell -> remove item
+                game.items.splice(i, 1);
+            }
+        }
+    }
+}
+
+
+// MAIN LOOP
+function gameLoop(time) {
+    const dt = Math.min((time - game.lastTime) / 1000, 0.1);
+    game.lastTime = time;
+
+    updateGameLogic(dt);
+    renderFactory();
+
+    requestAnimationFrame(gameLoop);
+}
+
+
+// ==========================================
+// 6. USER INTERACTION & GRID PLACEMENT
+// ==========================================
+function getGridCoords(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    const col = Math.floor(x / cellSize);
+    const row = Math.floor(y / cellSize);
+
+    return { col, row };
+}
+
+function handleCellClick(col, row) {
+    if (col < 0 || col >= GRID_SIZE || row < 0 || row >= GRID_SIZE) return;
+
+    const cell = game.grid[row][col];
+    const tool = game.selectedTool;
+    const cost = game.getToolCost(tool);
+
+    if (tool === 'eraser') {
+        if (cell.type !== 'empty') {
+            cell.type = 'empty';
+            cell.data = {};
+            sfx.playRemove();
+        }
+        return;
+    }
+
+    // Spawner Config Modal Click
+    if (tool === 'spawner' && cell.type === 'spawner') {
+        openSpawnerModal(col, row);
+        return;
+    }
+
+    // Purchase & Place Piece
+    if (game.gold < cost) {
+        game.spawnFloatingText(`Not enough GOLD! (${cost}G)`, col * cellSize + cellSize / 2, row * cellSize, '#ff3366');
+        return;
+    }
+
+    // Deduct cost and assign piece
+    game.gold -= cost;
+    cell.type = tool;
+    cell.dir = game.currentDir;
+    cell.data = {};
+
+    if (tool === 'spawner') {
+        cell.data.runeId = 'rune_fire';
+        cell.data.timer = 0;
+    }
+
+    sfx.playPlace();
+    updateUIHeader();
+}
+
+// Canvas Input Event Listeners
+let isDragging = false;
+
+canvas.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    const { col, row } = getGridCoords(e);
+    handleCellClick(col, row);
+});
+
+canvas.addEventListener('mousemove', (e) => {
+    const { col, row } = getGridCoords(e);
+    if (col >= 0 && col < GRID_SIZE && row >= 0 && row < GRID_SIZE) {
+        const cell = game.grid[row][col];
+        const tooltip = document.getElementById('cellInfoTooltip');
+        tooltip.classList.remove('hidden');
+        document.getElementById('tooltipTitle').innerText = `Cell (${col}, ${row}) - ${cell.type.toUpperCase()}`;
+        document.getElementById('tooltipDesc').innerText = `Direction: ${DIR_NAMES[cell.dir] || 'NORTH'}`;
+        
+        if (isDragging && game.selectedTool === 'conveyor') {
+            handleCellClick(col, row);
+        }
+    }
+});
+
+canvas.addEventListener('mouseup', () => isDragging = false);
+canvas.addEventListener('mouseleave', () => {
+    isDragging = false;
+    document.getElementById('cellInfoTooltip').classList.add('hidden');
+});
+
+// Touch Devices Support
+canvas.addEventListener('touchstart', (e) => {
+    isDragging = true;
+    const { col, row } = getGridCoords(e);
+    handleCellClick(col, row);
+}, { passive: true });
+
+canvas.addEventListener('touchend', () => isDragging = false);
+
+
+// Rotate Direction Event (R Key or UI Click)
+function rotateDirection() {
+    game.currentDir = (game.currentDir + 1) % 4;
+    document.getElementById('currentDirText').innerText = DIR_NAMES[game.currentDir];
+}
+
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'r' || e.key === 'R') {
+        rotateDirection();
+    }
+});
+
+document.getElementById('rotateBtn').addEventListener('click', rotateDirection);
+
+
+// ==========================================
+// 7. UI MODALS & SYSTEM CONTROLS
+// ==========================================
+function updateUIHeader() {
+    document.getElementById('goldDisplay').innerText = game.gold.toLocaleString();
+    const buffs = game.getBuffs();
+    document.getElementById('buffDisplay').innerText = `x${buffs.priceBuff.toFixed(1)}`;
+    document.getElementById('statExported').innerText = game.stats.totalExported;
+    document.getElementById('statCrafted').innerText = game.stats.totalCrafted;
+}
+
+// Render Tool Palette Selection
+document.querySelectorAll('.tool-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        game.selectedTool = btn.dataset.tool;
+    });
+});
+
+// Render Dynamic Quests/Orders List
+function renderOrdersUI() {
+    const container = document.getElementById('ordersContainer');
+    container.innerHTML = '';
+
+    game.orders.forEach(order => {
+        const rune = masterData.cards.find(c => c.id === order.runeId) || masterData.cards[0];
+        const progressPct = Math.min(100, Math.floor((order.current / order.required) * 100));
+
+        const card = document.createElement('div');
+        card.className = 'bg-darkBg/90 border border-panelBorder p-2.5 rounded-lg flex items-center justify-between text-xs';
+        card.innerHTML = `
+            <div class="flex items-center space-x-2">
+                <span class="text-xl">${rune.icon}</span>
+                <div>
+                    <div class="font-bold text-slate-200">${rune.name} (${order.current}/${order.required})</div>
+                    <div class="w-28 bg-slate-800 h-1.5 rounded-full overflow-hidden mt-1">
+                        <div class="bg-cyan-400 h-full transition-all" style="width: ${progressPct}%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="text-right">
+                <div class="text-amber-400 font-bold font-orbitron">+${order.reward}G</div>
+                <div class="text-[9px] text-slate-500">報酬</div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+// Spawner Configuration Modal
+function openSpawnerModal(col, row) {
+    game.activeSpawnerCoord = { col, row };
+    const container = document.getElementById('spawnerOptions');
+    container.innerHTML = '';
+
+    const baseRunes = masterData.cards.filter(c => ['rune_fire', 'rune_water', 'rune_earth', 'rune_wind'].includes(c.id));
+    baseRunes.forEach(rune => {
+        const btn = document.createElement('button');
+        btn.className = 'p-3 bg-darkBg border border-panelBorder hover:border-cyan-400 rounded-lg flex items-center space-x-2 text-left transition';
+        btn.innerHTML = `
+            <span class="text-2xl">${rune.icon}</span>
+            <div>
+                <div class="font-bold text-slate-200 text-xs">${rune.name}</div>
+                <div class="text-[10px] text-slate-400">${rune.element}</div>
+            </div>
+        `;
+        btn.onclick = () => {
+            const cell = game.grid[row][col];
+            if (cell && cell.type === 'spawner') {
+                cell.data.runeId = rune.id;
+            }
+            closeModal('modalSpawner');
+        };
+        container.appendChild(btn);
+    });
+
+    document.getElementById('modalSpawner').classList.remove('hidden');
+}
+
+// Render Recipe Encyclopedia Modal
+function renderEncyclopedia() {
+    const container = document.getElementById('recipesList');
+    container.innerHTML = '';
+
+    masterData.recipes.forEach(recipe => {
+        const outputCard = masterData.cards.find(c => c.id === recipe.output) || {};
+        const inputCards = recipe.inputs.map(id => masterData.cards.find(c => c.id === id) || {});
+
+        const item = document.createElement('div');
+        item.className = 'bg-darkBg/90 border border-panelBorder p-3 rounded-xl flex items-center justify-between text-xs';
+        item.innerHTML = `
+            <div class="flex items-center space-x-2">
+                <div class="flex -space-x-1">
+                    ${inputCards.map(c => `<span class="text-lg bg-slate-800 rounded-full px-1">${c.icon || '❓'}</span>`).join('')}
+                </div>
+                <span class="text-slate-500">➔</span>
+                <span class="text-2xl">${outputCard.icon || '🔮'}</span>
+                <div>
+                    <div class="font-bold text-cyan-300">${recipe.name}</div>
+                    <div class="text-[10px] text-slate-400">完成品: ${outputCard.name} (${outputCard.value}G)</div>
+                </div>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+// Render Territory & My Home Shop
+function renderTerritories() {
+    const container = document.getElementById('territoryList');
+    container.innerHTML = '';
+
+    masterData.territories.forEach(t => {
+        const isOwned = game.ownedTerritories.includes(t.id);
+
+        const card = document.createElement('div');
+        card.className = `p-3.5 rounded-xl border flex items-center justify-between ${isOwned ? 'bg-amber-950/20 border-amber-500/50' : 'bg-darkBg border-panelBorder'}`;
+        card.innerHTML = `
+            <div>
+                <div class="font-bold text-sm text-slate-200 flex items-center space-x-2">
+                    <span>🏰 ${t.name}</span>
+                    ${isOwned ? '<span class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full">所有中</span>' : ''}
+                </div>
+                <div class="text-xs text-cyan-400 mt-1">${t.buffDesc}</div>
+            </div>
+            <div>
+                ${isOwned ? `
+                    <span class="text-xs text-slate-500">購入済み</span>
+                ` : `
+                    <button class="buy-territory-btn px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg text-xs transition" data-id="${t.id}" data-cost="${t.cost}">
+                        ${t.cost.toLocaleString()}G 購入
+                    </button>
+                `}
+            </div>
+        `;
+        container.appendChild(card);
+    });
+
+    document.querySelectorAll('.buy-territory-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = e.target.dataset.id;
+            const cost = parseInt(e.target.dataset.cost);
+
+            if (game.gold >= cost) {
+                game.gold -= cost;
+                game.ownedTerritories.push(id);
+                sfx.playQuest();
+                updateUIHeader();
+                renderTerritories();
+            } else {
+                alert('ゴールドが足りません！');
+            }
+        });
+    });
+}
+
+
+// Close Modal Helpers
+function closeModal(id) {
+    document.getElementById(id).classList.add('hidden');
+}
+
+document.querySelectorAll('.close-modal').forEach(btn => {
+    btn.addEventListener('click', () => {
+        closeModal('modalEncyclopedia');
+        closeModal('modalTerritory');
+    });
+});
+
+document.querySelectorAll('.close-spawner-modal').forEach(btn => {
+    btn.addEventListener('click', () => closeModal('modalSpawner'));
+});
+
+// Header Buttons
+document.getElementById('btnEncyclopedia').addEventListener('click', () => {
+    renderEncyclopedia();
+    document.getElementById('modalEncyclopedia').classList.remove('hidden');
+});
+
+document.getElementById('btnTerritory').addEventListener('click', () => {
+    renderTerritories();
+    document.getElementById('modalTerritory').classList.remove('hidden');
+});
+
+document.getElementById('btnSpeed').addEventListener('click', () => {
+    game.gameSpeed = game.gameSpeed === 1 ? 2 : (game.gameSpeed === 2 ? 4 : 1);
+    document.getElementById('btnSpeed').innerText = `⏩ ${game.gameSpeed}x`;
+});
+
+document.getElementById('btnSound').addEventListener('click', () => {
+    sfx.enabled = !sfx.enabled;
+    document.getElementById('btnSound').innerText = sfx.enabled ? '🔊 ON' : '🔇 OFF';
+});
+
+
+// ==========================================
+// 8. SAVE / LOAD / RESET SYSTEM
+// ==========================================
+function saveGame() {
+    const saveData = {
+        gold: game.gold,
+        grid: game.grid,
+        ownedTerritories: game.ownedTerritories,
+        orders: game.orders,
+        stats: game.stats
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+}
+
+function loadGame() {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    try {
+        const saveData = JSON.parse(raw);
+        game.gold = saveData.gold || 200;
+        if (saveData.grid) game.grid = saveData.grid;
+        game.ownedTerritories = saveData.ownedTerritories || [];
+        game.orders = saveData.orders || [];
+        game.stats = saveData.stats || { totalExported: 0, totalCrafted: 0 };
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+document.getElementById('btnReset').addEventListener('click', () => {
+    if (confirm('ゲームデータをリセットしますか？')) {
+        localStorage.removeItem(SAVE_KEY);
+        location.reload();
+    }
+});
+
+// Auto-save every 10 seconds
+setInterval(saveGame, 10000);
+
+
+// ==========================================
+// 9. INITIALIZATION
+// ==========================================
+window.onload = function() {
+    // 1. Load External / Fallback Game Data
+    initGameData();
+
+    // 2. Load Save Game or Setup Default
+    if (!loadGame()) {
+        game.setupDefaultFactory();
+        game.generateNewOrder();
+        game.generateNewOrder();
+    }
+
+    // Ensure order count
+    while (game.orders.length < 3) {
+        game.generateNewOrder();
+    }
+
+    // 3. Initialize UI & Canvas
+    resizeCanvas();
+    updateUIHeader();
+    renderOrdersUI();
+
+    // 4. Start Game Loop
+    requestAnimationFrame(gameLoop);
+};
+</script>
+</body>
+</html>

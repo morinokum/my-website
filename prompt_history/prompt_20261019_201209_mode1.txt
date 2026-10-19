@@ -1,0 +1,52 @@
+私はこれまでに以下のHTMLブラウザゲームを作成しました。
+
+- 紋章ルーン・コレクター
+- 紋章カードの領地経営：ルーン・オートバトラー | AI-GAME-PORTFOLIO
+- 紋章カードと漆黒の狙撃手 - Mouse Aim Rune Action | AI-GAME-PORTFOLIO
+- 紋章カードの錬金市場：ルーン・トレード | AI-GAME-PORTFOLIO
+- 紋章カードの怠惰なる生活 - Rune Craft Puzzle (マイホーム拡張版)
+- 紋章カードの怠惰なる生活 - Rune Craft Puzzle (拡張版)
+- 紋章カードの怠惰なる生活 - Rune Craft Puzzle
+- NEON BLADE - Cyber Action
+- CHROMA DECA - AI-GAME-PORTFOLIO
+- Idle Drakkhen RPG
+- エピック・アドベンチャー
+- Neon Swarm Survivor | AI-GAME-PORTFOLIO
+- CROSSROAD CHAOS | AI-GAME-PORTFOLIO
+- Neon Chain: Cascade | AI-GAME-PORTFOLIO
+- Echoes of Frequency | AI-GAME-PORTFOLIO
+- Neon Prism: Draw & Defend | AI-GAME-PORTFOLIO
+- AI-GAME-PORTFOLIO - Short Video Reels
+- AI-GAME-PORTFOLIO - Immersive Scene Experience
+- 天空の呪い - Fallout-style Narrative RPG
+- レトロ町並みアドベンチャー - Humanized Edition
+- Conquistador: Smoke & Rank (1519 Mexico Expedition)
+- 壁ドン即死回避：空気抵抗のみ
+- Wizardry-style RPG: Labyrinth of Legends (Enhanced)
+- Wizardry-style RPG: Labyrinth of Legends
+- Pseudo-3D Raycasting FPS
+- レトロ町並みアドベンチャー
+- 蒸気機関：プレッシャー・ライン
+- Retro Kyoto Run
+- ミニマム文字RPG：ストーリー討伐
+- Cyber Maze: God Hand
+これらは私の「AI-GAME-PORTFOLIO」に収録されています。
+
+次回作を作りたいのですが、共通データを活かしつつも、既存作品（特に『紋章シリーズ』）とは全く被らない新しいルールの「面白くてハマる単一ファイルゲーム」のアイデアを1つ考えてください。
+
+【必須条件】
+・HTML/CSS/JSが1つにまとまった1ファイルの完全なコードを生成してください。
+・コード内のどこかに必ず「AI-GAME-PORTFOLIO」というメタタグまたは識別コメントを含めてください。
+・マスタデータ（カード、レシピ、家など）は外部URL「https://morinokum.github.io/my-website/game-data.js」から読み込み（window.RUNE_GAME_DATA を利用）、取得失敗時の簡単なフォールバックデータも備えてください。
+・ローカルストレージなどによるセーブ機能も備えてください。
+・コード内に、開発引き継ぎ用の以下のコメントブロックを必ず含めてください。改良のたびに内容を最新に更新してください。
+<!-- AI-DEV-HANDOFF-START
+タイトル:
+バージョン:
+概要・ルール:
+主要な構造（関数・状態管理・画面遷移）:
+セーブデータのキー:
+実装済み機能:
+未実装・TODO:
+設計上のこだわり・注意点:
+AI-DEV-HANDOFF-END -->

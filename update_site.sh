@@ -357,7 +357,7 @@ ${CURRENT_DATA}
     read -r num
     # 不正な入力（文字など）や範囲外を弾く簡易チェック
    
-    if [ "$num" =~ ^[0-9]+$ ] || [ "$num" -le 0 ] || [ "$num" -gt "${#game_files[@]}" ]; then
+    if [ "$num" =~ ^[0-9+$] || [ "$num" -le 0 ] || [ "$num" -gt "${#game_files[@]}" ]; then
       echo "⚠ 無効な番号です。"; exit 1
     fi
 

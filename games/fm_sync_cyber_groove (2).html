@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FM SYNC: CYBER GROOVE</title>
+    
+    <!-- AI-GAME-PORTFOLIO -->
+    <meta name="portfolio-project" content="AI-GAME-PORTFOLIO">
+    
+    <!-- AI-DEV-HANDOFF-START
+    タイトル: FM SYNC: CYBER GROOVE
+    バージョン: 1.0.1
+    概要・ルール:
+      見やすいUIと軽快な操作、そしてTone.jsを用いた重厚なFMサウンドによる音楽体験に特化したリズム＆エイムアクションゲーム。
+      流れるBGM（自動生成されるFMベースとドラム）に合わせ、画面に出現するターゲットを素早くタップする。
+      タップに成功すると、現在のコード進行に合ったFMシンセの音が重なり、プレイヤー自身が音楽を奏でる感覚を味わえる。
+      時間経過でターゲットは消滅し、コンボが途切れる。60秒間でどれだけスコアとコンボを稼げるかを競う。
+    主要な構造（関数・状態管理・画面遷移）:
+      - 画面遷移: TITLE -> GAME -> RESULT。HTML要素の表示/非表示（Tailwind classes）で管理。
+      - 音響エンジン: Tone.jsを使用。SoundEngineクラスでBGMループ、シンセサイザーの初期化と発音を管理。
+      - 描画・ロジック: Canvas APIを用いたGameEngineクラス。requestAnimationFrameによるメインループでターゲットの生成・描画・寿命管理・パーティクル処理を行う。
+      - データロード: 外部URLから `RUNE_GAME_DATA` を取得試行し、失敗・非互換時は内部のフォールバックデータ（ステージ設定）を使用する。
+      - パフォーマンス最適化: カクつき防止のため shadowBlur を廃止し globalCompositeOperation = 'lighter' に変更。配列操作はスワップ＆ポップを使用。
+      - 音響安定化: 音切れ対策として Tone.Reverb を軽量な Tone.Freeverb に変更。PolySynth の最大発音数を制限。バックグラウンド時の音楽ポーズ機能を追加。
+    セーブデータのキー:
+      - FMSYNC_HIGH_SCORE: 過去の最高スコア
+    実装済み機能:
+      - Tone.jsによる動的FMサウンド生成（ベース、ドラム、プレイヤー用ポリシンセ）
+      - Canvas上のターゲットタップ処理とパーティクルエフェクト
+      - 外部マスタデータ（フォールバック付き）のロード機能
+      - ローカルストレージによるハイスコア保存機能
+      - レスポンシブでサイバーパンクテイストなUIデザイン
+      - パフォーマンス改善（描画軽量化・音切れ防止）
+    未実装・TODO:
+      - 複数のステージやBPM変化の実装
+      - プレイヤーがシンセのパラメータをカスタマイズできる機能
+      - リーダーボード（オンラインランキング）
+    設計上のこだわり・注意点:
+      - 【音楽】重厚さを出すため、FMSynthのパラメータを調整。リバーブは処理落ちを防ぐため Freeverb を採用。
+      - 【操作】タップ時の遅延をなくすため pointerdown イベントを使用し、即座に音を鳴らす。
+      - 【UI/DOM】バックグラウンドに回った際のスケジューリング破綻を防ぐため、visibilitychange イベントでポーズ制御を入れる。Tone.jsのコールバック内でのDOM操作は Tone.Draw.schedule を使用。
+    AI-DEV-HANDOFF-END -->
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Tone.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff00ea;
+            --bg-dark: #0a0a12;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+        }
+
+        .font-cyber {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* ネオンテキストエフェクト */
+        .neon-text-blue {
+            text-shadow: 0 0 5px var(--neon-blue), 0 0 10px var(--neon-blue), 0 0 20px var(--neon-blue);
+            color: var(--neon-blue);
+        }
+        .neon-text-pink {
+            text-shadow: 0 0 5px var(--neon-pink), 0 0 10px var(--neon-pink), 0 0 20px var(--neon-pink);
+            color: var(--neon-pink);
+        }
+
+        /* ネオンボタン */
+        .neon-button {
+            position: relative;
+            background: transparent;
+            color: var(--neon-blue);
+            border: 2px solid var(--neon-blue);
+            border-radius: 8px;
+            padding: 1rem 3rem;
+            font-size: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.2), inset 0 0 10px rgba(0, 243, 255, 0.2);
+            overflow: hidden;
+        }
+
+        .neon-button:hover, .neon-button:active {
+            background: var(--neon-blue);
+            color: var(--bg-dark);
+            box-shadow: 0 0 20px var(--neon-blue), inset 0 0 10px var(--neon-blue);
+        }
+
+        .neon-button-pink {
+            color: var(--neon-pink);
+            border-color: var(--neon-pink);
+            box-shadow: 0 0 10px rgba(255, 0, 234, 0.2), inset 0 0 10px rgba(255, 0, 234, 0.2);
+        }
+        .neon-button-pink:hover, .neon-button-pink:active {
+            background: var(--neon-pink);
+            color: var(--bg-dark);
+            box-shadow: 0 0 20px var(--neon-pink), inset 0 0 10px var(--neon-pink);
+        }
+
+        /* 画面レイヤー */
+        #game-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 10;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        .interactive {
+            pointer-events: auto;
+        }
+
+        /* アニメーション */
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pulse-fast {
+            animation: pulse 1.5s infinite;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Canvas (ゲーム描画領域) -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- タイトル画面 -->
+    <div id="screen-title" class="ui-layer interactive flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity duration-500">
+        <h1 class="font-cyber text-5xl md:text-7xl font-black mb-2 tracking-wider text-center neon-text-blue animate-pulse-fast">FM SYNC</h1>
+        <h2 class="font-cyber text-2xl md:text-3xl mb-12 tracking-widest text-center neon-text-pink">CYBER GROOVE</h2>
+        
+        <p class="text-gray-300 mb-8 max-w-md text-center px-4 text-sm md:text-base">
+            ターゲットをタップして重厚なFMサウンドを奏でろ。<br>
+            リズムとエイムを研ぎ澄まし、ハイスコアを目指せ。
+        </p>
+
+        <button id="btn-start" class="neon-button font-cyber font-bold">START SYSTEM</button>
+        
+        <div id="loading-status" class="mt-6 text-sm text-gray-400 font-cyber">Loading Data...</div>
+    </div>
+
+    <!-- ゲーム中HUD -->
+    <div id="screen-game" class="ui-layer flex flex-col justify-between p-4 hidden">
+        <!-- ヘッダー -->
+        <div class="flex justify-between items-start w-full">
+            <div class="flex flex-col">
+                <span class="font-cyber text-gray-400 text-xs md:text-sm">SCORE</span>
+                <span id="hud-score" class="font-cyber text-3xl md:text-4xl text-white font-bold tracking-wider neon-text-blue">00000</span>
+            </div>
+            
+            <div class="flex flex-col items-end">
+                <span class="font-cyber text-gray-400 text-xs md:text-sm">TIME</span>
+                <span id="hud-time" class="font-cyber text-3xl md:text-4xl text-white font-bold tracking-wider">60</span>
+            </div>
+        </div>
+
+        <!-- センター (コンボ表示など) -->
+        <div class="flex justify-center items-center pointer-events-none mt-10">
+            <div id="hud-combo-container" class="opacity-0 transition-opacity duration-200 transform scale-150">
+                <span id="hud-combo" class="font-cyber text-5xl font-black italic neon-text-pink">0</span>
+                <span class="font-cyber text-xl text-white ml-2">COMBO</span>
+            </div>
+        </div>
+        
+        <!-- フッター -->
+        <div class="flex justify-between items-end w-full pb-4">
+            <div class="flex flex-col">
+                <span class="font-cyber text-gray-500 text-[10px]">FM SYNTH STATUS</span>
+                <span id="hud-chord" class="font-cyber text-sm text-gray-300">CHORD: Fm7</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- リザルト画面 -->
+    <div id="screen-result" class="ui-layer interactive flex flex-col items-center justify-center bg-black/90 backdrop-blur-md hidden transition-opacity duration-500">
+        <h2 class="font-cyber text-4xl md:text-6xl font-black mb-8 tracking-widest text-center neon-text-pink">SYSTEM HALTED</h2>
+        
+        <div class="bg-gray-900/50 border border-gray-700 p-8 rounded-xl flex flex-col items-center w-11/12 max-w-md mb-10 shadow-[0_0_30px_rgba(255,0,234,0.1)]">
+            <span class="font-cyber text-gray-400 text-sm mb-1">FINAL SCORE</span>
+            <span id="result-score" class="font-cyber text-5xl text-white font-bold mb-6 neon-text-blue">0</span>
+            
+            <div class="w-full h-px bg-gray-700 mb-6"></div>
+            
+            <div class="flex justify-between w-full mb-2">
+                <span class="text-gray-400 font-cyber text-sm">MAX COMBO</span>
+                <span id="result-max-combo" class="text-white font-cyber font-bold text-lg">0</span>
+            </div>
+            <div class="flex justify-between w-full">
+                <span class="text-gray-400 font-cyber text-sm">HIGH SCORE</span>
+                <span id="result-high-score" class="text-yellow-400 font-cyber font-bold text-lg">0</span>
+            </div>
+            
+            <div id="new-record-msg" class="mt-4 font-cyber text-yellow-400 text-sm font-bold animate-pulse hidden">NEW RECORD!</div>
+        </div>
+
+        <button id="btn-restart" class="neon-button neon-button-pink font-cyber font-bold">REBOOT</button>
+    </div>
+
+    <script>
+        // --- 状態管理・定数 ---
+        const SAVE_KEY = 'FMSYNC_HIGH_SCORE';
+        let gameState = {
+            status: 'title', // title, playing, result
+            score: 0,
+            combo: 0,
+            maxCombo: 0,
+            time: 60,
+            highScore: parseInt(localStorage.getItem(SAVE_KEY) || '0', 10),
+            stageData: null
+        };
+
+        // フォールバックデータ
+        const fallbackData = {
+            gameConfig: {
+                baseBpm: 125,
+                duration: 60,
+                targetSpawnRateMs: 500, // ターゲット出現間隔(基本)
+                targetLifeTimeMs: 1500, // ターゲットが消えるまでの時間
+            }
+        };
+
+        // --- マスタデータの読み込み ---
+        async function loadGameData() {
+            const statusEl = document.getElementById('loading-status');
+            try {
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://morinokum.github.io/my-website/game-data.js';
+                    script.onload = () => resolve();
+                    script.onerror = () => reject(new Error('Network error'));
+                    document.head.appendChild(script);
+                });
+
+                if (window.RUNE_GAME_DATA) {
+                    console.log("Master data loaded:", window.RUNE_GAME_DATA);
+                    gameState.stageData = fallbackData.gameConfig;
+                    statusEl.innerText = "Data Loaded (Compatible Mode)";
+                } else {
+                    throw new Error('Data format error');
+                }
+            } catch (error) {
+                console.warn("Failed to load master data, using fallback.", error);
+                gameState.stageData = fallbackData.gameConfig;
+                statusEl.innerText = "System Ready (Fallback Mode)";
+            }
+            
+            setTimeout(() => {
+                document.getElementById('btn-start').disabled = false;
+                document.getElementById('btn-start').innerText = "START SYSTEM";
+                statusEl.style.display = 'none';
+            }, 500);
+        }
+
+        document.getElementById('btn-start').disabled = true;
+        document.getElementById('btn-start').innerText = "BOOTING...";
+        loadGameData();
+
+
+        // --- Sound Engine ---
+        class SoundEngine {
+            constructor() {
+                this.isReady = false;
+                
+                // コード進行 (Fm7 -> Dbmaj7 -> Ebmaj7 -> Fm7)
+                this.chordProgression = [
+                    ['F3', 'Ab3', 'C4', 'Eb4'],
+                    ['Db3', 'F3', 'Ab3', 'C4'],
+                    ['Eb3', 'G3', 'Bb3', 'D4'],
+                    ['F3', 'Ab3', 'C4', 'Eb4']
+                ];
+                this.chordNames = ["Fm7", "Dbmaj7", "Ebmaj7", "Fm7"];
+                this.currentChordIndex = 0;
+            }
+
+            async init() {
+                if (this.isReady) return;
+                
+                await Tone.start();
+                console.log("Tone.js context started");
+
+                this.masterCompressor = new Tone.Compressor({
+                    threshold: -24, ratio: 4, attack: 0.01, release: 0.1
+                }).toDestination();
+
+                // 音切れ対策：処理の重いTone.Reverbから、軽量なTone.Freeverbに変更
+                this.reverb = new Tone.Freeverb({ roomSize: 0.8, dampening: 3000 }).connect(this.masterCompressor);
+                this.reverb.wet.value = 0.3;
+                this.delay = new Tone.PingPongDelay("8n.", 0.2).connect(this.reverb);
+
+                // プレイヤー用 FMポリシンセ
+                this.playerSynth = new Tone.PolySynth(Tone.FMSynth, {
+                    harmonicity: 2.5,
+                    modulationIndex: 15,
+                    oscillator: { type: "sine" },
+                    envelope: { attack: 0.01, decay: 0.3, sustain: 0.2, release: 1.2 },
+                    modulation: { type: "square" },
+                    modulationEnvelope: { attack: 0.02, decay: 0.4, sustain: 0, release: 0.2 }
+                }).connect(this.delay);
+                // CPU負荷軽減：最大同時発音数を制限
+                this.playerSynth.maxPolyphony = 8;
+                this.playerSynth.volume.value = -4;
+
+                // BGM用 FMベース
+                this.bassSynth = new Tone.FMSynth({
+                    harmonicity: 0.5,
+                    modulationIndex: 8,
+                    oscillator: { type: "fmsawtooth" },
+                    envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.5 },
+                    modulation: { type: "triangle" },
+                    modulationEnvelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.1 }
+                }).connect(new Tone.Filter(600, "lowpass").connect(this.masterCompressor));
+                this.bassSynth.volume.value = -2;
+
+                // BGM用 ドラム(キック)
+                this.kick = new Tone.MembraneSynth({
+                    pitchDecay: 0.05,
+                    octaves: 4,
+                    oscillator: { type: "sine" },
+                    envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 }
+                }).connect(this.masterCompressor);
+                
+                // BGM用 ドラム(ハイハット)
+                this.hihat = new Tone.MetalSynth({
+                    frequency: 250,
+                    envelope: { attack: 0.001, decay: 0.1, release: 0.01 },
+                    harmonicity: 5.1,
+                    modulationIndex: 32,
+                    resonance: 4000,
+                    octaves: 1.5
+                }).connect(this.masterCompressor);
+                this.hihat.volume.value = -12;
+
+                this.isReady = true;
+            }
+
+            setupSequence() {
+                if (this.sequenceId !== undefined) {
+                    Tone.Transport.clear(this.sequenceId);
+                }
+
+                let step = 0;
+                
+                this.sequenceId = Tone.Transport.scheduleRepeat((time) => {
+                    if (step % 4 === 0) {
+                        this.kick.triggerAttackRelease("C1", "8n", time);
+                    }
+                    
+                    if (step % 2 !== 0) {
+                        this.hihat.triggerAttackRelease("32n", time, Math.random() * 0.3 + 0.1);
+                    }
+                    
+                    const bassPattern = [
+                        'F1', null, 'F1', 'F2', 'Db1', null, 'Db1', 'Db2',
+                        'Eb1', null, 'Eb1', 'Eb2', 'F1', 'C2', 'Eb2', 'F2'
+                    ];
+                    
+                    const note = bassPattern[step % 16];
+                    if (note) {
+                        this.bassSynth.triggerAttackRelease(note, "16n", time);
+                    }
+
+                    if (step % 16 === 0) {
+                        this.currentChordIndex = Math.floor(step / 16) % 4;
+                        // DOM更新をTone.Draw.schedule内で実行し、エラーと描画ズレを防止
+                        Tone.Draw.schedule(() => {
+                            if(gameState.status === 'playing'){
+                                document.getElementById('hud-chord').innerText = "CHORD: " + this.chordNames[this.currentChordIndex];
+                            }
+                        }, time);
+                    }
+                    
+                    step++;
+                }, "16n");
+
+                Tone.Transport.bpm.value = gameState.stageData ? gameState.stageData.baseBpm : 125;
+            }
+
+            playTapSound(xRatio, yRatio) {
+                if (!this.isReady) return;
+                
+                const chord = this.chordProgression[this.currentChordIndex];
+                const noteIndex = Math.floor((1 - yRatio) * chord.length);
+                const safeIndex = Math.max(0, Math.min(noteIndex, chord.length - 1));
+                const baseNote = chord[safeIndex];
+                
+                const modIndex = 5 + (xRatio * 15);
+                this.playerSynth.set({ modulationIndex: modIndex });
+                
+                let notesToPlay = [baseNote];
+                if (Math.random() > 0.5) {
+                    const noteName = baseNote.slice(0, -1);
+                    const octave = parseInt(baseNote.slice(-1)) + 1;
+                    notesToPlay.push(noteName + octave);
+                }
+
+                this.playerSynth.triggerAttackRelease(notesToPlay, "8n", Tone.now());
+            }
+            
+            playMissSound() {
+                if (!this.isReady) return;
+                this.bassSynth.triggerAttackRelease("C1", "32n", Tone.now());
+            }
+
+            startMusic() {
+                Tone.Transport.position = 0;
+                this.setupSequence();
+                Tone.Transport.start();
+            }
+
+            stopMusic() {
+                Tone.Transport.stop();
+                if (this.sequenceId !== undefined) {
+                    Tone.Transport.clear(this.sequenceId);
+                }
+            }
+        }
+
+        const soundEngine = new SoundEngine();
+
+        // --- Game Logic and Rendering ---
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Target {
+            constructor(x, y, lifeTime) {
+                this.x = x;
+                this.y = y;
+                this.baseRadius = Math.min(width, height) * 0.08;
+                this.radius = 0;
+                this.maxRadius = this.baseRadius;
+                this.createdAt = performance.now();
+                this.lifeTime = lifeTime;
+                this.isDead = false;
+                this.hit = false;
+                
+                this.color = Math.random() > 0.5 ? '#00f3ff' : '#ff00ea';
+                this.shape = Math.random() > 0.5 ? 'circle' : 'diamond';
+            }
+
+            update(currentTime) {
+                const age = currentTime - this.createdAt;
+                const progress = age / this.lifeTime;
+
+                if (progress >= 1) {
+                    this.isDead = true;
+                    return;
+                }
+
+                if (progress < 0.2) {
+                    this.radius = this.maxRadius * (progress / 0.2);
+                } else {
+                    this.radius = this.maxRadius * (1 - ((progress - 0.2) / 0.8));
+                }
+            }
+
+            draw(ctx) {
+                if (this.isDead) return;
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                
+                // カクつき解消: 描画負荷が極めて高い shadowBlur を廃止
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 3;
+                ctx.fillStyle = 'transparent';
+
+                const timeStr = performance.now() * 0.002;
+
+                if (this.shape === 'circle') {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, Math.max(0.1, this.radius), 0, Math.PI * 2);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.arc(0, 0, Math.max(0.1, this.radius * 0.5), 0, Math.PI * 2);
+                    ctx.stroke();
+                } else {
+                    ctx.rotate(timeStr);
+                    ctx.beginPath();
+                    ctx.moveTo(0, -this.radius);
+                    ctx.lineTo(this.radius, 0);
+                    ctx.lineTo(0, this.radius);
+                    ctx.lineTo(-this.radius, 0);
+                    ctx.closePath();
+                    ctx.stroke();
+                }
+                
+                const progress = (performance.now() - this.createdAt) / this.lifeTime;
+                ctx.strokeStyle = `rgba(255,255,255, ${1 - progress})`;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(0, 0, Math.max(0.1, this.maxRadius * (1 - progress) * 1.5), 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.restore();
+            }
+            
+            checkHit(tx, ty) {
+                const dx = this.x - tx;
+                const dy = this.y - ty;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                return dist < this.maxRadius * 1.5;
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 5 + 2;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.life = 1.0;
+                this.decay = Math.random() * 0.02 + 0.02;
+                this.color = color;
+                this.size = Math.random() * 4 + 2;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+            }
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                // カクつき解消: shadowBlur を廃止
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        let targets = [];
+        let particles = [];
+        let lastSpawnTime = 0;
+        let animationFrameId;
+        let gameStartTime = 0;
+        let lastTimeUpdate = 0;
+
+        function spawnTarget(currentTime) {
+            const padding = Math.min(width, height) * 0.15;
+            const x = padding + Math.random() * (width - padding * 2);
+            const y = padding + Math.random() * (height - padding * 2);
+            
+            const elapsedRatio = 1 - (gameState.time / gameState.stageData.duration);
+            const lifeTime = Math.max(600, gameState.stageData.targetLifeTimeMs - (elapsedRatio * 600));
+            
+            targets.push(new Target(x, y, lifeTime));
+        }
+
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 15; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+            
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.fillRect(0, 0, width, height);
+        }
+
+        // --- Main Game Loop ---
+        function gameLoop(timestamp) {
+            if (gameState.status !== 'playing') return;
+
+            if (!gameStartTime) gameStartTime = timestamp;
+            if (!lastTimeUpdate) lastTimeUpdate = timestamp;
+
+            if (timestamp - lastTimeUpdate >= 1000) {
+                gameState.time--;
+                document.getElementById('hud-time').innerText = gameState.time;
+                lastTimeUpdate = timestamp;
+
+                if (gameState.time <= 0) {
+                    endGame();
+                    return;
+                }
+            }
+
+            const elapsed = timestamp - gameStartTime;
+            const elapsedRatio = 1 - (gameState.time / gameState.stageData.duration);
+            const currentSpawnRate = Math.max(250, gameState.stageData.targetSpawnRateMs - (elapsedRatio * 200));
+
+            if (timestamp - lastSpawnTime > currentSpawnRate) {
+                spawnTarget(timestamp);
+                lastSpawnTime = timestamp;
+            }
+
+            // 描画クリア (残像効果)
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.fillStyle = 'rgba(10, 10, 18, 0.3)';
+            ctx.fillRect(0, 0, width, height);
+
+            // カクつき対策のshadowBlur廃止に伴い、加算合成でネオン感を生み出す
+            ctx.globalCompositeOperation = 'lighter';
+
+            // ターゲット更新と描画
+            for (let i = targets.length - 1; i >= 0; i--) {
+                const t = targets[i];
+                t.update(timestamp);
+                
+                if (t.isDead) {
+                    if (!t.hit) {
+                        resetCombo();
+                    }
+                    // ガベージコレクションを減らし処理落ちを防止 (スワップ&ポップ)
+                    const last = targets.pop();
+                    if (i < targets.length) {
+                        targets[i] = last;
+                    }
+                } else {
+                    t.draw(ctx);
+                }
+            }
+
+            // パーティクル更新と描画
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.update();
+                if (p.life <= 0) {
+                    const last = particles.pop();
+                    if (i < particles.length) {
+                        particles[i] = last;
+                    }
+                } else {
+                    p.draw(ctx);
+                }
+            }
+
+            // 元のブレンドモードに戻す
+            ctx.globalCompositeOperation = 'source-over';
+
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // --- 入力処理 ---
+        function handleTap(x, y) {
+            if (gameState.status !== 'playing') return;
+
+            let hitSomething = false;
+            
+            for (let i = targets.length - 1; i >= 0; i--) {
+                const t = targets[i];
+                if (!t.isDead && t.checkHit(x, y)) {
+                    t.hit = true;
+                    t.isDead = true; 
+                    hitSomething = true;
+                    
+                    addScore(t);
+                    createExplosion(t.x, t.y, t.color);
+                    soundEngine.playTapSound(x / width, y / height);
+                    
+                    break;
+                }
+            }
+
+            if (!hitSomething) {
+                resetCombo();
+                soundEngine.playMissSound();
+            }
+        }
+
+        canvas.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            handleTap(e.clientX, e.clientY);
+        });
+
+        // --- スコア・コンボ管理 ---
+        function addScore(target) {
+            gameState.combo++;
+            if (gameState.combo > gameState.maxCombo) {
+                gameState.maxCombo = gameState.combo;
+            }
+            
+            const age = performance.now() - target.createdAt;
+            const speedBonus = Math.max(0, 1 - (age / target.lifeTime));
+            const points = Math.floor(100 + (gameState.combo * 10) + (speedBonus * 50));
+            
+            gameState.score += points;
+            
+            updateHUD();
+            showComboEffect();
+        }
+
+        function resetCombo() {
+            if (gameState.combo > 0) {
+                gameState.combo = 0;
+                updateHUD();
+                
+                const comboEl = document.getElementById('hud-combo-container');
+                comboEl.classList.remove('opacity-100', 'scale-100');
+                comboEl.classList.add('opacity-0', 'scale-150');
+            }
+        }
+
+        function updateHUD() {
+            document.getElementById('hud-score').innerText = gameState.score.toString().padStart(5, '0');
+            document.getElementById('hud-combo').innerText = gameState.combo;
+        }
+
+        let comboTimeout;
+        function showComboEffect() {
+            const comboEl = document.getElementById('hud-combo-container');
+            
+            comboEl.style.transition = 'none';
+            comboEl.classList.remove('opacity-100', 'scale-100');
+            comboEl.classList.add('opacity-0', 'scale-150');
+            
+            void comboEl.offsetWidth; 
+            
+            comboEl.style.transition = 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            comboEl.classList.remove('opacity-0', 'scale-150');
+            comboEl.classList.add('opacity-100', 'scale-100');
+            
+            clearTimeout(comboTimeout);
+            comboTimeout = setTimeout(() => {
+                comboEl.classList.remove('opacity-100', 'scale-100');
+                comboEl.classList.add('opacity-0', 'scale-150');
+            }, 1000);
+        }
+
+        // --- Game Flow Control ---
+        async function startGame() {
+            document.getElementById('screen-title').classList.add('opacity-0');
+            setTimeout(() => {
+                document.getElementById('screen-title').classList.add('hidden');
+                document.getElementById('screen-game').classList.remove('hidden');
+            }, 500);
+
+            await soundEngine.init();
+            soundEngine.startMusic();
+
+            gameState.status = 'playing';
+            gameState.score = 0;
+            gameState.combo = 0;
+            gameState.maxCombo = 0;
+            gameState.time = gameState.stageData ? gameState.stageData.duration : 60;
+            
+            targets = [];
+            particles = [];
+            gameStartTime = 0;
+            lastTimeUpdate = 0;
+            lastSpawnTime = performance.now();
+            
+            updateHUD();
+            document.getElementById('hud-time').innerText = gameState.time;
+            
+            ctx.clearRect(0, 0, width, height);
+            requestAnimationFrame(gameLoop);
+        }
+
+        function endGame() {
+            gameState.status = 'result';
+            cancelAnimationFrame(animationFrameId);
+            soundEngine.stopMusic();
+
+            let isNewRecord = false;
+            if (gameState.score > gameState.highScore) {
+                gameState.highScore = gameState.score;
+                localStorage.setItem(SAVE_KEY, gameState.highScore.toString());
+                isNewRecord = true;
+            }
+
+            document.getElementById('result-score').innerText = gameState.score;
+            document.getElementById('result-max-combo').innerText = gameState.maxCombo;
+            document.getElementById('result-high-score').innerText = gameState.highScore;
+            
+            if (isNewRecord) {
+                document.getElementById('new-record-msg').classList.remove('hidden');
+            } else {
+                document.getElementById('new-record-msg').classList.add('hidden');
+            }
+
+            document.getElementById('screen-game').classList.add('hidden');
+            const resultScreen = document.getElementById('screen-result');
+            resultScreen.classList.remove('hidden');
+            setTimeout(() => {
+                resultScreen.classList.remove('opacity-0');
+            }, 50);
+        }
+
+        function restartGame() {
+            document.getElementById('screen-result').classList.add('opacity-0');
+            setTimeout(() => {
+                document.getElementById('screen-result').classList.add('hidden');
+                startGame();
+            }, 500);
+        }
+
+        document.getElementById('btn-start').addEventListener('click', startGame);
+        document.getElementById('btn-restart').addEventListener('click', restartGame);
+
+        // タブ切り替え時のTone.js安定化処理（バックグラウンドでのスケジュール破綻・音切れを防ぐ）
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden) {
+                if (gameState.status === 'playing') {
+                    Tone.Transport.pause();
+                }
+            } else {
+                if (gameState.status === 'playing') {
+                    Tone.Transport.start();
+                    // 復帰時の時間ズレ補正
+                    const now = performance.now();
+                    lastTimeUpdate = now;
+                    lastSpawnTime = now;
+                }
+            }
+        });
+
+        ctx.fillStyle = '#0a0a12';
+        ctx.fillRect(0, 0, width, height);
+    </script>
+</body>
+</html>

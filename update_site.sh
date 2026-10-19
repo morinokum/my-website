@@ -2,48 +2,82 @@
 # ※ set -e は予期せぬ強制終了を招くため削除しました
 
 # ==============================================================================
-# 設定・初期化
+# 1. グローバル変数・設定
 # ==============================================================================
 DOWNLOAD_DIR="$HOME/Downloads"
 [ -d "$HOME/ダウンロード" ] && DOWNLOAD_DIR="$HOME/ダウンロード"
+GAMES_DIR="games"
 
-echo "🔍 [$DOWNLOAD_DIR] から新しいゲームおよび共通データを探索中..."
-
-mkdir -p games
-
-# ==============================================================================
-# 1. 共通データファイル（game-data.js）の探索と自動更新
-# ==============================================================================
-data_file_found=$(find "$DOWNLOAD_DIR" -maxdepth 1 -name "*.js" -type f -exec grep -l "AI_PORTFOLIO_DATA_FILE" {} + 2>/dev/null | head -n 1)
-
-if [ -n "$data_file_found" ]; then
-  cp "$data_file_found" ./game-data.js
-  echo "📦 共通データファイルを更新しました: $(basename "$data_file_found") -> ./game-data.js"
-elif [ -f "$DOWNLOAD_DIR/game-data.js" ]; then
-  cp "$DOWNLOAD_DIR/game-data.js" ./game-data.js
-  echo "📦 共通データファイルを更新しました: game-data.js -> ./game-data.js"
-else
-  echo "ℹ 共通データファイル(game-data.js)の新規更新はありませんでした。"
-fi
+# 各関数をまたいで共有するデータ
+GAME_COUNT=0
+GAME_LIST_TEXT=""
 
 # ==============================================================================
-# 2. 目印のあるHTMLファイルだけを探索・収集
+# 2. ユーティリティ関数（汎用ツール）
 # ==============================================================================
-find "$DOWNLOAD_DIR" -maxdepth 1 -name "*.html" -type f -exec grep -l "AI-GAME-PORTFOLIO" {} + 2>/dev/null | while read -r file; do
-  filename=$(basename "$file")
-  
-  if [ -f "games/$filename" ]; then
-    continue
+# クリップボードへの転送処理
+copy_to_clipboard() {
+  local content="$1"
+  if command -v pbcopy >/dev/null 2>&1; then
+    printf '%s' "$content" | pbcopy; return 0        # Mac
+  elif command -v clip.exe >/dev/null 2>&1; then
+    printf '%s' "$content" | clip.exe; return 0      # Windows(WSL)
+  elif command -v xclip >/dev/null 2>&1; then
+    printf '%s' "$content" | xclip -selection clipboard; return 0 # Linux X11
+  elif command -v xsel >/dev/null 2>&1; then
+    printf '%s' "$content" | xsel -b; return 0       # Linux X11
+  elif command -v wl-copy >/dev/null 2>&1; then
+    printf '%s' "$content" | wl-copy; return 0       # Linux Wayland
   fi
+  return 1
+}
 
-  echo "✨ 新しいゲームを発見して収集: $filename"
-  cp "$file" games/
-done
+# 開発引き継ぎブロックの抽出
+extract_handoff() {
+  sed -n '/AI-DEV-HANDOFF-START/,/AI-DEV-HANDOFF-END/p' "$1"
+}
 
 # ==============================================================================
-# 3. index.html の生成（ヘッダー・CSS）
+# 3. メイン機能の部品（関数定義）
 # ==============================================================================
-cat << 'HTMLEOF' > index.html
+
+setup_environment() {
+  echo "🔍 [$DOWNLOAD_DIR] から新しいゲームおよび共通データを探索中..."
+  mkdir -p "$GAMES_DIR"
+}
+
+update_game_data() {
+  local data_file_found
+  data_file_found=$(find "$DOWNLOAD_DIR" -maxdepth 1 -name "*.js" -type f -exec grep -l "AI_PORTFOLIO_DATA_FILE" {} + 2>/dev/null | head -n 1)
+
+  if [ -n "$data_file_found" ]; then
+    cp "$data_file_found" ./game-data.js
+    echo "📦 共通データファイルを更新しました: $(basename "$data_file_found") -> ./game-data.js"
+  elif [ -f "$DOWNLOAD_DIR/game-data.js" ]; then
+    cp "$DOWNLOAD_DIR/game-data.js" ./game-data.js
+    echo "📦 共通データファイルを更新しました: game-data.js -> ./game-data.js"
+  else
+    echo "ℹ 共通データファイル(game-data.js)の新規更新はありませんでした。"
+  fi
+}
+
+collect_html_games() {
+  find "$DOWNLOAD_DIR" -maxdepth 1 -name "*.html" -type f -exec grep -l "AI-GAME-PORTFOLIO" {} + 2>/dev/null | while read -r file; do
+    local filename
+    filename=$(basename "$file")
+    
+    if [ -f "$GAMES_DIR/$filename" ]; then
+      continue
+    fi
+
+    echo "✨ 新しいゲームを発見して収集: $filename"
+    cp "$file" "$GAMES_DIR/"
+  done
+}
+
+build_index_html() {
+  # 3-1. index.html の生成（ヘッダー・CSS）
+  cat << 'HTMLEOF' > index.html
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -95,42 +129,44 @@ cat << 'HTMLEOF' > index.html
       <div id="noResults">見つかりませんでした 😢</div>
 HTMLEOF
 
-# ==============================================================================
-# 4. games フォルダ内のHTMLを解析しカードを追加
-# ==============================================================================
-declare -A seen_titles
-game_list_text=""
-game_count=0
+  # 3-2. games フォルダ内のHTMLを解析しカードを追加
+  declare -A seen_titles
+  GAME_LIST_TEXT=""
+  GAME_COUNT=0
 
-# 更新日時の新しい順に処理
-while IFS= read -r file; do
-  [ -e "$file" ] || continue
-  filename=$(basename "$file")
-  
-  # タイトルタグの抽出
-  raw_title=$(grep -io '<title>.*</title>' "$file" | sed -e 's/<title>//i' -e 's/<\/title>//i' | head -n 1)
-  gametitle=${raw_title:-${filename%.*}}
-  
-  if [ -n "${seen_titles["$gametitle"]}" ]; then
-    echo "  ※重複タイトルをスキップ: $filename"
-    continue
-  fi
-  
-  seen_titles["$gametitle"]=1
-  game_list_text+="- ${gametitle}\n"
-  ((game_count++))
+  while IFS= read -r file; do
+    [ -e "$file" ] || continue
+    local filename
+    filename=$(basename "$file")
+    
+    # タイトルタグの抽出
+    local raw_title
+    raw_title=$(grep -io '<title>.*</title>' "$file" | sed -e 's/<title>//i' -e 's/<\/title>//i' | head -n 1)
+    local gametitle=${raw_title:-${filename%.*}}
+    
+    if [ -n "${seen_titles["$gametitle"]}" ]; then
+      echo "  ※重複タイトルをスキップ: $filename"
+      continue
+    fi
+    
+    seen_titles["$gametitle"]=1
+    GAME_LIST_TEXT+="- ${gametitle}\n"
+    ((GAME_COUNT++))
 
-  # AI-DEV-HANDOFF から「概要・ルール」を抽出
-  summary=$(sed -n '/AI-DEV-HANDOFF-START/,/AI-DEV-HANDOFF-END/p' "$file" | grep -i "^概要・ルール:" | sed 's/^概要・ルール:[  ]*//' | head -n 1)
-  if [ -z "$summary" ]; then
-    summary="このゲームの概要はまだ記載されていません。"
-  fi
+    # AI-DEV-HANDOFF から「概要・ルール」を抽出
+    local summary
+    summary=$(sed -n '/AI-DEV-HANDOFF-START/,/AI-DEV-HANDOFF-END/p' "$file" | grep -i "^概要・ルール:" | sed 's/^概要・ルール:[  ]*//' | head -n 1)
+    if [ -z "$summary" ]; then
+      summary="このゲームの概要はまだ記載されていません。"
+    fi
 
-  # エスケープ処理
-  safe_title=$(echo "$gametitle" | sed 's/"/\&quot;/g; s/</\&lt;/g; s/>/\&gt;/g')
-  safe_summary=$(echo "$summary" | sed 's/"/\&quot;/g; s/</\&lt;/g; s/>/\&gt;/g')
+    # エスケープ処理
+    local safe_title
+    safe_title=$(echo "$gametitle" | sed 's/"/\&quot;/g; s/</\&lt;/g; s/>/\&gt;/g')
+    local safe_summary
+    safe_summary=$(echo "$summary" | sed 's/"/\&quot;/g; s/</\&lt;/g; s/>/\&gt;/g')
 
-  cat << HTMLEOF >> index.html
+    cat << HTMLEOF >> index.html
       <div class="card" data-title="${safe_title}" data-desc="${safe_summary}">
         <div>
           <h3>${safe_title}</h3>
@@ -139,24 +175,22 @@ while IFS= read -r file; do
           <div class="meta">📁 ${filename}</div>
         </div>
         <div class="button-group">
-          <a href="games/${filename}" class="button" target="_blank">▶ Play</a>
+          <a href="${GAMES_DIR}/${filename}" class="button" target="_blank">▶ Play</a>
           <button class="button copy-btn" onclick="copyGameCode('${filename}')">📋 Code</button>
         </div>
       </div>
 HTMLEOF
-done < <(ls -t games/*.html 2>/dev/null)
+  done < <(ls -t "$GAMES_DIR"/*.html 2>/dev/null)
 
-# ==============================================================================
-# 5. フッターとJavaScriptを追加
-# ==============================================================================
-cat << HTMLEOF >> index.html
+  # 3-3. フッターとJavaScriptを追加
+  cat << HTMLEOF >> index.html
     </div>
   </div>
 
   <div id="toast">コードをコピーしました！</div>
 
   <script>
-    document.getElementById('gameCount').textContent = "全 ${game_count} 作品";
+    document.getElementById('gameCount').textContent = "全 ${GAME_COUNT} 作品";
 
     function filterGames() {
       const input = document.getElementById('searchInput').value.toLowerCase();
@@ -180,7 +214,7 @@ cat << HTMLEOF >> index.html
 
     async function copyGameCode(filename) {
       try {
-        const response = await fetch('games/' + filename);
+        const response = await fetch('${GAMES_DIR}/' + filename);
         if (!response.ok) throw new Error('Network response error');
         const text = await response.text();
         
@@ -202,23 +236,21 @@ cat << HTMLEOF >> index.html
 </body>
 </html>
 HTMLEOF
+}
 
-# ==============================================================================
-# 6. Git自動コミット＆プッシュ
-# ==============================================================================
-if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
-  git add .
-  git commit -m "🚀 ポートフォリオ更新: $(date +'%Y-%m-%d %H:%M:%S')"
-  git push origin main
-  echo "🎉 サイトの自動収集・ビルド・公開が完了しました！（計 ${game_count} 作品）"
-else
-  echo "✅ 変更がないため、Gitの更新はスキップしました。（計 ${game_count} 作品）"
-fi
+sync_with_git() {
+  if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+    git add .
+    git commit -m "🚀 ポートフォリオ更新: $(date +'%Y-%m-%d %H:%M:%S')"
+    git push origin main
+    echo "🎉 サイトの自動収集・ビルド・公開が完了しました！（計 ${GAME_COUNT} 作品）"
+  else
+    echo "✅ 変更がないため、Gitの更新はスキップしました。（計 ${GAME_COUNT} 作品）"
+  fi
+}
 
-# ==============================================================================
-# 7. AIプロンプト作成（クリップボード用）
-# ==============================================================================
-HANDOFF_RULE="・コード内に、開発引き継ぎ用の以下のコメントブロックを必ず含めてください。改良のたびに内容を最新に更新してください。
+generate_ai_prompt() {
+  local HANDOFF_RULE="・コード内に、開発引き継ぎ用の以下のコメントブロックを必ず含めてください。改良のたびに内容を最新に更新してください。
 <!-- AI-DEV-HANDOFF-START
 タイトル:
 バージョン:
@@ -230,52 +262,53 @@ HANDOFF_RULE="・コード内に、開発引き継ぎ用の以下のコメント
 設計上のこだわり・注意点:
 AI-DEV-HANDOFF-END -->"
 
-extract_handoff() {
-  sed -n '/AI-DEV-HANDOFF-START/,/AI-DEV-HANDOFF-END/p' "$1"
-}
+  echo -e "\n--------------------------------------------------"
+  echo "🤖 AIへの発注プロンプトを作成します。モードを選んでください。"
+  echo "  1) 🆕 新作を作る"
+  echo "  2) 🔧 既存ゲームを引き継ぐ（メタデータのみ添付・トークン節約）"
+  echo "  3) 🚀 既存ゲームを引き継ぐ（全コード添付・確実な改良）"
+  echo "  4) 📦 共通データ(game-data.js)のみを新しく作る・更新する"
+  echo -n "👉 番号 [1]: "
+  
+  local mode
+  read -r mode
+  mode=${mode:-1}
 
-echo -e "\n--------------------------------------------------"
-echo "🤖 AIへの発注プロンプトを作成します。モードを選んでください。"
-echo "  1) 🆕 新作を作る"
-echo "  2) 🔧 既存ゲームを引き継ぐ（メタデータのみ添付・トークン節約）"
-echo "  3) 🚀 既存ゲームを引き継ぐ（全コード添付・確実な改良）"
-echo "  4) 📦 共通データ(game-data.js)のみを新しく作る・更新する"
-echo -n "👉 番号 [1]: "
-read -r mode
-mode=${mode:-1}
-
-COMMON_RULES="【必須条件】
+  local COMMON_RULES="【必須条件】
 ・HTML/CSS/JSが1つにまとまった1ファイルの完全なコードを生成してください。
 ・コード内のどこかに必ず「AI-GAME-PORTFOLIO」というメタタグまたは識別コメントを含めてください。
 ・マスタデータ（カード、レシピ、家など）は外部URL「https://morinokum.github.io/my-website/game-data.js」から読み込み（window.RUNE_GAME_DATA を利用）、取得失敗時の簡単なフォールバックデータも備えてください。
 ・ローカルストレージなどによるセーブ機能も備えてください。
 ${HANDOFF_RULE}"
 
-if [ "$mode" = "4" ]; then
-  # ----------------------------------------------------------------------------
-  # モード4：共通データのみを更新する
-  # ----------------------------------------------------------------------------
-  echo -n "👉 新しいデータの世界観・テーマ（例: SF、ゾンビ、現代都市、宇宙、空Enterでお任せ）: "
-  read -r data_theme
-  if [ -n "$data_theme" ]; then
-    THEME_REQUEST="今回は「${data_theme}」というテーマ・世界観でデータを作成してください。"
-  else
-    THEME_REQUEST="今回は『紋章シリーズ』や王道ファンタジーからは完全に離れ、AI自身で「SF」「サイバーパンク」「現代劇」「妖怪」「動物」などの新しい斬新な世界観・テーマを考えてデータを作成してください。"
-  fi
+  local PROMPT=""
 
-  CURRENT_DATA=""
-  if [ -f "./game-data.js" ]; then
-    CURRENT_DATA="【現在のデータ構造の参考】
+  if [ "$mode" = "4" ]; then
+    # モード4
+    echo -n "👉 新しいデータの世界観・テーマ（例: SF、ゾンビ、現代都市、宇宙、空Enterでお任せ）: "
+    local data_theme
+    read -r data_theme
+    
+    local THEME_REQUEST
+    if [ -n "$data_theme" ]; then
+      THEME_REQUEST="今回は「${data_theme}」というテーマ・世界観でデータを作成してください。"
+    else
+      THEME_REQUEST="今回は『紋章シリーズ』や王道ファンタジーからは完全に離れ、AI自身で「SF」「サイバーパンク」「現代劇」「妖怪」「動物」などの新しい斬新な世界観・テーマを考えてデータを作成してください。"
+    fi
+
+    local CURRENT_DATA=""
+    if [ -f "./game-data.js" ]; then
+      CURRENT_DATA="【現在のデータ構造の参考】
 以下の構造（変数名、配列の形など）を参考にしつつ、中身のテキスト（名前、説明文、属性など）を新しいテーマに合わせて**完全に一新**してください。
 \`\`\`javascript
 $(cat ./game-data.js)
 \`\`\`"
-  else
-    CURRENT_DATA="【データ構造について】
+    else
+      CURRENT_DATA="【データ構造について】
 window.RUNE_GAME_DATA などのグローバル変数に、キャラクター、アイテム、マップ情報などの配列・オブジェクトを格納する形式にしてください。"
-  fi
+    fi
 
-  PROMPT="現在、ゲームの共通データとして『game-data.js』を使用していますが、このデータに引っ張られて同じようなテーマ（紋章シリーズなど）のゲームばかり生成されてしまう問題が起きています。
+    PROMPT="現在、ゲームの共通データとして『game-data.js』を使用していますが、このデータに引っ張られて同じようなテーマ（紋章シリーズなど）のゲームばかり生成されてしまう問題が起きています。
 
 そこで、今回はゲーム本体のコードではなく、【共通データ（game-data.js）のみ】を新しく作成してください。
 
@@ -290,46 +323,53 @@ ${CURRENT_DATA}
 
 ダウンロードしてそのまま使える形式で出力をお願いします。"
 
-elif [ "$mode" = "2" ] \vert{}\vert{} [ "$mode" = "3" ]; then
-  # ----------------------------------------------------------------------------
-  # モード2・3：既存ゲームを引き継ぐ処理
-  # ----------------------------------------------------------------------------
-  mapfile -t game_files < <(ls -t games/*.html 2>/dev/null)
-  if [ ${#game_files[@]} -eq 0 ]; then
-    echo "⚠ games フォルダにゲームがありません。"; exit 1
-  fi
-  echo -e "\n引き継ぐゲームを選んでください:"
-  for i in "${!game_files[@]}"; do
-    if grep -q "AI-DEV-HANDOFF-START" "${game_files[$i]}"; then mark="📝"; else mark="  "; fi
-    printf "  %2d) %s %s\n" "$((i+1))" "$mark" "$(basename "${game_files[$i]}")"
-  done
-  echo "  （📝 = 引き継ぎブロックあり）"
-  echo -n "👉 番号: "
-  read -r num
-  target="${game_files[$((num-1))]}"
-  if [ -z "$target" ] \vert{}\vert{} [ ! -f "$target" ]; then
-    echo "⚠ 無効な番号です。"; exit 1
-  fi
-
-  handoff=$(extract_handoff "$target")
-  if [ -z "$handoff" ]; then
-    echo "⚠ このゲームには引き継ぎブロックがありません。"
-    if [ "$mode" = "2" ]; then
-      echo "    全コード付き（モード3）に切り替えます。"
-      mode=3
+  elif [ "$mode" = "2" ] \vert{}\vert{} [ "$mode" = "3" ]; then
+    # モード2・3
+    local game_files
+    mapfile -t game_files < <(ls -t "$GAMES_DIR"/*.html 2>/dev/null)
+    if [ ${#game_files[@]} -eq 0 ]; then
+      echo "⚠ $GAMES_DIR フォルダにゲームがありません。"; exit 1
     fi
-    handoff="（引き継ぎブロックなし）"
-  fi
+    
+    echo -e "\n引き継ぐゲームを選んでください:"
+    for i in "${!game_files[@]}"; do
+      local mark="  "
+      if grep -q "AI-DEV-HANDOFF-START" "${game_files[$i]}"; then mark="📝"; fi
+      printf "  %2d) %s %s\n" "$((i+1))" "$mark" "$(basename "${game_files[$i]}")"
+    done
+    echo "  （📝 = 引き継ぎブロックあり）"
+    echo -n "👉 番号: "
+    
+    local num
+    read -r num
+    local target="${game_files[$((num-1))]}"
+    if [ -z "$target" ] \vert{}\vert{} [ ! -f "$target" ]; then
+      echo "⚠ 無効な番号です。"; exit 1
+    fi
 
-  echo -n "👉 今回の変更・追加したい内容（空Enterで『お任せ改良』）: "
-  read -r custom_request
-  if [ -n "$custom_request" ]; then
-    REQUEST_PART="このゲームを引き継いで、「${custom_request}」を実装してください。"
-  else
-    REQUEST_PART="このゲームを引き継いで、面白さが増すような改良や機能追加を提案し、実装してください。"
-  fi
+    local handoff
+    handoff=$(extract_handoff "$target")
+    if [ -z "$handoff" ]; then
+      echo "⚠ このゲームには引き継ぎブロックがありません。"
+      if [ "$mode" = "2" ]; then
+        echo "    全コード付き（モード3）に切り替えます。"
+        mode=3
+      fi
+      handoff="（引き継ぎブロックなし）"
+    fi
 
-  PROMPT="以下のHTMLブラウザゲームの開発を引き継いでください。
+    echo -n "👉 今回の変更・追加したい内容（空Enterで『お任せ改良』）: "
+    local custom_request
+    read -r custom_request
+    
+    local REQUEST_PART
+    if [ -n "$custom_request" ]; then
+      REQUEST_PART="このゲームを引き継いで、「${custom_request}」を実装してください。"
+    else
+      REQUEST_PART="このゲームを引き継いで、面白さが増すような改良や機能追加を提案し、実装してください。"
+    fi
+
+    PROMPT="以下のHTMLブラウザゲームの開発を引き継いでください。
 
 【ゲーム名】$(basename "$target")
 
@@ -339,63 +379,63 @@ ${handoff}
 ${REQUEST_PART}
 既存の仕様・セーブデータ互換を壊さないよう注意してください。
 "
-  if [ "$mode" = "3" ]; then
-    PROMPT+="
+    if [ "$mode" = "3" ]; then
+      PROMPT+="
 【現在の全コード】
 $(cat "$target")
 
 "
-  fi
-  PROMPT+="
+    fi
+    PROMPT+="
 ${COMMON_RULES}"
 
-else
-  # ----------------------------------------------------------------------------
-  # モード1：新作を作る処理
-  # ----------------------------------------------------------------------------
-  echo -n "👉 新作のテーマ・要素（空Enterでお任せ）: "
-  read -r custom_request
-  if [ -n "$custom_request" ]; then
-    REQUEST_PART="次回作として「${custom_request}」という概念やテーマを組み込んだゲームを作りたいです。※既存の『紋章シリーズ』とは異なるアプローチでお願いします。"
   else
-    REQUEST_PART="次回作を作りたいのですが、共通データを活かしつつも、既存作品（特に『紋章シリーズ』）とは全く被らない新しいルールの「面白くてハマる単一ファイルゲーム」のアイデアを1つ考えてください。"
-  fi
+    # モード1
+    echo -n "👉 新作のテーマ・要素（空Enterでお任せ）: "
+    local custom_request
+    read -r custom_request
+    
+    local REQUEST_PART
+    if [ -n "$custom_request" ]; then
+      REQUEST_PART="次回作として「${custom_request}」という概念やテーマを組み込んだゲームを作りたいです。※既存の『紋章シリーズ』とは異なるアプローチでお願いします。"
+    else
+      REQUEST_PART="次回作を作りたいのですが、共通データを活かしつつも、既存作品（特に『紋章シリーズ』）とは全く被らない新しいルールの「面白くてハマる単一ファイルゲーム」のアイデアを1つ考えてください。"
+    fi
 
-  PROMPT="私はこれまでに以下のHTMLブラウザゲームを作成しました。
+    PROMPT="私はこれまでに以下のHTMLブラウザゲームを作成しました。
 
-$(echo -e "$game_list_text")
+$(echo -e "$GAME_LIST_TEXT")
 これらは私の「AI-GAME-PORTFOLIO」に収録されています。
 
 ${REQUEST_PART}
 
 ${COMMON_RULES}"
-fi
-
-# ==============================================================================
-# 8. クリップボードへの転送処理
-# ==============================================================================
-copy_to_clipboard() {
-  local content="$1"
-  if command -v pbcopy >/dev/null 2>&1; then
-    printf '%s' "$content" | pbcopy; return 0        # Mac
-  elif command -v clip.exe >/dev/null 2>&1; then
-    printf '%s' "$content" | clip.exe; return 0      # Windows(WSL)
-  elif command -v xclip >/dev/null 2>&1; then
-    printf '%s' "$content" | xclip -selection clipboard; return 0 # Linux X11
-  elif command -v xsel >/dev/null 2>&1; then
-    printf '%s' "$content" | xsel -b; return 0       # Linux X11
-  elif command -v wl-copy >/dev/null 2>&1; then
-    printf '%s' "$content" | wl-copy; return 0       # Linux Wayland
   fi
-  return 1
+
+  # 転送実行
+  if copy_to_clipboard "$PROMPT"; then
+    echo -e "\n📋 クリップボードにAIへの指示文をコピーしました！"
+    echo "    新規チャットにペーストして発注してください。"
+  else
+    echo -e "\n⚠ クリップボード出力ツールが見つかりませんでした。以下をコピーしてください："
+    echo "--------------------------------------------------"
+    printf '%s\n' "$PROMPT"
+    echo "--------------------------------------------------"
+  fi
 }
 
-if copy_to_clipboard "$PROMPT"; then
-  echo -e "\n📋 クリップボードにAIへの指示文をコピーしました！"
-  echo "    新規チャットにペーストして発注してください。"
-else
-  echo -e "\n⚠ クリップボード出力ツールが見つかりませんでした。以下をコピーしてください："
-  echo "--------------------------------------------------"
-  printf '%s\n' "$PROMPT"
-  echo "--------------------------------------------------"
-fi
+# ==============================================================================
+# 4. 設計図（メイン処理）
+# ==============================================================================
+# ここがスクリプトの「目次」になります。処理の順番が一目でわかります。
+main() {
+  setup_environment
+  update_game_data
+  collect_html_games
+  build_index_html
+  sync_with_git
+  generate_ai_prompt
+}
+
+# 最後にメイン処理を1回だけ呼び出す
+main "$@"

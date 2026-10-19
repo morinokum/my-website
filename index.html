@@ -5,30 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Game Portfolio</title>
   <style>
-    :root { --bg: #1e1e1e; --panel: #2d2d30; --border: #3e3e42; --primary: #007acc; --primary-hover: #005999; --text: #f0f0f0; --text-muted: #cccccc; }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; }
-    header { text-align: center; padding: 60px 20px; background-color: #252526; border-bottom: 2px solid var(--primary); }
-    h1 { margin: 0; font-size: 2.8em; color: var(--primary); letter-spacing: 1px; }
-    header p { color: var(--text-muted); margin-top: 10px; font-size: 1.1em; }
-    .controls { max-width: 1000px; margin: 30px auto 10px; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
-    #searchInput { width: 100%; max-width: 350px; padding: 12px 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--panel); color: #fff; font-size: 1em; outline: none; transition: border-color 0.2s; }
-    #searchInput:focus { border-color: var(--primary); }
-    .container { max-width: 1000px; margin: 0 auto; padding: 20px; min-height: 50vh; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; }
-    .card { background: var(--panel); border-radius: 12px; padding: 25px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); transition: transform 0.2s, box-shadow 0.2s; border: 1px solid var(--border); display: flex; flex-direction: column; justify-content: space-between; }
-    .card:hover { transform: translateY(-5px); box-shadow: 0 12px 20px rgba(0,0,0,0.3); border-color: var(--primary); }
-    .card h3 { margin: 0 0 10px 0; color: #ffffff; font-size: 1.4em; }
-    .tag { display: inline-block; background: var(--primary); color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.75em; margin-bottom: 15px; font-weight: bold; }
-    .desc { font-size: 0.95em; line-height: 1.5; color: #d4d4d4; flex-grow: 1; margin-bottom: 20px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-    .meta { font-size: 0.8em; color: #888; margin-bottom: 15px; }
-    .button-group { display: flex; gap: 10px; }
-    a.button, button.button { flex: 1; text-align: center; padding: 12px; background: var(--primary); color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9em; transition: background 0.2s; }
-    a.button:hover, button.button:hover { background: var(--primary-hover); }
-    button.copy-btn { background: var(--border); }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1e1e1e; color: #f0f0f0; margin: 0; padding: 0; }
+    header { text-align: center; padding: 50px 20px; background-color: #252526; border-bottom: 2px solid #007acc; }
+    h1 { margin: 0; font-size: 2.5em; color: #007acc; }
+    header p { color: #cccccc; margin-top: 10px; }
+    .controls { max-width: 1000px; margin: 20px auto 0; padding: 0 20px; }
+    #searchInput { width: 100%; max-width: 300px; padding: 10px; border-radius: 4px; border: 1px solid #3e3e42; background: #2d2d30; color: #fff; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; }
+    .card { background: #2d2d30; border-radius: 8px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.2s; border: 1px solid #3e3e42; display: flex; flex-direction: column; justify-content: space-between; }
+    .card:hover { transform: translateY(-5px); border-color: #007acc; }
+    .card h3 { margin-top: 0; color: #ffffff; font-size: 1.4em; }
+    .tag { display: inline-block; background: #007acc; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75em; margin-bottom: 10px; }
+    .card p { font-size: 0.95em; line-height: 1.6; color: #d4d4d4; }
+    .button-group { display: flex; gap: 10px; margin-top: 15px; }
+    a.button, button.button { flex: 1; text-align: center; padding: 10px; background: #007acc; color: #ffffff; text-decoration: none; border-radius: 4px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9em; transition: background 0.2s; }
+    a.button:hover, button.button:hover { background: #005999; }
+    button.copy-btn { background: #3e3e42; }
     button.copy-btn:hover { background: #505055; }
-    #noResults { display: none; text-align: center; color: var(--text-muted); padding: 50px; font-size: 1.2em; grid-column: 1 / -1; }
-    #toast { visibility: hidden; min-width: 250px; background-color: var(--primary); color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 1000; left: 50%; bottom: 30px; transform: translateX(-50%); box-shadow: 0 4px 12px rgba(0,0,0,0.4); font-weight: bold; }
-    #toast.show { visibility: visible; animation: fadein 0.3s, fadeout 0.4s 2.5s; }
+    #toast { visibility: hidden; min-width: 200px; background-color: #333; color: #fff; text-align: center; border-radius: 4px; padding: 12px; position: fixed; z-index: 1000; left: 50%; bottom: 30px; transform: translateX(-50%); box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
     @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
     @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
   </style>
@@ -40,459 +36,410 @@
   </header>
   
   <div class="controls">
-    <input type="text" id="searchInput" placeholder="🔍 タイトルや内容で検索..." onkeyup="filterGames()">
-    <span id="gameCount" style="color: var(--text-muted); font-size: 0.9em; font-weight: bold;"></span>
+    <input type="text" id="searchInput" placeholder="ゲームを検索..." onkeyup="filterGames()">
   </div>
 
   <div class="container">
     <div class="grid" id="gameGrid">
-      <div id="noResults">見つかりませんでした 😢</div>
-      <div class="card" data-title="Wizardry-style RPG: Labyrinth of Legends (Enhanced)" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="Wizardry-style RPG: Labyrinth of Legends (Enhanced)">
         <div>
           <h3>Wizardry-style RPG: Labyrinth of Legends (Enhanced)</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 wizardry_style_rpg_labyrinth_of_legends.html</div>
+          <p>ファイル: wizardry_style_rpg_labyrinth_of_legends.html</p>
         </div>
         <div class="button-group">
-          <a href="games/wizardry_style_rpg_labyrinth_of_legends.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('wizardry_style_rpg_labyrinth_of_legends.html')">📋 Code</button>
+          <a href="games/wizardry_style_rpg_labyrinth_of_legends.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('wizardry_style_rpg_labyrinth_of_legends.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="Wizardry-style RPG: Labyrinth of Legends" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="Wizardry-style RPG: Labyrinth of Legends">
         <div>
           <h3>Wizardry-style RPG: Labyrinth of Legends</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 wizardry_rpg.html</div>
+          <p>ファイル: wizardry_rpg.html</p>
         </div>
         <div class="button-group">
-          <a href="games/wizardry_rpg.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('wizardry_rpg.html')">📋 Code</button>
+          <a href="games/wizardry_rpg.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('wizardry_rpg.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="壁ドン即死回避：空気抵抗のみ" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="壁ドン即死回避：空気抵抗のみ">
         <div>
           <h3>壁ドン即死回避：空気抵抗のみ</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 survival_wall_throw.html</div>
+          <p>ファイル: survival_wall_throw.html</p>
         </div>
         <div class="button-group">
-          <a href="games/survival_wall_throw.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('survival_wall_throw.html')">📋 Code</button>
+          <a href="games/survival_wall_throw.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('survival_wall_throw.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="紋章カードの怠惰なる生活 - Rune Craft Puzzle" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="紋章カードの怠惰なる生活 - Rune Craft Puzzle">
         <div>
           <h3>紋章カードの怠惰なる生活 - Rune Craft Puzzle</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 rune_craft_puzzle (1).html</div>
+          <p>ファイル: rune_craft_puzzle (1).html</p>
         </div>
         <div class="button-group">
-          <a href="games/rune_craft_puzzle (1).html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('rune_craft_puzzle (1).html')">📋 Code</button>
+          <a href="games/rune_craft_puzzle (1).html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('rune_craft_puzzle (1).html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="Retro Kyoto Run" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="Retro Kyoto Run">
         <div>
           <h3>Retro Kyoto Run</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 retro_kyoto_run.html</div>
+          <p>ファイル: retro_kyoto_run.html</p>
         </div>
         <div class="button-group">
-          <a href="games/retro_kyoto_run.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('retro_kyoto_run.html')">📋 Code</button>
+          <a href="games/retro_kyoto_run.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('retro_kyoto_run.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="レトロ町並みアドベンチャー" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="レトロ町並みアドベンチャー">
         <div>
           <h3>レトロ町並みアドベンチャー</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 pc88.html</div>
+          <p>ファイル: pc88.html</p>
         </div>
         <div class="button-group">
-          <a href="games/pc88.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('pc88.html')">📋 Code</button>
+          <a href="games/pc88.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('pc88.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="ミニマム文字RPG：ストーリー討伐" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="ミニマム文字RPG：ストーリー討伐">
         <div>
           <h3>ミニマム文字RPG：ストーリー討伐</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 minimal_rpg.html</div>
+          <p>ファイル: minimal_rpg.html</p>
         </div>
         <div class="button-group">
-          <a href="games/minimal_rpg.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('minimal_rpg.html')">📋 Code</button>
+          <a href="games/minimal_rpg.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('minimal_rpg.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="Neon Swarm Survivor | AI-GAME-PORTFOLIO" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="Neon Swarm Survivor | AI-GAME-PORTFOLIO">
         <div>
           <h3>Neon Swarm Survivor | AI-GAME-PORTFOLIO</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 neon_swarm_survivor.html</div>
+          <p>ファイル: neon_swarm_survivor.html</p>
         </div>
         <div class="button-group">
-          <a href="games/neon_swarm_survivor.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('neon_swarm_survivor.html')">📋 Code</button>
+          <a href="games/neon_swarm_survivor.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('neon_swarm_survivor.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="Neon Prism: Draw & Defend | AI-GAME-PORTFOLIO" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="Neon Prism: Draw & Defend | AI-GAME-PORTFOLIO">
         <div>
           <h3>Neon Prism: Draw & Defend | AI-GAME-PORTFOLIO</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 neon_prism_draw_defend.html</div>
+          <p>ファイル: neon_prism_draw_defend.html</p>
         </div>
         <div class="button-group">
-          <a href="games/neon_prism_draw_defend.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('neon_prism_draw_defend.html')">📋 Code</button>
+          <a href="games/neon_prism_draw_defend.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('neon_prism_draw_defend.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="Idle Drakkhen RPG" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="Idle Drakkhen RPG">
         <div>
           <h3>Idle Drakkhen RPG</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 idle_drakkhen.html</div>
+          <p>ファイル: idle_drakkhen.html</p>
         </div>
         <div class="button-group">
-          <a href="games/idle_drakkhen.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('idle_drakkhen.html')">📋 Code</button>
+          <a href="games/idle_drakkhen.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('idle_drakkhen.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="Cyber Maze: God Hand" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="Cyber Maze: God Hand">
         <div>
           <h3>Cyber Maze: God Hand</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 kabe.html</div>
+          <p>ファイル: kabe.html</p>
         </div>
         <div class="button-group">
-          <a href="games/kabe.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('kabe.html')">📋 Code</button>
+          <a href="games/kabe.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('kabe.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="AI-GAME-PORTFOLIO - Immersive Scene Experience" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="AI-GAME-PORTFOLIO - Immersive Scene Experience">
         <div>
           <h3>AI-GAME-PORTFOLIO - Immersive Scene Experience</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 gorgeous_scene_transition_portfolio.html</div>
+          <p>ファイル: gorgeous_scene_transition_portfolio.html</p>
         </div>
         <div class="button-group">
-          <a href="games/gorgeous_scene_transition_portfolio.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('gorgeous_scene_transition_portfolio.html')">📋 Code</button>
+          <a href="games/gorgeous_scene_transition_portfolio.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('gorgeous_scene_transition_portfolio.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="紋章カードの怠惰なる生活 - Rune Craft Puzzle (マイホーム拡張版)" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="紋章カードの怠惰なる生活 - Rune Craft Puzzle (マイホーム拡張版)">
         <div>
           <h3>紋章カードの怠惰なる生活 - Rune Craft Puzzle (マイホーム拡張版)</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 gemini-code-1792275752537.html</div>
+          <p>ファイル: gemini-code-1792275752537.html</p>
         </div>
         <div class="button-group">
-          <a href="games/gemini-code-1792275752537.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('gemini-code-1792275752537.html')">📋 Code</button>
+          <a href="games/gemini-code-1792275752537.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('gemini-code-1792275752537.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="紋章ルーン・コレクター" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="紋章ルーン・コレクター">
         <div>
           <h3>紋章ルーン・コレクター</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 gemini-code-1792359576046.html</div>
+          <p>ファイル: gemini-code-1792359576046.html</p>
         </div>
         <div class="button-group">
-          <a href="games/gemini-code-1792359576046.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('gemini-code-1792359576046.html')">📋 Code</button>
+          <a href="games/gemini-code-1792359576046.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('gemini-code-1792359576046.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="紋章カードと漆黒の狙撃手 - Mouse Aim Rune Action | AI-GAME-PORTFOLIO" data-desc="プレイヤーはマウスカーソルで「精度と照準（マウスエイム）」をコントロールし、画面を飛び交うルーン（紋章カード）や襲来する魔物を狙い撃つハイスピード・マウスエイムアクションゲーム。RUNE_GAME_DATAのカード・ルーン素材を活用し、狙撃・コンボ・合成・装備強化を行いつつ階層（ステージ）を攻略していく。">
+      <div class="card" data-title="紋章カードと漆黒の狙撃手 - Mouse Aim Rune Action | AI-GAME-PORTFOLIO">
         <div>
           <h3>紋章カードと漆黒の狙撃手 - Mouse Aim Rune Action | AI-GAME-PORTFOLIO</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">プレイヤーはマウスカーソルで「精度と照準（マウスエイム）」をコントロールし、画面を飛び交うルーン（紋章カード）や襲来する魔物を狙い撃つハイスピード・マウスエイムアクションゲーム。RUNE_GAME_DATAのカード・ルーン素材を活用し、狙撃・コンボ・合成・装備強化を行いつつ階層（ステージ）を攻略していく。</div>
-          <div class="meta">📁 gemini-code-1792292922977.html</div>
+          <p>ファイル: gemini-code-1792292922977.html</p>
         </div>
         <div class="button-group">
-          <a href="games/gemini-code-1792292922977.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('gemini-code-1792292922977.html')">📋 Code</button>
+          <a href="games/gemini-code-1792292922977.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('gemini-code-1792292922977.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="紋章カードの錬金市場：ルーン・トレード | AI-GAME-PORTFOLIO" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="紋章カードの錬金市場：ルーン・トレード | AI-GAME-PORTFOLIO">
         <div>
           <h3>紋章カードの錬金市場：ルーン・トレード | AI-GAME-PORTFOLIO</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 gemini-code-1792280377735.html</div>
+          <p>ファイル: gemini-code-1792280377735.html</p>
         </div>
         <div class="button-group">
-          <a href="games/gemini-code-1792280377735.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('gemini-code-1792280377735.html')">📋 Code</button>
+          <a href="games/gemini-code-1792280377735.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('gemini-code-1792280377735.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="エピック・アドベンチャー" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="エピック・アドベンチャー">
         <div>
           <h3>エピック・アドベンチャー</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 gemini-code-1791672889300.html</div>
+          <p>ファイル: gemini-code-1791672889300.html</p>
         </div>
         <div class="button-group">
-          <a href="games/gemini-code-1791672889300.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('gemini-code-1791672889300.html')">📋 Code</button>
+          <a href="games/gemini-code-1791672889300.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('gemini-code-1791672889300.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="Neon Chain: Cascade | AI-GAME-PORTFOLIO" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="Neon Chain: Cascade | AI-GAME-PORTFOLIO">
         <div>
           <h3>Neon Chain: Cascade | AI-GAME-PORTFOLIO</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 gemini-code-1791574937101.html</div>
+          <p>ファイル: gemini-code-1791574937101.html</p>
         </div>
         <div class="button-group">
-          <a href="games/gemini-code-1791574937101.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('gemini-code-1791574937101.html')">📋 Code</button>
+          <a href="games/gemini-code-1791574937101.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('gemini-code-1791574937101.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="NEON BLADE - Cyber Action" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="NEON BLADE - Cyber Action">
         <div>
           <h3>NEON BLADE - Cyber Action</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 gemini-code-1791973327125.html</div>
+          <p>ファイル: gemini-code-1791973327125.html</p>
         </div>
         <div class="button-group">
-          <a href="games/gemini-code-1791973327125.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('gemini-code-1791973327125.html')">📋 Code</button>
+          <a href="games/gemini-code-1791973327125.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('gemini-code-1791973327125.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="紋章カードの怠惰なる生活 - Rune Craft Puzzle (拡張版)" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="紋章カードの怠惰なる生活 - Rune Craft Puzzle (拡張版)">
         <div>
           <h3>紋章カードの怠惰なる生活 - Rune Craft Puzzle (拡張版)</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 gemini-code-1792274904676.html</div>
+          <p>ファイル: gemini-code-1792274904676.html</p>
         </div>
         <div class="button-group">
-          <a href="games/gemini-code-1792274904676.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('gemini-code-1792274904676.html')">📋 Code</button>
+          <a href="games/gemini-code-1792274904676.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('gemini-code-1792274904676.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="FM SYNTHESIS STRIKER - 鋼鉄の残響" data-desc="Konami風の重厚なFM音源サラウンドBGMとSEにこだわった横スクロールシューティング。自機を操作し敵を撃破してスコアを稼ぐ。ボスを倒すとループ進行。">
+      <div class="card" data-title="FM SYNTHESIS STRIKER - 鋼鉄の残響">
         <div>
           <h3>FM SYNTHESIS STRIKER - 鋼鉄の残響</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">Konami風の重厚なFM音源サラウンドBGMとSEにこだわった横スクロールシューティング。自機を操作し敵を撃破してスコアを稼ぐ。ボスを倒すとループ進行。</div>
-          <div class="meta">📁 fm_synthesis_striker.html</div>
+          <p>ファイル: fm_synthesis_striker.html</p>
         </div>
         <div class="button-group">
-          <a href="games/fm_synthesis_striker.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('fm_synthesis_striker.html')">📋 Code</button>
+          <a href="games/fm_synthesis_striker.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('fm_synthesis_striker.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="レトロ町並みアドベンチャー - Humanized Edition" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="レトロ町並みアドベンチャー - Humanized Edition">
         <div>
           <h3>レトロ町並みアドベンチャー - Humanized Edition</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 g.html</div>
+          <p>ファイル: g.html</p>
         </div>
         <div class="button-group">
-          <a href="games/g.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('g.html')">📋 Code</button>
+          <a href="games/g.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('g.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="天空の呪い - Fallout-style Narrative RPG" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="天空の呪い - Fallout-style Narrative RPG">
         <div>
           <h3>天空の呪い - Fallout-style Narrative RPG</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 gemini-code-1791547276422.html</div>
+          <p>ファイル: gemini-code-1791547276422.html</p>
         </div>
         <div class="button-group">
-          <a href="games/gemini-code-1791547276422.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('gemini-code-1791547276422.html')">📋 Code</button>
+          <a href="games/gemini-code-1791547276422.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('gemini-code-1791547276422.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="Pseudo-3D Raycasting FPS" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="Pseudo-3D Raycasting FPS">
         <div>
           <h3>Pseudo-3D Raycasting FPS</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 fps_game.html</div>
+          <p>ファイル: fps_game.html</p>
         </div>
         <div class="button-group">
-          <a href="games/fps_game.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('fps_game.html')">📋 Code</button>
+          <a href="games/fps_game.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('fps_game.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="FM SYNTHESIS STRIKER - 鋼鉄の残響 (Enhanced Melody & Smooth Edition)" data-desc="Konami風の重厚かつ叙情的なFM音源BGM（陰陽表現・128ステップ複合旋律）を搭載した横スクロールシューティング。描画最適化（shadowBlur削減、アルファ合成最適化、オブジェクト管理軽量化）により滑らかな60FPS動作を実現。">
+      <div class="card" data-title="FM SYNTHESIS STRIKER - 鋼鉄の残響 (Enhanced Melody & Smooth Edition)">
         <div>
           <h3>FM SYNTHESIS STRIKER - 鋼鉄の残響 (Enhanced Melody & Smooth Edition)</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">Konami風の重厚かつ叙情的なFM音源BGM（陰陽表現・128ステップ複合旋律）を搭載した横スクロールシューティング。描画最適化（shadowBlur削減、アルファ合成最適化、オブジェクト管理軽量化）により滑らかな60FPS動作を実現。</div>
-          <div class="meta">📁 fm_synthesis_striker (1).html</div>
+          <p>ファイル: fm_synthesis_striker (1).html</p>
         </div>
         <div class="button-group">
-          <a href="games/fm_synthesis_striker (1).html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('fm_synthesis_striker (1).html')">📋 Code</button>
+          <a href="games/fm_synthesis_striker (1).html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('fm_synthesis_striker (1).html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="CROSSROAD CHAOS | AI-GAME-PORTFOLIO" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="CROSSROAD CHAOS | AI-GAME-PORTFOLIO">
         <div>
           <h3>CROSSROAD CHAOS | AI-GAME-PORTFOLIO</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 crossroad_chaos.html</div>
+          <p>ファイル: crossroad_chaos.html</p>
         </div>
         <div class="button-group">
-          <a href="games/crossroad_chaos.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('crossroad_chaos.html')">📋 Code</button>
+          <a href="games/crossroad_chaos.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('crossroad_chaos.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="FM SYNC: CYBER GROOVE" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="FM SYNC: CYBER GROOVE">
         <div>
           <h3>FM SYNC: CYBER GROOVE</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 fm_sync_cyber_groove.html</div>
+          <p>ファイル: fm_sync_cyber_groove.html</p>
         </div>
         <div class="button-group">
-          <a href="games/fm_sync_cyber_groove.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('fm_sync_cyber_groove.html')">📋 Code</button>
+          <a href="games/fm_sync_cyber_groove.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('fm_sync_cyber_groove.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="Echoes of Frequency | AI-GAME-PORTFOLIO" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="Echoes of Frequency | AI-GAME-PORTFOLIO">
         <div>
           <h3>Echoes of Frequency | AI-GAME-PORTFOLIO</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 echoes_of_frequency.html</div>
+          <p>ファイル: echoes_of_frequency.html</p>
         </div>
         <div class="button-group">
-          <a href="games/echoes_of_frequency.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('echoes_of_frequency.html')">📋 Code</button>
+          <a href="games/echoes_of_frequency.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('echoes_of_frequency.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="Conquistador: Smoke & Rank (1519 Mexico Expedition)" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="Conquistador: Smoke & Rank (1519 Mexico Expedition)">
         <div>
           <h3>Conquistador: Smoke & Rank (1519 Mexico Expedition)</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 conquistador_smoke_rank.html</div>
+          <p>ファイル: conquistador_smoke_rank.html</p>
         </div>
         <div class="button-group">
-          <a href="games/conquistador_smoke_rank.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('conquistador_smoke_rank.html')">📋 Code</button>
+          <a href="games/conquistador_smoke_rank.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('conquistador_smoke_rank.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="蒸気機関：プレッシャー・ライン" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="蒸気機関：プレッシャー・ライン">
         <div>
           <h3>蒸気機関：プレッシャー・ライン</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 code_artifact.html</div>
+          <p>ファイル: code_artifact.html</p>
         </div>
         <div class="button-group">
-          <a href="games/code_artifact.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('code_artifact.html')">📋 Code</button>
+          <a href="games/code_artifact.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('code_artifact.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="紋章カードの自動化工場：ルーン・コンベア・オートメーション | AI-GAME-PORTFOLIO" data-desc="画面上にコンベア・分岐器・錬金窯・フィルターを自由に配置し、搬送・合成・出荷を自動化するファクトリーパズル。マスターデータのレシピに従って高級ルーンをクラフトし、出荷して納品クエストをクリアしてゴールドを稼ぐ。ゴールドで領地/マイホームを強化して工場をパワーアップ。">
+      <div class="card" data-title="紋章カードの自動化工場：ルーン・コンベア・オートメーション | AI-GAME-PORTFOLIO">
         <div>
           <h3>紋章カードの自動化工場：ルーン・コンベア・オートメーション | AI-GAME-PORTFOLIO</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">画面上にコンベア・分岐器・錬金窯・フィルターを自由に配置し、搬送・合成・出荷を自動化するファクトリーパズル。マスターデータのレシピに従って高級ルーンをクラフトし、出荷して納品クエストをクリアしてゴールドを稼ぐ。ゴールドで領地/マイホームを強化して工場をパワーアップ。</div>
-          <div class="meta">📁 code_artifact (8).html</div>
+          <p>ファイル: code_artifact (8).html</p>
         </div>
         <div class="button-group">
-          <a href="games/code_artifact (8).html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('code_artifact (8).html')">📋 Code</button>
+          <a href="games/code_artifact (8).html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('code_artifact (8).html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="紋章カードの領地経営：ルーン・オートバトラー | AI-GAME-PORTFOLIO" data-desc="RUNE_GAME_DATAのカード・素材・召喚ルーンを活用し、領地施設を建設・強化しながら、カードでチームを編成してウェーブごとに迫り来る魔物を自動戦闘（オートバトル）で退治する戦略シミュレーション＆オートバトラーゲーム。勝利報酬でルーンカードを購入・合成・進化させ、領地を発展させつつ高難易度ウェーブを目指す。">
+      <div class="card" data-title="紋章カードの領地経営：ルーン・オートバトラー | AI-GAME-PORTFOLIO">
         <div>
           <h3>紋章カードの領地経営：ルーン・オートバトラー | AI-GAME-PORTFOLIO</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">RUNE_GAME_DATAのカード・素材・召喚ルーンを活用し、領地施設を建設・強化しながら、カードでチームを編成してウェーブごとに迫り来る魔物を自動戦闘（オートバトル）で退治する戦略シミュレーション＆オートバトラーゲーム。勝利報酬でルーンカードを購入・合成・進化させ、領地を発展させつつ高難易度ウェーブを目指す。</div>
-          <div class="meta">📁 code_artifact (7).html</div>
+          <p>ファイル: code_artifact (7).html</p>
         </div>
         <div class="button-group">
-          <a href="games/code_artifact (7).html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('code_artifact (7).html')">📋 Code</button>
+          <a href="games/code_artifact (7).html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('code_artifact (7).html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="AI-GAME-PORTFOLIO - Short Video Reels" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="AI-GAME-PORTFOLIO - Short Video Reels">
         <div>
           <h3>AI-GAME-PORTFOLIO - Short Video Reels</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 ai_game_portfolio.html</div>
+          <p>ファイル: ai_game_portfolio.html</p>
         </div>
         <div class="button-group">
-          <a href="games/ai_game_portfolio.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('ai_game_portfolio.html')">📋 Code</button>
+          <a href="games/ai_game_portfolio.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('ai_game_portfolio.html')">コードコピー</button>
         </div>
       </div>
-      <div class="card" data-title="CHROMA DECA - AI-GAME-PORTFOLIO" data-desc="このゲームの概要はまだ記載されていません。">
+      <div class="card" data-title="CHROMA DECA - AI-GAME-PORTFOLIO">
         <div>
           <h3>CHROMA DECA - AI-GAME-PORTFOLIO</h3>
           <span class="tag">Web Game</span>
-          <div class="desc">このゲームの概要はまだ記載されていません。</div>
-          <div class="meta">📁 chroma_deca.html</div>
+          <p>ファイル: chroma_deca.html</p>
         </div>
         <div class="button-group">
-          <a href="games/chroma_deca.html" class="button" target="_blank">▶ Play</a>
-          <button class="button copy-btn" onclick="copyGameCode('chroma_deca.html')">📋 Code</button>
+          <a href="games/chroma_deca.html" class="button" target="_blank">Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('chroma_deca.html')">コードコピー</button>
         </div>
       </div>
     </div>
   </div>
 
-  <div id="toast">コードをコピーしました！</div>
+  <div id="toast">コードをクリップボードにコピーしました！</div>
 
   <script>
-    document.getElementById('gameCount').textContent = "全 34 作品";
-
     function filterGames() {
       const input = document.getElementById('searchInput').value.toLowerCase();
       const cards = document.querySelectorAll('.card');
-      let visibleCount = 0;
-
       cards.forEach(card => {
         const title = card.getAttribute('data-title').toLowerCase();
-        const desc = card.getAttribute('data-desc').toLowerCase();
-        
-        if (title.includes(input) || desc.includes(input)) {
-          card.style.display = '';
-          visibleCount++;
-        } else {
-          card.style.display = 'none';
-        }
+        card.style.display = title.includes(input) ? '' : 'none';
       });
-
-      document.getElementById('noResults').style.display = visibleCount === 0 ? 'block' : 'none';
     }
 
     async function copyGameCode(filename) {
       try {
         const response = await fetch('games/' + filename);
-        if (!response.ok) throw new Error('Network response error');
+        if (!response.ok) throw new Error('Network response was not ok');
         const text = await response.text();
         
         await navigator.clipboard.writeText(text);
-        showToast('📋 ' + filename + ' のコードをコピーしました！');
+        showToast(filename + ' のコードをコピーしました！');
       } catch (err) {
-        console.error('コピー失敗:', err);
+        console.error('コピーに失敗しました', err);
         alert('コードの読み込みに失敗しました。');
       }
     }
@@ -501,7 +448,7 @@
       const toast = document.getElementById('toast');
       toast.textContent = message;
       toast.className = 'show';
-      setTimeout(() => { toast.className = ''; }, 2800);
+      setTimeout(() => { toast.className = ''; }, 3000);
     }
   </script>
 </body>

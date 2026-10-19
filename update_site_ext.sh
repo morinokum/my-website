@@ -1,164 +1,191 @@
 #!/bin/bash
 
 # ==============================================================================
-# AI-EXTENDABLE WRAPPER SCRIPT
+# AI-EXTENDABLE WRAPPER SCRIPT (Optimized & Enhanced v2.0)
 # ==============================================================================
-# 【AIへのコンテキスト・指示 (Context for AI Assistant)】
-# このスクリプトは、コアシステムである `update_site.sh` を直接編集せずに
-# 機能を安全に拡張（ラップ）するための実行ファイルです。
-# 
-# AIであるあなたに機能追加を依頼された場合、以下のルールに従ってください：
-# 1. 決して `source ./update_site.sh` の行を削除・変更しないでください。
-# 2. 新しい機能を追加する場合は、ファイルの末尾にある【拡張コード追加エリア】に
-#    下へ下へと追記する形で実装してください。
-# 3. 以下の変数は `source` によって親スクリプトから引き継がれており、そのまま利用可能です：
-#    - $PROMPT        : 生成されたAIへの発注プロンプト（文字列）
-#    - $game_count    : 処理・収集されたゲームの合計数（数値）
-#    - $DOWNLOAD_DIR  : 探索対象のダウンロードフォルダのパス
-#    - $mode          : ユーザーが選択した実行モード (1=新作, 2/3=引継ぎ, 4=共通データ)
-# ==============================================================================
-
-echo "🚀 [Wrapper] 拡張版アップデーターを起動します..."
 
 # ------------------------------------------------------------------------------
-# 【フェーズ1】事前処理エリア（元のスクリプトが走る前に行う処理）
+# 【設定・ユーティリティ】ターミナルカラー設定
+# ------------------------------------------------------------------------------
+COLOR_INFO='\033[0;36m'   # Cyan
+COLOR_SUCCESS='\033[0;32m' # Green
+COLOR_WARN='\033[1;33m'    # Yellow
+COLOR_ERROR='\033[0;31m'   # Red
+COLOR_RESET='\033[0m'      # Reset
+
+print_info() { echo -e "${COLOR_INFO}$1${COLOR_RESET}"; }
+print_success() { echo -e "${COLOR_SUCCESS}$1${COLOR_RESET}"; }
+print_warn() { echo -e "${COLOR_WARN}$1${COLOR_RESET}"; }
+print_error() { echo -e "${COLOR_ERROR}$1${COLOR_RESET}"; }
+
+print_info "🚀 [Wrapper] 拡張版アップデーターを起動します..."
+
+# ダウンロードディレクトリの判定（本体と同じロジック）
+DOWNLOAD_DIR="$HOME/Downloads"
+[ -d "$HOME/ダウンロード" ] && DOWNLOAD_DIR="$HOME/ダウンロード"
+
+# ------------------------------------------------------------------------------
+# 【フェーズ1】事前処理エリア
 # ------------------------------------------------------------------------------
 if [ -f "index.html" ]; then
   cp index.html index_backup.html
-  echo "📦 [Wrapper] index.html のバックアップを作成しました。"
+  print_success "📦 [Wrapper] index.html のバックアップを作成しました。"
 fi
 
 # ------------------------------------------------------------------------------
 # 【フェーズ2】コアシステムの実行
 # ------------------------------------------------------------------------------
-echo "⚙  [Wrapper] コアスクリプト (update_site.sh) を呼び出します..."
+print_info "⚙  [Wrapper] コアスクリプト (update_site.sh) を呼び出します..."
 
+# コアスクリプトを実行し、変数を引き継ぐ
 source ./update_site.sh
 
-echo -e "\n⚙  [Wrapper] コアスクリプトの実行が完了しました。"
+echo -e "\n${COLOR_INFO}⚙  [Wrapper] コアスクリプトの実行が完了しました。${COLOR_RESET}"
 
 # ------------------------------------------------------------------------------
-# 【フェーズ3】拡張コード追加エリア（AIはここから下に追記していくこと）
+# 【フェーズ3】拡張コード追加エリア
 # ------------------------------------------------------------------------------
-echo "🔌 [Wrapper] 拡張処理を開始します..."
+print_info "🔌 [Wrapper] 拡張処理を開始します..."
 
-# --- 拡張機能1: AIプロンプトの履歴保存 ---
+# --- 拡張機能1: AIプロンプトの履歴保存 (整理して保存) ---
 if [ -n "$PROMPT" ]; then
   mkdir -p prompt_history
   timestamp=$(date +'%Y%m%d_%H%M%S')
-  history_file="prompt_history/prompt_${timestamp}_mode${mode}.txt"
+  # 対象ゲーム名がある場合はファイル名に含める
+  target_name="new"
+  [ -n "$target" ] && target_name=$(basename "$target" .html)
+  
+  history_file="prompt_history/prompt_${timestamp}_mode${mode}_${target_name}.txt"
   echo "$PROMPT" > "$history_file"
-  echo "💾 [Extension] プロンプトのバックアップを保存しました: $history_file"
+  print_success "💾 [Extension] AIへのプロンプト履歴を保存しました: $history_file"
 fi
 
 # --- 拡張機能2: 実行ログの記録 ---
 log_file="update_wrapper.log"
-echo "[$(date +'\%Y-\%m-\%d \%H:\%M:\%S')] Mode:$mode | Games: $game_count" >> "$log_file"
-echo "📝 [Extension] 実行ログを $log_file に追記しました。"
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Mode:$mode | Target: ${target_name:-none} | Games: ${game_count:-0}" >> "$log_file"
+print_success "📝 [Extension] 実行ログを $log_file に記録しました。"
 
-# ==============================================================================
-# ↓↓↓ AIは今後の追加リクエストをここから下に追記してください ↓↓↓
-# ==============================================================================
 
-# --- 拡張機能3: 任意のMP3とHTMLファイルを手動選択し、配置・アップロード ---
-echo "🎵 [Extension] MP3とゲーム(HTML)の組み込み処理を開始します..."
+# --- 拡張機能3: メディアアセット(BGM/画像)と手動HTMLの組み込み (複数選択対応) ---
+print_info "\n🎵🖼 [Extension] アセットとゲームの手動組み込み処理を開始します"
 
-SEARCH_DIR="/home/hirosi/ダウンロード"
+SEARCH_DIR="$DOWNLOAD_DIR"
 
 if [ -d "$SEARCH_DIR" ]; then
-  # MP3ファイルを検索
-  mapfile -t all_mp3_files < <(find "$SEARCH_DIR" -maxdepth 1 -type f -iname "*.mp3")
-  audio_count_found=${#all_mp3_files[@]}
+  # 音声と画像を検索 (mp3, wav, png, jpg, jpeg, webp)
+  mapfile -t all_assets < <(find "$SEARCH_DIR" -maxdepth 1 -type f \( -iname "*.mp3" -o -iname "*.wav" -o -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" \))
+  asset_count=${#all_assets[@]}
   
   # HTMLファイルを検索
   mapfile -t all_html_files < <(find "$SEARCH_DIR" -maxdepth 1 -type f -iname "*.html")
-  html_count_found=${#all_html_files[@]}
+  html_count=${#all_html_files[@]}
 else
-  echo "⚠ 検索先ディレクトリ ($SEARCH_DIR) が見つかりません。"
-  audio_count_found=0
-  html_count_found=0
+  print_warn "⚠ 検索先ディレクトリ ($SEARCH_DIR) が見つかりません。"
+  asset_count=0
+  html_count=0
 fi
 
-# 1. MP3の選択
-if [ "$audio_count_found" -gt 0 ]; then
-  echo "🔍 [Extension] ${audio_count_found} 件のMP3ファイルを発見しました。"
+copied_assets=()
+copied_html=""
+
+# 1. アセットの選択 (複数選択対応)
+if [ "$asset_count" -gt 0 ]; then
+  echo -e "\n${COLOR_INFO}🔍 ${asset_count} 件のメディアファイル(音声/画像)を発見しました。${COLOR_RESET}"
   echo "--------------------------------------------------"
-  echo " どのMP3ファイルを組み込みますか？（0でスキップ）"
+  echo " 組み込むアセットを選んでください（スペース区切りで複数選択可）"
+  echo " 例: 1 3 4 （※0でスキップ）"
   echo "--------------------------------------------------"
   echo "0) スキップする"
-  for i in "${!all_mp3_files[@]}"; do
-    echo "$((i+1)))$(basename "${all_mp3_files[$i]}")"
+  for i in "${!all_assets[@]}"; do
+    echo "$((i+1))) $(basename "${all_assets[$i]}")"
   done
 
-  read -p "選択 (0-${audio_count_found}): " mp3_choice
+  read -p "選択 (0-${asset_count}): " asset_choices
 
-  if [[ "$mp3_choice" =~ ^[0-9]+$ ]] && [ "$mp3_choice" -gt 0 ] && [ "$mp3_choice" -le "$audio_count_found" ]; then
-    selected_idx=$((mp3_choice-1))
-    selected_bgm="${all_mp3_files[$selected_idx]}"
-    bgm_filename=$(basename "$selected_bgm")
-    echo "🎵 選択されたMP3: $bgm_filename"
-    
-    # 2. HTML(ゲーム)の選択
-    if [ "$html_count_found" -gt 0 ]; then
-      echo ""
-      echo "--------------------------------------------------"
-      echo " どのゲーム(HTML)に組み込みますか？（0でスキップ）"
-      echo "--------------------------------------------------"
-      echo "0) スキップする"
-      for i in "${!all_html_files[@]}"; do
-        echo "$((i+1)))$(basename "${all_html_files[$i]}")"
-      done
-      
-      read -p "選択 (0-${html_count_found}): " html_choice
-      
-      if [[ "$html_choice" =~ ^[0-9]+$ ]] && [ "$html_choice" -gt 0 ] && [ "$html_choice" -le "$html_count_found" ]; then
-        html_idx=$((html_choice-1))
-        selected_html="${all_html_files[$html_idx]}"
-        html_filename=$(basename "$selected_html")
-        game_name="${html_filename%.*}" # 拡張子を除いたファイル名
-        
-        echo "🎮 選択されたゲーム: $html_filename"
-        
-        # 3. カレントディレクトリへのコピー実行
-        # 現在のフォルダ(Gitリポジトリ)に両方のファイルをコピーします
-        cp "$selected_bgm" .
-        cp "$selected_html" .
-        echo "✅ 配置完了: 現在のフォルダに ${html_filename} と ${bgm_filename} をコピーしました！"
-        
-        # --- 拡張機能4: GitHubへのアップロード処理 ---
-        echo ""
-        echo "🚀 [Extension] ゲームのアップロード(Git Push)を開始します..."
-        read -p "GitHub Pagesに変更をアップロードしますか？ (y/n): " upload_choice
-        if [[ "$upload_choice" == [yY]* ]]; then
-          echo "📦 変更をステージング(git add)しています..."
-          git add .
-          
-          echo "📝 コミット(git commit)しています..."
-          git commit -m "Update: Add game ${html_filename} and BGM${bgm_filename}"
-          
-          echo "☁️ アップロード(git push)しています..."
-          git push
-          
-          if [ $? -eq 0 ]; then
-            echo "✅ アップロード成功！ 数分後にGitHub Pagesに反映されます。"
-          else
-            echo "❌ アップロードに失敗しました。Gitの接続設定等を確認してください。"
-          fi
-        else
-          echo "⏭ アップロードをスキップしました。"
-        fi
-        
-      else
-        echo "⏭ ゲーム(HTML)の選択がスキップされたか、無効な入力です。処理を中止します。"
+  if [[ "$asset_choices" != "0" && -n "$asset_choices" ]]; then
+    for choice in $asset_choices; do
+      if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -gt 0 ] && [ "$choice" -le "$asset_count" ]; then
+        idx=$((choice-1))
+        file="${all_assets[$idx]}"
+        cp "$file" .
+        copied_assets+=("$(basename "$file")")
+        print_success "✅ コピー: $(basename "$file")"
       fi
-    else
-      echo "⚠ HTMLファイルが指定のフォルダ内に見つかりませんでした。"
-    fi
+    done
   else
-    echo "⏭ MP3の選択がスキップされたか、無効な入力です。処理を中止します。"
+    print_warn "⏭ アセットの選択をスキップしました。"
   fi
 else
-  echo "⚠ MP3ファイルが指定のフォルダ(${SEARCH_DIR})内に見つかりませんでした。"
+  print_warn "⏭ 音声や画像ファイルが指定フォルダ内にありませんでした。"
 fi
 
-echo "✨ [Wrapper] すべての処理が正常に完了しました！"
+# 2. HTML(ゲーム)の手動選択
+if [ "$html_count" -gt 0 ]; then
+  echo -e "\n${COLOR_INFO}🔍 ${html_count} 件のHTMLファイルを発見しました。${COLOR_RESET}"
+  echo "--------------------------------------------------"
+  echo " 手動で配置・更新するゲーム(HTML)を選んでください"
+  echo " ※コアスクリプトで自動収集されなかったものを強制配置できます"
+  echo "--------------------------------------------------"
+  echo "0) スキップする"
+  for i in "${!all_html_files[@]}"; do
+    echo "$((i+1))) $(basename "${all_html_files[$i]}")"
+  done
+  
+  read -p "選択 (0-${html_count}): " html_choice
+  
+  if [[ "$html_choice" =~ ^[0-9]+$ ]] && [ "$html_choice" -gt 0 ] && [ "$html_choice" -le "$html_count" ]; then
+    html_idx=$((html_choice-1))
+    selected_html="${all_html_files[$html_idx]}"
+    html_filename=$(basename "$selected_html")
+    
+    # games フォルダとルートの両方にコピー（運用に応じて調整可能）
+    cp "$selected_html" games/ 2>/dev/null
+    cp "$selected_html" .
+    copied_html="$html_filename"
+    print_success "🎮 配置完了: $html_filename"
+  else
+    print_warn "⏭ HTMLの手動配置をスキップしました。"
+  fi
+fi
+
+# --- 拡張機能4: Gitステータス確認とスマートコミット ---
+if [ ${#copied_assets[@]} -gt 0 ] || [ -n "$copied_html" ]; then
+  echo -e "\n${COLOR_INFO}🚀 [Extension] 選択した追加ファイルのGitアップロード処理${COLOR_RESET}"
+  
+  echo "【現在のGit変更状況】"
+  git status --short
+  echo "--------------------------------------------------"
+  
+  read -p "これらの変更をGitHub Pagesに追加アップロードしますか？ (y/n): " upload_choice
+  if [[ "$upload_choice" == [yY]* ]]; then
+    
+    # スマートなデフォルトコミットメッセージの生成
+    msg_assets=$(IFS=, ; echo "${copied_assets[*]}")
+    default_msg="Update:"
+    [ -n "$copied_html" ] && default_msg+=" ${copied_html}"
+    [ ${#copied_assets[@]} -gt 0 ] && default_msg+=" assets(${msg_assets})"
+    
+    echo -n "📝 コミットメッセージを入力 (空Enterでデフォルト: '$default_msg'): "
+    read -r custom_msg
+    commit_msg="${custom_msg:-$default_msg}"
+
+    print_info "📦 変更をステージング(git add)しています..."
+    git add .
+    
+    print_info "📝 コミット(git commit)しています..."
+    git commit -m "$commit_msg"
+    
+    print_info "☁ アップロード(git push)しています..."
+    if git push; then
+      print_success "✅ アップロード成功！ 数分後にGitHub Pagesに反映されます。"
+    else
+      print_error "❌ アップロードに失敗しました。Gitの接続設定等を確認してください。"
+    fi
+  else
+    print_warn "⏭ アップロードをスキップしました。"
+  fi
+else
+  echo -e "\n${COLOR_INFO}ℹ 追加のアセット/HTML操作は行われませんでした。${COLOR_RESET}"
+fi
+
+print_success "\n✨ [Wrapper] すべての処理が完了しました！ お疲れ様でした！"

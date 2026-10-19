@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# AI-EXTENDABLE WRAPPER SCRIPT (Optimized & Enhanced v2.0)
+# AI-EXTENDABLE WRAPPER SCRIPT (Optimized & Enhanced v2.1)
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -61,7 +61,7 @@ if [ -n "$PROMPT" ]; then
 fi
 
 # --- 拡張機能2: 実行ログの記録 ---
-log_file="update_wrapper.log"
+log_file="update_site_ext.log"
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] Mode:$mode | Target: ${target_name:-none} | Games: ${game_count:-0}" >> "$log_file"
 print_success "📝 [Extension] 実行ログを $log_file に記録しました。"
 
@@ -119,7 +119,7 @@ else
   print_warn "⏭ 音声や画像ファイルが指定フォルダ内にありませんでした。"
 fi
 
-# 2. HTML(ゲーム)の手動選択
+# 2. HTML(ゲーム)の手動選択と自動紐付け
 if [ "$html_count" -gt 0 ]; then
   echo -e "\n${COLOR_INFO}🔍 ${html_count} 件のHTMLファイルを発見しました。${COLOR_RESET}"
   echo "--------------------------------------------------"
@@ -138,11 +138,32 @@ if [ "$html_count" -gt 0 ]; then
     selected_html="${all_html_files[$html_idx]}"
     html_filename=$(basename "$selected_html")
     
-    # games フォルダとルートの両方にコピー（運用に応じて調整可能）
+    # games フォルダとルートの両方にコピー
     cp "$selected_html" games/ 2>/dev/null
     cp "$selected_html" .
     copied_html="$html_filename"
     print_success "🎮 配置完了: $html_filename"
+
+    # =================================================================
+    # 自動紐付け処理 (BGM/効果音)
+    # =================================================================
+    for asset in "${copied_assets[@]}"; do
+      if [[ "$asset" == *.mp3 ]] || [[ "$asset" == *.wav ]]; then
+        print_info "🔧 HTML内のBGM設定を '$asset' に自動紐付けしています..."
+        
+        # HTML内の src="*.mp3" をコピーしたファイル名に書き換える
+        temp_file=$(mktemp)
+        sed "s/src=\"[^\"]*\.mp3\"/src=\"$asset\"/g" "$copied_html" > "$temp_file"
+        mv "$temp_file" "$copied_html"
+        
+        # gamesフォルダ内のHTMLも更新
+        cp "$copied_html" games/ 2>/dev/null
+        
+        print_success "✅ HTMLの自動書き換えが完了！音が鳴るようになりました。"
+        break
+      fi
+    done
+    
   else
     print_warn "⏭ HTMLの手動配置をスキップしました。"
   fi

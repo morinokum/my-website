@@ -69,11 +69,18 @@ echo "📝 [Extension] 実行ログを $log_file に追記しました。"
 # --- 拡張機能3: 任意のMP3を手動選択し、指定したゲームに組み込む ---
 echo "🎵 [Extension] MP3音楽ファイルの組み込み処理を開始します..."
 
-SEARCH_DIR="."
-# 名前を問わず、すべてのMP3ファイルを検索し配列に格納する
-mapfile -t all_mp3_files < <(find "$SEARCH_DIR" -type f -iname "*.mp3")
+# 検索先ディレクトリをダウンロードフォルダに変更
+SEARCH_DIR="/home/hirosi/ダウンロード"
 
-audio_count_found=${#all_mp3_files[@]}
+# フォルダが存在するか確認してから検索を実行
+if [ -d "$SEARCH_DIR" ]; then
+  # 名前を問わず、すべてのMP3ファイルを検索し配列に格納する
+  mapfile -t all_mp3_files < <(find "$SEARCH_DIR" -type f -iname "*.mp3")
+  audio_count_found=${#all_mp3_files[@]}
+else
+  echo "⚠ 検索先ディレクトリ ($SEARCH_DIR) が見つかりません。"
+  audio_count_found=0
+fi
 
 if [ "$audio_count_found" -gt 0 ]; then
   echo "🔍 [Extension] ${audio_count_found} 件のMP3ファイルを発見しました。"
@@ -82,7 +89,7 @@ if [ "$audio_count_found" -gt 0 ]; then
   echo "--------------------------------------------------"
   echo "0) スキップする"
   for i in "${!all_mp3_files[@]}"; do
-    echo "$((i+1))) ${all_mp3_files[$i]}"
+    echo "$((i+1)))$(basename "${all_mp3_files[$i]}")"
   done
 
   read -p "選択 (0-${audio_count_found}): " mp3_choice
@@ -91,7 +98,7 @@ if [ "$audio_count_found" -gt 0 ]; then
   if [[ "$mp3_choice" =~ ^[0-9]+$ ]] && [ "$mp3_choice" -gt 0 ] && [ "$mp3_choice" -le "$audio_count_found" ]; then
     selected_idx=$((mp3_choice-1))
     selected_bgm="${all_mp3_files[$selected_idx]}"
-    echo "🎵 選択されたMP3: $selected_bgm"
+    echo "🎵 選択されたMP3: $(basename "$selected_bgm")"
     
     # 対象のゲームディレクトリ一覧を取得・選択
     if [ -d "$DOWNLOAD_DIR" ]; then
@@ -127,7 +134,6 @@ if [ "$audio_count_found" -gt 0 ]; then
           read -p "GitHub Pagesに変更をアップロードしますか？ (y/n): " upload_choice
           if [[ "$upload_choice" == [yY]* ]]; then
             echo "📦 変更をステージング(git add)しています..."
-            # update_site.sh で更新された index.html 等もまとめて add します
             git add .
             
             echo "📝 コミット(git commit)しています..."
@@ -158,7 +164,7 @@ if [ "$audio_count_found" -gt 0 ]; then
     echo "⏭ MP3の選択がスキップされたか、無効な入力です。処理を中止します。"
   fi
 else
-  echo "⚠ MP3ファイルが現在のフォルダ内に見つかりませんでした。"
+  echo "⚠ MP3ファイルが指定のフォルダ(${SEARCH_DIR})内に見つかりませんでした。"
 fi
 
 echo "✨ [Wrapper] すべての処理が正常に完了しました！"

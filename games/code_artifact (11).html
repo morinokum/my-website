@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>電脳妖怪ネットダイバー</title>
+    <!-- AI-GAME-PORTFOLIO Meta Tag -->
+    <meta name="portfolio" content="AI-GAME-PORTFOLIO">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700;900&display=swap');
+        
+        :root {
+            --neon-green: #39ff14;
+            --neon-pink: #ff007f;
+            --neon-blue: #00f3ff;
+            --dark-bg: #050510;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: var(--dark-bg);
+            color: #e0e0e0;
+            user-select: none;
+            overflow: hidden;
+            touch-action: manipulation;
+            background-image: 
+                linear-gradient(rgba(0, 243, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .font-mono {
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100vh); }
+        }
+        .scanline-effect {
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 10px;
+            background: rgba(57, 255, 20, 0.1);
+            opacity: 0.5;
+            animation: scanline 4s linear infinite;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        @keyframes glitch-skew {
+            0% { transform: skew(0deg); }
+            20% { transform: skew(-10deg); }
+            40% { transform: skew(10deg); }
+            60% { transform: skew(-5deg); }
+            80% { transform: skew(5deg); }
+            100% { transform: skew(0deg); }
+        }
+        .animate-glitch { animation: glitch-skew 0.3s ease-in-out; }
+
+        @keyframes popIn {
+            0% { transform: scale(0.5) translateY(20px); opacity: 0; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .animate-pop { animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        ::-webkit-scrollbar { display: none; }
+
+        .btn-cyber {
+            background: rgba(0, 243, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-cyber::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.4), transparent);
+            transition: all 0.4s;
+        }
+        .btn-cyber:hover::before { left: 100%; }
+        .btn-cyber:active { transform: scale(0.95); background: rgba(0, 243, 255, 0.3); }
+
+        .btn-cyber-danger {
+            border-color: var(--neon-pink);
+            color: var(--neon-pink);
+            background: rgba(255, 0, 127, 0.1);
+        }
+        .btn-cyber-danger::before {
+            background: linear-gradient(90deg, transparent, rgba(255, 0, 127, 0.4), transparent);
+        }
+        .btn-cyber-danger:active { background: rgba(255, 0, 127, 0.3); }
+
+        .card-panel {
+            background: rgba(10, 15, 30, 0.8);
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(5px);
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .rarity-C { color: #a1a1aa; border-color: #a1a1aa; }
+        .rarity-R { color: #60a5fa; border-color: #60a5fa; text-shadow: 0 0 5px #60a5fa; }
+        .rarity-SR { color: #c084fc; border-color: #c084fc; text-shadow: 0 0 8px #c084fc; }
+        .rarity-SSR { color: #facc15; border-color: #facc15; text-shadow: 0 0 10px #facc15; animation: pulse-gold 2s infinite; }
+
+        @keyframes pulse-gold {
+            0%, 100% { box-shadow: 0 0 5px rgba(250,204,21,0.5); }
+            50% { box-shadow: 0 0 15px rgba(250,204,21,0.8); }
+        }
+
+        .log-text {
+            font-size: 0.75rem;
+            color: var(--neon-green);
+            opacity: 0.8;
+            margin-bottom: 2px;
+            border-left: 2px solid var(--neon-green);
+            padding-left: 4px;
+        }
+        
+        .threat-icon {
+            filter: drop-shadow(0 0 5px var(--neon-pink));
+        }
+    </style>
+</head>
+<!-- AI-DEV-HANDOFF-START
+タイトル: 電脳妖怪ネットダイバー
+バージョン: 1.0.0
+概要・ルール: サイバーパンク×妖怪の世界観。カードをめくり素材を集めるチキンレース（Push-Your-Luck）。同じ妖怪を2回引くと全ロス（クラッシュ）。ジャックアウトで素材を持ち帰り、ガチャ（コンパイル）で妖怪を仲間にすると、レア度に応じたパッシブスキルが解放され探索が有利になる。
+主要な構造（関数・状態管理・画面遷移）:
+- 外部データ `window.RUNE_GAME_DATA` (カードとマテリアル)を利用。
+- 状態は `appState` で管理（HUB画面、HACK画面、RESULT画面）。
+- デッキ構築ロジック: ランダムに妖怪(Hazards)と素材(Loot)を混ぜてサーバーデッキを生成。
+セーブデータのキー: AIGP_CyberYokai_V1
+実装済み機能: チキンレースロジック、ジャックアウト（安全確保）、ガチャシステム（重複時は欠片変換等の救済）、パッシブスキル自動適用、ローカルストレージ保存。
+未実装・TODO: 特定の妖怪の固有スキル（現在はレア度依存の共通パッシブのみ）、BGM/SEの追加。
+設計上のこだわり・注意点: TailwindとカスタムCSSでサイバーパンク感（スキャンライン、ネオンカラー、グリッチアニメーション）を演出。完全な1画面推移。
+AI-DEV-HANDOFF-END -->
+<body class="w-full h-[100dvh] flex justify-center items-center">
+
+    <div class="scanline-effect"></div>
+
+    <div id="game-container" class="w-full max-w-md h-full relative overflow-hidden bg-black/80 shadow-[0_0_30px_rgba(0,243,255,0.2)] flex flex-col border-x border-[#00f3ff]/30">
+        
+        <!-- Header Profile -->
+        <div class="h-14 border-b border-[#00f3ff]/30 flex items-center justify-between px-4 bg-[#050510]/90 z-40">
+            <div class="flex flex-col">
+                <span class="text-[10px] text-[#00f3ff] font-mono tracking-widest">NET-DIVER OP.</span>
+                <span class="text-sm font-bold tracking-wider">GUEST_USER</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-400">TOTAL DATA:</span>
+                <span id="ui-total-materials" class="font-mono text-[#39ff14] font-bold text-lg">0</span>
+            </div>
+        </div>
+
+        <!-- Notification Toast -->
+        <div id="toast" class="absolute top-16 left-1/2 transform -translate-x-1/2 bg-[#00f3ff]/20 border border-[#00f3ff] text-[#00f3ff] px-4 py-1.5 text-sm font-mono z-50 transition-opacity duration-300 opacity-0 pointer-events-none backdrop-blur-md">
+            SYS_MSG
+        </div>
+
+        <!-- ==============================
+             SCREEN: HUB (Base Camp)
+        =============================== -->
+        <div id="screen-hub" class="absolute inset-0 top-14 flex flex-col z-30 bg-[#050510]">
+            
+            <div class="p-4 flex-1 overflow-y-auto pb-24">
+                <div class="text-center mb-6 mt-4">
+                    <h1 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#00f3ff] to-[#39ff14] drop-shadow-[0_0_10px_rgba(0,243,255,0.5)]">
+                        CYBER-YOKAI<br>NET-DIVER
+                    </h1>
+                    <p class="text-xs text-slate-400 mt-2 font-mono">チキンレース・ハッキング</p>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <button id="btn-dive" class="btn-cyber py-4 rounded font-bold flex flex-col items-center justify-center gap-1 group">
+                        <span class="text-2xl group-hover:animate-pulse">🌐</span>
+                        <span>DIVE IN</span>
+                    </button>
+                    <button id="btn-compile" class="btn-cyber py-4 rounded font-bold flex flex-col items-center justify-center gap-1 border-[#c084fc] text-[#c084fc] group">
+                        <span class="text-2xl group-hover:animate-pulse">🧬</span>
+                        <span>COMPILE (10 Data)</span>
+                    </button>
+                </div>
+
+                <!-- Collection Panel -->
+                <div class="card-panel p-3">
+                    <div class="text-xs font-mono text-[#00f3ff] mb-2 border-b border-[#00f3ff]/30 pb-1 flex justify-between">
+                        <span>> COMPILED_YOKAI</span>
+                        <span id="ui-collection-count">0/10</span>
+                    </div>
+                    
+                    <div id="ui-yokai-collection" class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                        <!-- Compiled Yokais injected here -->
+                    </div>
+                </div>
+                
+                <!-- Passive Buffs Info -->
+                <div class="mt-4 text-[10px] text-slate-400 font-mono space-y-1">
+                    <div>[SYS] ACTIVE PASSIVES:</div>
+                    <ul id="ui-active-passives" class="pl-2 border-l border-slate-600 text-[#39ff14]">
+                        <li>NO_DATA</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==============================
+             SCREEN: HACKING (Push Your Luck)
+        =============================== -->
+        <div id="screen-hack" class="absolute inset-0 top-14 flex flex-col hidden z-20 bg-gradient-to-b from-[#050510] to-[#1a0b1c]">
+            
+            <!-- Active Run Status -->
+            <div class="flex justify-between items-center p-3 bg-black/50 border-b border-[#ff007f]/30">
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-[#ff007f] font-mono animate-pulse">! ACTIVE THREATS !</span>
+                    <div id="ui-threat-list" class="flex gap-2 mt-1 h-8">
+                        <!-- Threat icons -->
+                    </div>
+                </div>
+                <div class="text-right flex flex-col items-end">
+                    <span class="text-[10px] text-[#39ff14] font-mono">TEMP_DATA</span>
+                    <span id="ui-temp-loot" class="font-bold text-xl text-white">0</span>
+                </div>
+            </div>
+
+            <!-- Central Terminal Area -->
+            <div class="flex-1 relative flex flex-col items-center justify-center p-4">
+                
+                <!-- Drawn Card Display -->
+                <div id="ui-drawn-card" class="w-48 h-64 card-panel flex flex-col items-center justify-center p-4 transform transition-all opacity-0 scale-50 absolute">
+                    <div id="card-type-label" class="text-xs font-mono mb-2">TYPE</div>
+                    <div id="card-icon" class="text-5xl mb-4 drop-shadow-md"></div>
+                    <div id="card-name" class="text-sm font-bold text-center"></div>
+                    <div id="card-rarity" class="mt-2 text-xs font-black px-2 py-1 border rounded bg-black/50"></div>
+                </div>
+
+                <!-- Logs (Background) -->
+                <div id="ui-hack-log" class="absolute inset-0 p-4 flex flex-col justify-end overflow-hidden opacity-30 pointer-events-none z-0">
+                    <!-- Logs injected here -->
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="p-4 grid grid-cols-2 gap-4 bg-black/80 border-t border-[#00f3ff]/30 z-10">
+                <button id="btn-jackout" class="btn-cyber py-4 font-bold text-sm">
+                    JACK OUT<br><span class="text-[10px] font-mono font-normal">(帰還して保存)</span>
+                </button>
+                <button id="btn-draw" class="btn-cyber-danger py-4 font-bold text-sm bg-[#ff007f]/10">
+                    HACK DEEPER<br><span class="text-[10px] font-mono font-normal text-white">(さらに潜る)</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ==============================
+             SCREEN: RESULT (End of Run)
+        =============================== -->
+        <div id="screen-result" class="absolute inset-0 flex flex-col hidden z-40 bg-black/95 items-center justify-center p-6 text-center">
+            
+            <h2 id="result-title" class="text-4xl font-black mb-2 font-mono tracking-widest"></h2>
+            <div id="result-subtitle" class="text-sm text-slate-400 mb-8 font-mono"></div>
+
+            <div class="card-panel w-full p-4 mb-8">
+                <div class="text-xs text-slate-400 font-mono mb-2">ACQUIRED DATA</div>
+                <div class="text-4xl font-bold text-[#39ff14] font-mono" id="result-loot">+0</div>
+            </div>
+
+            <button id="btn-return-hub" class="btn-cyber w-full py-4 font-bold text-lg">
+                RETURN TO SYSTEM
+            </button>
+        </div>
+
+        <!-- ==============================
+             SCREEN: COMPILE (Gacha)
+        =============================== -->
+        <div id="screen-compile" class="absolute inset-0 flex flex-col hidden z-50 bg-[#050510]/95 backdrop-blur-md items-center justify-center p-6 text-center border border-[#c084fc]/30">
+            
+            <div class="text-[#c084fc] font-mono text-xs mb-4 animate-pulse">COMPILING SEQUENCE INITIATED...</div>
+            
+            <div id="compile-result-card" class="w-48 h-64 card-panel flex flex-col items-center justify-center p-4 scale-0 transition-transform duration-500 mb-8">
+                <div class="text-xs font-mono mb-2 text-[#ff007f]">YOKAI_DATA_FOUND</div>
+                <div id="gacha-icon" class="text-5xl mb-4 drop-shadow-[0_0_10px_rgba(192,132,252,0.8)]">👾</div>
+                <div id="gacha-name" class="text-sm font-bold text-center"></div>
+                <div id="gacha-rarity" class="mt-2 text-xs font-black px-2 py-1 border rounded bg-black/50"></div>
+                <div id="gacha-status" class="mt-2 text-[10px] text-slate-400"></div>
+            </div>
+
+            <button id="btn-compile-close" class="btn-cyber w-full py-3 font-bold text-sm hidden">
+                ACKNOWLEDGE
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // Data Fallback (Cyberpunk x Yokai)
+        const FALLBACK_DATA = {
+            cards: [
+                { id: "c1", name: "コード妖精・ピコ", rarity: "C" },
+                { id: "c2", name: "サイバーハッカー・レン", rarity: "C" },
+                { id: "c6", name: "路地裏の化け猫AI", rarity: "C" },
+                { id: "c3", name: "電脳怪火・鬼火.exe", rarity: "R" },
+                { id: "c7", name: "ネオン天狗", rarity: "R" },
+                { id: "c4", name: "氷結サーバー・雪女", rarity: "SR" },
+                { id: "c8", name: "重装甲・塗坊ギヤ", rarity: "SR" },
+                { id: "c9", name: "光子僧侶・サイバー和尚", rarity: "SR" },
+                { id: "c5", name: "電脳大妖王・ギガぬらりひょん", rarity: "SSR" },
+                { id: "c10", name: "暗黒ヴォイド・九尾ノ狐", rarity: "SSR" }
+            ],
+            materials: [
+                { id: "m1", name: "廃シリコン基板", rarity: "C" },
+                { id: "m2", name: "ジャンクメモリ", rarity: "C" },
+                { id: "m7", name: "ノイズ回路コイル", rarity: "C" },
+                { id: "m3", name: "高熱プラズマコア", rarity: "R" },
+                { id: "m4", name: "超伝導冷却カプセル", rarity: "R" },
+                { id: "m8", name: "高速光ファイバー", rarity: "R" },
+                { id: "m5", name: "量子データ結晶", rarity: "SR" },
+                { id: "m9", name: "電子巫女の祈りコード", rarity: "SR" },
+                { id: "m6", name: "零式プロセッサ", rarity: "SSR" },
+                { id: "m10", name: "暗黒領域のバックドア", rarity: "SSR" }
+            ]
+        };
+
+        const MASTER = { cards: [], materials: [] };
+        const COST_COMPILE = 10;
+
+        // Constants for mechanics
+        const RARITY_ICONS = { C: '🔹', R: '💠', SR: '🟣', SSR: '⭐' };
+        const YOKAI_ICONS = ['👾', '👻', '👺', '🦊', '👹', '💀', '👽'];
+        const MAT_ICONS = ['💾', '💿', '🔋', '🔌', '📡', '💽'];
+
+        const SAVE_KEY = 'AIGP_CyberYokai_V1';
+
+        const state = {
+            totalMaterials: 0,
+            collection: [], // Array of Yokai IDs
+            passives: {
+                bonusLoot: 0,       // From C
+                crashResist: 0,     // From R
+                startLoot: 0,       // From SR
+                threatConvert: 0    // From SSR
+            },
+            run: {
+                deck: [],
+                tempLoot: 0,
+                threats: [], // Array of Yokai Objects drawn
+                isResisting: false
+            }
+        };
+
+        const DOM = {
+            hub: document.getElementById('screen-hub'),
+            hack: document.getElementById('screen-hack'),
+            result: document.getElementById('screen-result'),
+            compile: document.getElementById('screen-compile'),
+            toast: document.getElementById('toast'),
+            log: document.getElementById('ui-hack-log'),
+            drawnCard: document.getElementById('ui-drawn-card')
+        };
+
+        function playSound(type) {
+            // Placeholder for real sound effects if Tone.js was added
+            // Using visual cues heavily instead to ensure no browser block
+        }
+
+        function showMessage(msg) {
+            DOM.toast.textContent = msg;
+            DOM.toast.style.opacity = '1';
+            setTimeout(() => DOM.toast.style.opacity = '0', 2000);
+        }
+
+        function switchScreen(screen) {
+            DOM.hub.classList.add('hidden');
+            DOM.hack.classList.add('hidden');
+            DOM.result.classList.add('hidden');
+            DOM.compile.classList.add('hidden');
+            screen.classList.remove('hidden');
+        }
+
+        function addLog(text) {
+            const el = document.createElement('div');
+            el.className = 'log-text animate-pop';
+            el.textContent = `> ${text}`;
+            DOM.log.appendChild(el);
+            if(DOM.log.children.length > 8) DOM.log.firstChild.remove();
+        }
+
+        async function loadData() {
+            try {
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://morinokum.github.io/my-website/game-data.js';
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    setTimeout(reject, 2000);
+                });
+                if (window.RUNE_GAME_DATA && window.RUNE_GAME_DATA.cards) {
+                    MASTER.cards = window.RUNE_GAME_DATA.cards;
+                    MASTER.materials = window.RUNE_GAME_DATA.materials || window.RUNE_GAME_DATA.cards; // fallback if missing
+                }
+            } catch(e) {
+                console.log("Using built-in fallback data");
+            }
+
+            if(!MASTER.cards.length) MASTER.cards = FALLBACK_DATA.cards;
+            if(!MASTER.materials.length) MASTER.materials = FALLBACK_DATA.materials;
+
+            loadSave();
+            updateHubUI();
+        }
+
+        function saveGame() {
+            localStorage.setItem(SAVE_KEY, JSON.stringify({
+                total: state.totalMaterials,
+                collection: state.collection
+            }));
+        }
+
+        function loadSave() {
+            const s = localStorage.getItem(SAVE_KEY);
+            if(s) {
+                try {
+                    const parsed = JSON.parse(s);
+                    state.totalMaterials = parsed.total || 0;
+                    state.collection = parsed.collection || [];
+                } catch(e){}
+            }
+            calcPassives();
+        }
+
+        function calcPassives() {
+            state.passives = { bonusLoot: 0, crashResist: 0, startLoot: 0, threatConvert: 0 };
+            state.collection.forEach(id => {
+                const card = MASTER.cards.find(c => c.id === id);
+                if(card) {
+                    if(card.rarity === 'C') state.passives.bonusLoot += 1;
+                    if(card.rarity === 'R') state.passives.crashResist += 5; // 5% chance
+                    if(card.rarity === 'SR') state.passives.startLoot += 5;
+                    if(card.rarity === 'SSR') state.passives.threatConvert += 5; // 5% chance
+                }
+            });
+            // Caps
+            if(state.passives.crashResist > 50) state.passives.crashResist = 50;
+            if(state.passives.threatConvert > 30) state.passives.threatConvert = 30;
+        }
+
+        function updateHubUI() {
+            document.getElementById('ui-total-materials').textContent = state.totalMaterials;
+            document.getElementById('ui-collection-count').textContent = `${state.collection.length}/${MASTER.cards.length}`;
+            
+            const btnCompile = document.getElementById('btn-compile');
+            if(state.totalMaterials >= COST_COMPILE) {
+                btnCompile.style.opacity = '1';
+                btnCompile.disabled = false;
+            } else {
+                btnCompile.style.opacity = '0.5';
+                btnCompile.disabled = true;
+            }
+
+            // Draw Collection
+            const colUI = document.getElementById('ui-yokai-collection');
+            colUI.innerHTML = '';
+            MASTER.cards.forEach(card => {
+                const has = state.collection.includes(card.id);
+                const div = document.createElement('div');
+                div.className = `p-2 border rounded text-xs truncate ${has ? `border-current rarity-${card.rarity}` : 'border-slate-800 text-slate-700 opacity-50'}`;
+                div.textContent = has ? card.name : '???';
+                colUI.appendChild(div);
+            });
+
+            // Passives Text
+            const pUI = document.getElementById('ui-active-passives');
+            pUI.innerHTML = '';
+            if(state.passives.bonusLoot > 0) pUI.innerHTML += `<li>+ 追加データ取得: ${state.passives.bonusLoot}</li>`;
+            if(state.passives.crashResist > 0) pUI.innerHTML += `<li>+ クラッシュ回避率: ${state.passives.crashResist}%</li>`;
+            if(state.passives.startLoot > 0) pUI.innerHTML += `<li>+ 初期データボーナス: ${state.passives.startLoot}</li>`;
+            if(state.passives.threatConvert > 0) pUI.innerHTML += `<li>+ 脅威データ化率: ${state.passives.threatConvert}%</li>`;
+            if(pUI.innerHTML === '') pUI.innerHTML = '<li>パッシブ効果なし (ガチャで解放)</li>';
+        }
+
+        function startHack() {
+            // Build Deck: 20 Loot cards, 12 Threat cards (pairs)
+            let deck = [];
+            
+            // Random Loot based on rarity weights roughly
+            for(let i=0; i<20; i++) {
+                const m = MASTER.materials[Math.floor(Math.random()*MASTER.materials.length)];
+                let val = m.rarity === 'C' ? 1 : m.rarity === 'R' ? 3 : m.rarity === 'SR' ? 5 : 10;
+                deck.push({ type: 'loot', data: m, value: val });
+            }
+
+            // Threats (Pick 6 random, put 2 of each)
+            const shuffledCards = [...MASTER.cards].sort(() => 0.5 - Math.random());
+            const selectedThreats = shuffledCards.slice(0, 6);
+            selectedThreats.forEach(t => {
+                deck.push({ type: 'threat', data: t });
+                deck.push({ type: 'threat', data: t }); // Duplicate for crash mechanic
+            });
+
+            state.run.deck = deck.sort(() => 0.5 - Math.random());
+            state.run.tempLoot = state.passives.startLoot;
+            state.run.threats = [];
+            DOM.log.innerHTML = '';
+            
+            if(state.passives.startLoot > 0) {
+                addLog(`SYS: 初期データボーナス +${state.passives.startLoot}`);
+            }
+            addLog("SYS: CONNECTION ESTABLISHED.");
+
+            updateHackUI();
+            switchScreen(DOM.hack);
+        }
+
+        function updateHackUI() {
+            document.getElementById('ui-temp-loot').textContent = state.run.tempLoot;
+            
+            const threatList = document.getElementById('ui-threat-list');
+            threatList.innerHTML = state.run.threats.map(t => `<div class="text-2xl threat-icon animate-pop" title="${t.name}">${YOKAI_ICONS[t.name.length % YOKAI_ICONS.length]}</div>`).join('');
+        }
+
+        async function drawCard() {
+            if(state.run.deck.length === 0) {
+                endRun(true, "SERVER EMPTY - AUTO JACKOUT");
+                return;
+            }
+
+            const btnDraw = document.getElementById('btn-draw');
+            const btnJackout = document.getElementById('btn-jackout');
+            btnDraw.disabled = true; btnJackout.disabled = true;
+
+            const card = state.run.deck.pop();
+            
+            // Process Passives
+            if(card.type === 'threat' && state.passives.threatConvert > 0) {
+                if(Math.random() * 100 < state.passives.threatConvert) {
+                    addLog("!! SSR SKILL: 脅威をデータに変換 !!");
+                    card.type = 'loot';
+                    card.value = 15;
+                    card.data = { name: "変換された脅威データ", rarity: "SSR" };
+                }
+            }
+
+            // Animate Card Reveal
+            DOM.drawnCard.className = `w-48 h-64 card-panel flex flex-col items-center justify-center p-4 absolute animate-pop z-20 rarity-${card.data.rarity}`;
+            document.getElementById('card-name').textContent = card.data.name;
+            document.getElementById('card-rarity').textContent = `${card.data.rarity} CLASS`;
+            document.getElementById('card-rarity').className = `mt-2 text-xs font-black px-2 py-1 border rounded bg-black/80 rarity-${card.data.rarity}`;
+
+            if(card.type === 'loot') {
+                document.getElementById('card-type-label').textContent = "RESOURCE DATA";
+                document.getElementById('card-type-label').className = "text-xs font-mono mb-2 text-[#39ff14]";
+                document.getElementById('card-icon').textContent = MAT_ICONS[Math.floor(Math.random()*MAT_ICONS.length)];
+                
+                const finalGain = card.value + state.passives.bonusLoot;
+                state.run.tempLoot += finalGain;
+                addLog(`取得: ${card.data.name} (+${finalGain})`);
+                
+                setTimeout(() => {
+                    DOM.drawnCard.classList.remove('animate-pop');
+                    DOM.drawnCard.classList.add('opacity-0', 'scale-50');
+                    updateHackUI();
+                    btnDraw.disabled = false; btnJackout.disabled = false;
+                }, 800);
+
+            } else {
+                // Threat Logic
+                document.getElementById('card-type-label').textContent = "!! SECURITY YOKAI !!";
+                document.getElementById('card-type-label').className = "text-xs font-mono mb-2 text-[#ff007f] animate-pulse";
+                document.getElementById('card-icon').textContent = YOKAI_ICONS[card.data.name.length % YOKAI_ICONS.length];
+                
+                const existing = state.run.threats.find(t => t.id === card.data.id);
+                
+                if(existing) {
+                    // CRASH CHECK
+                    let crashed = true;
+                    if(state.passives.crashResist > 0 && Math.random() * 100 < state.passives.crashResist) {
+                        addLog("!! R SKILL: 致命的エラーを回避 !!");
+                        crashed = false;
+                    }
+
+                    if(crashed) {
+                        addLog(`FATAL: 既知の脅威 [${card.data.name}] と衝突！`);
+                        DOM.hack.classList.add('animate-glitch');
+                        setTimeout(() => endRun(false, "SYSTEM CRASHED"), 1200);
+                        return;
+                    } else {
+                        addLog(`WARNING: [${card.data.name}] 衝突を回避！`);
+                    }
+                } else {
+                    state.run.threats.push(card.data);
+                    addLog(`遭遇: 警告リストに追加 - ${card.data.name}`);
+                }
+
+                setTimeout(() => {
+                    DOM.drawnCard.classList.remove('animate-pop');
+                    DOM.drawnCard.classList.add('opacity-0', 'scale-50');
+                    updateHackUI();
+                    btnDraw.disabled = false; btnJackout.disabled = false;
+                }, 1000);
+            }
+        }
+
+        function endRun(success, reason) {
+            const rTitle = document.getElementById('result-title');
+            const rSub = document.getElementById('result-subtitle');
+            const rLoot = document.getElementById('result-loot');
+
+            rSub.textContent = reason;
+
+            if(success) {
+                rTitle.textContent = "JACK OUT SUCCESS";
+                rTitle.className = "text-4xl font-black mb-2 font-mono tracking-widest text-[#00f3ff] drop-shadow-[0_0_10px_rgba(0,243,255,0.8)]";
+                rLoot.textContent = `+${state.run.tempLoot} DATA`;
+                rLoot.className = "text-4xl font-bold font-mono text-[#00f3ff]";
+                state.totalMaterials += state.run.tempLoot;
+            } else {
+                rTitle.textContent = "FATAL ERROR";
+                rTitle.className = "text-4xl font-black mb-2 font-mono tracking-widest text-[#ff007f] drop-shadow-[0_0_10px_rgba(255,0,127,0.8)] animate-glitch";
+                rLoot.textContent = "ALL DATA LOST";
+                rLoot.className = "text-4xl font-bold font-mono text-[#ff007f]";
+                // Gain nothing
+            }
+
+            saveGame();
+            switchScreen(DOM.result);
+        }
+
+        function executeCompile() {
+            if(state.totalMaterials < COST_COMPILE) return;
+            
+            state.totalMaterials -= COST_COMPILE;
+            saveGame();
+            updateHubUI(); // Update counter in BG
+            
+            switchScreen(DOM.compile);
+            const rCard = document.getElementById('compile-result-card');
+            const btnClose = document.getElementById('btn-compile-close');
+            rCard.classList.remove('scale-100');
+            rCard.classList.add('scale-0');
+            btnClose.classList.add('hidden');
+
+            // Roll logic (Weighted by rarity)
+            const r = Math.random();
+            let targetRarity = 'C';
+            if(r > 0.6) targetRarity = 'R';
+            if(r > 0.85) targetRarity = 'SR';
+            if(r > 0.96) targetRarity = 'SSR';
+
+            const pool = MASTER.cards.filter(c => c.rarity === targetRarity) || MASTER.cards;
+            const pulled = pool[Math.floor(Math.random() * pool.length)];
+            const isDup = state.collection.includes(pulled.id);
+
+            setTimeout(() => {
+                document.getElementById('gacha-icon').textContent = YOKAI_ICONS[pulled.name.length % YOKAI_ICONS.length];
+                document.getElementById('gacha-name').textContent = pulled.name;
+                document.getElementById('gacha-rarity').textContent = `${pulled.rarity} CLASS`;
+                
+                rCard.className = `w-48 h-64 card-panel flex flex-col items-center justify-center p-4 scale-100 transition-transform duration-500 mb-8 border-2 rarity-${pulled.rarity}`;
+                
+                const statEl = document.getElementById('gacha-status');
+                if(isDup) {
+                    statEl.textContent = "DUPLICATE: DATA REFUNDED (+5)";
+                    statEl.className = "mt-2 text-xs text-slate-400 font-mono";
+                    state.totalMaterials += 5; // Refund logic
+                } else {
+                    statEl.textContent = "NEW YOKAI COMPILED!";
+                    statEl.className = "mt-2 text-xs font-mono text-[#39ff14] animate-pulse";
+                    state.collection.push(pulled.id);
+                }
+                
+                calcPassives();
+                saveGame();
+                updateHubUI();
+                
+                setTimeout(() => { btnClose.classList.remove('hidden'); }, 800);
+            }, 500);
+        }
+
+        // Event Listeners
+        document.getElementById('btn-dive').addEventListener('click', startHack);
+        document.getElementById('btn-draw').addEventListener('click', drawCard);
+        document.getElementById('btn-jackout').addEventListener('click', () => {
+            endRun(true, "MANUAL DISCONNECT");
+        });
+        document.getElementById('btn-return-hub').addEventListener('click', () => {
+            switchScreen(DOM.hub);
+        });
+        document.getElementById('btn-compile').addEventListener('click', executeCompile);
+        document.getElementById('btn-compile-close').addEventListener('click', () => {
+            switchScreen(DOM.hub);
+        });
+
+        // Init
+        window.addEventListener('load', loadData);
+
+    </script>
+</body>
+</html>

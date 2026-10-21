@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>紋章ダイスタクティクス：ルーン・ロール・サバイバー</title>
+    <!-- AI-GAME-PORTFOLIO Meta Tag -->
+    <meta name="portfolio" content="AI-GAME-PORTFOLIO">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #0f172a; /* Tailwind slate-900 */
+            color: #f8fafc;
+            user-select: none;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-4px); }
+            40%, 80% { transform: translateX(4px); }
+        }
+        .animate-shake { animation: shake 0.4s ease-in-out; }
+
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        @keyframes damageText {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-40px) scale(1.5); opacity: 0; }
+        }
+        .anim-damage {
+            position: absolute;
+            color: #ef4444;
+            font-weight: 900;
+            font-size: 2rem;
+            text-shadow: 0 0 5px #000;
+            pointer-events: none;
+            animation: damageText 1s ease-out forwards;
+            z-index: 50;
+        }
+
+        /* Custom Scrollbar hidden */
+        ::-webkit-scrollbar { display: none; }
+
+        /* Card styles */
+        .rune-card {
+            transition: all 0.2s;
+            box-shadow: inset 0 0 10px rgba(255,255,255,0.1), 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .rune-card.glow {
+            box-shadow: 0 0 15px currentColor;
+            transform: translateY(-5px);
+        }
+
+        /* Dice styles */
+        .dice {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #ffffff, #e2e8f0);
+            color: #0f172a;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 900;
+            box-shadow: 0 4px 0 #94a3b8, 0 5px 10px rgba(0,0,0,0.5);
+            cursor: pointer;
+            transition: transform 0.1s, margin 0.2s;
+        }
+        .dice:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #94a3b8, 0 2px 5px rgba(0,0,0,0.5);
+        }
+        .dice.selected {
+            outline: 3px solid #3b82f6;
+            outline-offset: 2px;
+            transform: translateY(-8px);
+        }
+        .dice.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+            filter: grayscale(100%);
+        }
+        
+        /* Slot styles */
+        .dice-slot {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            border: 2px dashed rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.2);
+            transition: all 0.2s;
+        }
+        .dice-slot.highlight {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.2);
+        }
+
+        /* Glass panel */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<!-- AI-DEV-HANDOFF-START
+タイトル: 紋章ダイスタクティクス：ルーン・ロール・サバイバー
+バージョン: 1.0.0
+概要・ルール: 毎ターン振られるダイスをルーンカードに配置し、条件を満たして効果（攻撃、防御、回復）を発動して敵を倒すローグライク・デッキ構築型サバイバルゲーム。
+主要な構造（関数・状態管理・画面遷移）: 
+- 外部データ `window.RUNE_GAME_DATA` からカード・家データを読み込み、ランダムな条件や効果を付与してゲーム内で活用。
+- 状態は `appState` オブジェクトで一元管理（TITLE, BATTLE, REWARD, REST, GAMEOVERの各フェーズ）。
+- タップ＆タップ方式（ダイス選択→カード選択で配置）を採用し、スマホでの操作性を向上。
+セーブデータのキー: AIGP_RuneDice_Save_V1
+実装済み機能: 外部データフォールバック連携、ローグライク進行（フロア制）、カードのランダム生成、ダイス配置・効果発動ロジック、報酬選択（カード追加・入替）、ローカルストレージセーブ。
+未実装・TODO: 特殊な状態異常（毒、火傷など）、ダイスの出目を操作する専用カード（リロール等）、ボスの固有アニメーション。
+設計上のこだわり・注意点: Tailwind CSSによるレスポンシブな1画面構成。Alertを排除し、独自のMessage Toastコンポーネントを使用。
+AI-DEV-HANDOFF-END -->
+<body class="w-full h-[100dvh] flex justify-center bg-black">
+
+    <div id="game-container" class="w-full max-w-md h-full relative overflow-hidden bg-slate-900 shadow-2xl flex flex-col">
+        
+        <!-- UI: Global Message Toast -->
+        <div id="toast" class="absolute top-10 left-1/2 transform -translate-x-1/2 bg-indigo-600 text-white px-4 py-2 rounded-full shadow-lg font-bold z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
+            Message
+        </div>
+
+        <!-- ==============================
+             SCREEN: TITLE
+        =============================== -->
+        <div id="screen-title" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 z-40">
+            <div class="text-xs text-indigo-400 font-bold mb-2">AI-GAME-PORTFOLIO</div>
+            <h1 class="text-4xl font-black text-center leading-tight mb-8 drop-shadow-[0_0_10px_rgba(99,102,241,0.8)]">
+                紋章ダイス<br>タクティクス
+                <span class="block text-lg text-indigo-300 mt-2">ルーン・ロール・サバイバー</span>
+            </h1>
+            
+            <div id="loading-text" class="text-slate-400 mb-6 animate-pulse">マスタデータを読み込み中...</div>
+
+            <button id="btn-start" class="hidden bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-10 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.5)] transition-all transform hover:scale-105 active:scale-95 mb-4 text-xl">
+                最初から始める
+            </button>
+            <button id="btn-continue" class="hidden bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-10 rounded-full shadow-lg transition-all transform hover:scale-105 active:scale-95 text-lg border border-slate-600">
+                続きから (Floor <span id="continue-floor">1</span>)
+            </button>
+        </div>
+
+        <!-- ==============================
+             SCREEN: BATTLE
+        =============================== -->
+        <div id="screen-battle" class="absolute inset-0 flex flex-col hidden z-10 bg-slate-900">
+            <!-- Header (Status) -->
+            <div class="glass-panel p-2 flex justify-between items-center z-20 shadow-md">
+                <div class="flex flex-col">
+                    <span class="text-xs text-slate-400 font-bold">Floor <span id="ui-floor" class="text-white text-base">1</span></span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-1">
+                        <span class="text-xl">🛡️</span>
+                        <span id="ui-player-shield" class="font-bold text-blue-400 text-xl w-6 text-right">0</span>
+                    </div>
+                    <div class="flex flex-col items-end">
+                        <div class="flex items-center gap-1">
+                            <span class="text-sm text-slate-300">HP</span>
+                            <span id="ui-player-hp" class="font-bold text-green-400 text-lg">50</span>
+                            <span class="text-xs text-slate-500">/<span id="ui-player-maxhp">50</span></span>
+                        </div>
+                        <div class="w-24 h-2 bg-slate-700 rounded-full overflow-hidden mt-1">
+                            <div id="ui-player-hp-bar" class="h-full bg-green-500 transition-all duration-300" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enemy Area -->
+            <div class="flex-1 flex flex-col items-center justify-center relative p-4" id="enemy-area">
+                <!-- Intent (Next Action) -->
+                <div id="ui-enemy-intent" class="bg-slate-800/80 border border-red-500/50 rounded-lg px-3 py-1 mb-2 flex items-center gap-2 animate-float">
+                    <span class="text-sm text-slate-300">攻撃予告</span>
+                    <span class="text-red-400 font-bold text-lg">⚔️ <span id="ui-enemy-damage">10</span></span>
+                </div>
+
+                <!-- Enemy Sprite -->
+                <div id="ui-enemy-sprite" class="text-[5rem] filter drop-shadow-[0_0_15px_rgba(255,0,0,0.5)] transition-transform duration-300">
+                    👾
+                </div>
+                <div id="ui-enemy-name" class="font-bold text-slate-300 mt-2">スライム</div>
+                
+                <!-- Enemy HP -->
+                <div class="w-48 mt-2">
+                    <div class="flex justify-between text-xs font-bold mb-1">
+                        <span class="text-slate-400">HP</span>
+                        <span class="text-white"><span id="ui-enemy-hp">20</span> / <span id="ui-enemy-maxhp">20</span></span>
+                    </div>
+                    <div class="w-full h-3 bg-slate-700 rounded-full overflow-hidden border border-slate-600 relative">
+                        <div id="ui-enemy-hp-bar" class="h-full bg-red-500 transition-all duration-300" style="width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Player Deck Area (Cards) -->
+            <div class="h-48 glass-panel border-t border-slate-700 p-2 flex flex-col justify-end relative z-20">
+                <div class="text-xs text-slate-400 mb-1 text-center font-bold">手札のルーン (ダイスを配置して発動)</div>
+                <div id="ui-deck-container" class="flex justify-center gap-2 overflow-visible">
+                    <!-- Cards will be injected here -->
+                </div>
+            </div>
+
+            <!-- Dice & Action Area -->
+            <div class="h-32 bg-slate-900 border-t border-slate-800 p-3 flex flex-col justify-between z-20 relative">
+                <!-- Dice Pool -->
+                <div id="ui-dice-pool" class="flex justify-center gap-3 h-14 items-center">
+                    <!-- Dices will be injected here -->
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex justify-between items-center mt-2">
+                    <div class="text-xs text-slate-400 w-1/3">
+                        <div id="ui-dice-info">ダイスを選択し、<br>カードをタップ</div>
+                    </div>
+                    <button id="btn-execute" class="w-1/3 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl shadow-[0_4px_0_#2563eb] active:translate-y-[4px] active:shadow-none transition-all flex items-center justify-center gap-1">
+                        <span>▶</span> 発動
+                    </button>
+                    <div class="w-1/3 text-right">
+                        <button id="btn-settings" class="text-slate-500 hover:text-white p-2">⚙️ 諦める</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==============================
+             SCREEN: REWARD (Card Select)
+        =============================== -->
+        <div id="screen-reward" class="absolute inset-0 flex flex-col hidden z-30 bg-slate-900/95 backdrop-blur p-4">
+            <h2 class="text-2xl font-bold text-center mt-10 text-yellow-400 drop-shadow-[0_0_5px_rgba(234,179,8,0.8)]">戦闘勝利！</h2>
+            <p class="text-center text-slate-300 mt-2 mb-6">新たなルーンを1つ選んでデッキに追加</p>
+            
+            <div id="reward-cards" class="flex flex-col gap-4 items-center flex-1 overflow-y-auto pb-20">
+                <!-- Reward cards injected here -->
+            </div>
+            
+            <div class="absolute bottom-6 left-0 w-full px-6">
+                <button id="btn-skip-reward" class="w-full bg-slate-700 text-white font-bold py-3 rounded-xl border border-slate-600">
+                    スキップして進む
+                </button>
+            </div>
+        </div>
+
+        <!-- ==============================
+             SCREEN: DECK REPLACE
+        =============================== -->
+        <div id="screen-replace" class="absolute inset-0 flex flex-col hidden z-30 bg-slate-900/95 backdrop-blur p-4">
+            <h2 class="text-xl font-bold text-center mt-8 text-red-400">デッキが上限(5枚)です</h2>
+            <p class="text-center text-slate-300 mt-2 mb-4 text-sm">入れ替えるルーンを選んでください</p>
+            
+            <div class="flex justify-center mb-6 scale-90" id="replace-new-card-container">
+                <!-- New card shown here -->
+            </div>
+            
+            <div id="replace-deck-cards" class="flex flex-wrap justify-center gap-3 overflow-y-auto pb-20">
+                <!-- Current deck cards injected here -->
+            </div>
+            
+            <div class="absolute bottom-6 left-0 w-full px-6">
+                <button id="btn-cancel-replace" class="w-full bg-slate-700 text-white font-bold py-3 rounded-xl border border-slate-600">
+                    キャンセル (追加しない)
+                </button>
+            </div>
+        </div>
+
+        <!-- ==============================
+             SCREEN: REST (House)
+        =============================== -->
+        <div id="screen-rest" class="absolute inset-0 flex flex-col hidden z-30 bg-slate-900 p-4">
+            <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-900/40 to-slate-900 pointer-events-none"></div>
+            <h2 class="text-3xl font-bold text-center mt-12 text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.8)] z-10">休息の地</h2>
+            <p class="text-center text-slate-300 mt-2 mb-8 z-10">拠点に到着した。ボーナスを1つ選ぼう。</p>
+            
+            <div id="rest-options" class="flex flex-col gap-4 items-center flex-1 z-10 px-4">
+                <!-- House options injected here -->
+            </div>
+        </div>
+
+        <!-- ==============================
+             SCREEN: GAME OVER
+        =============================== -->
+        <div id="screen-gameover" class="absolute inset-0 flex flex-col hidden z-50 bg-black/90 p-6 items-center justify-center">
+            <h2 class="text-5xl font-black text-red-600 mb-2 drop-shadow-[0_0_15px_rgba(220,38,38,0.8)]">GAME OVER</h2>
+            <p class="text-xl text-slate-300 mb-8">到達フロア: <span id="go-floor" class="text-white font-bold text-3xl">1</span></p>
+            
+            <button id="btn-restart" class="w-full max-w-xs bg-red-700 hover:bg-red-600 text-white font-bold py-4 rounded-xl shadow-lg transition-transform transform hover:scale-105 mb-4 text-lg">
+                タイトルへ戻る
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        /* AI-GAME-PORTFOLIO - Rune Dice Tactics: Roll Survivor */
+
+        // ==========================================
+        // 1. Data Management (Master Data & Loading)
+        // ==========================================
+        const MASTER = {
+            cards: [],
+            houses: []
+        };
+
+        const FALLBACK_DATA = {
+            cards: [
+                { id: "f_fire", name: "炎のルーン", color: "#ef4444" },
+                { id: "f_water", name: "水のルーン", color: "#3b82f6" },
+                { id: "f_wind", name: "風のルーン", color: "#10b981" },
+                { id: "f_earth", name: "土のルーン", color: "#f59e0b" },
+                { id: "f_light", name: "光のルーン", color: "#eab308" },
+                { id: "f_dark", name: "闇のルーン", color: "#8b5cf6" },
+                { id: "f_iron", name: "鋼鉄の紋章", color: "#94a3b8" },
+                { id: "f_neon", name: "ネオン・ルーン", color: "#ec4899" }
+            ],
+            houses: [
+                { id: "h_tent", name: "ルーンのテント", desc: "HPを20回復する" },
+                { id: "h_forge", name: "紋章の鍛冶屋", desc: "最大HPを10増やす" },
+                { id: "h_altar", name: "祈りの祭壇", desc: "初期シールド+5の永続効果" }
+            ]
+        };
+
+        async function loadMasterData() {
+            try {
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://morinokum.github.io/my-website/game-data.js';
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    // Timeout
+                    setTimeout(reject, 3000); 
+                    document.head.appendChild(script);
+                });
+
+                if (window.RUNE_GAME_DATA) {
+                    // Extract data trying different possible keys
+                    MASTER.cards = window.RUNE_GAME_DATA.cards || window.RUNE_GAME_DATA.runes || window.RUNE_GAME_DATA.items || [];
+                    MASTER.houses = window.RUNE_GAME_DATA.houses || window.RUNE_GAME_DATA.facilities || window.RUNE_GAME_DATA.buildings || [];
+                }
+            } catch (e) {
+                console.log("External data load failed or timed out. Using fallback.");
+            }
+
+            // Apply fallback if empty
+            if (MASTER.cards.length === 0) MASTER.cards = FALLBACK_DATA.cards;
+            if (MASTER.houses.length === 0) MASTER.houses = FALLBACK_DATA.houses;
+
+            console.log("Master Data Loaded:", MASTER);
+        }
+
+        // ==========================================
+        // 2. Game Rules & Card Generation
+        // ==========================================
+        const SKILL_TYPES = [
+            { type: 'attack', icon: '⚔️', desc: 'ダメージ', weight: 50 },
+            { type: 'defend', icon: '🛡️', desc: 'シールド', weight: 40 },
+            { type: 'heal', icon: '💚', desc: 'HP回復', weight: 10 }
+        ];
+
+        const REQ_TYPES = [
+            { id: 'any', label: 'ANY', desc: '条件なし', multi: 1, color: 'bg-slate-700' },
+            { id: 'even', label: 'EVEN', desc: '偶数(2,4,6)', multi: 1.5, color: 'bg-blue-900' },
+            { id: 'odd', label: 'ODD', desc: '奇数(1,3,5)', multi: 1.5, color: 'bg-emerald-900' },
+            { id: 'high', label: '4+', desc: '4以上', multi: 2, color: 'bg-red-900' },
+            { id: 'low', label: '3-', desc: '3以下', multi: 2, color: 'bg-indigo-900' },
+            { id: 'six', label: 'SIX', desc: '6のみ', multi: 3, color: 'bg-purple-900' }
+        ];
+
+        function getRandomItem(array, weightKey = null) {
+            if (!weightKey) return array[Math.floor(Math.random() * array.length)];
+            const totalWeight = array.reduce((sum, item) => sum + item[weightKey], 0);
+            let r = Math.random() * totalWeight;
+            for (const item of array) {
+                if (r < item[weightKey]) return item;
+                r -= item[weightKey];
+            }
+            return array[0];
+        }
+
+        function generateCard(fixedType = null, fixedReq = null) {
+            const base = getRandomItem(MASTER.cards);
+            const skill = fixedType ? SKILL_TYPES.find(s => s.type === fixedType) : getRandomItem(SKILL_TYPES, 'weight');
+            
+            // Heal is powerful, force harder requirement if not fixed
+            let reqList = REQ_TYPES;
+            if (skill.type === 'heal' && !fixedReq) {
+                reqList = REQ_TYPES.filter(r => r.id === 'six' || r.id === 'high' || r.id === 'even');
+            }
+            const req = fixedReq ? REQ_TYPES.find(r => r.id === fixedReq) : getRandomItem(reqList);
+
+            return {
+                uid: 'c_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+                baseId: base.id || base.name,
+                name: base.name || "名もなきルーン",
+                color: base.color || '#94a3b8',
+                skillType: skill.type,
+                skillIcon: skill.icon,
+                reqId: req.id,
+                reqLabel: req.label,
+                reqColor: req.color,
+                multi: req.multi
+            };
+        }
+
+        function checkRequirement(diceVal, reqId) {
+            if (reqId === 'any') return true;
+            if (reqId === 'even') return diceVal % 2 === 0;
+            if (reqId === 'odd') return diceVal % 2 !== 0;
+            if (reqId === 'high') return diceVal >= 4;
+            if (reqId === 'low') return diceVal <= 3;
+            if (reqId === 'six') return diceVal === 6;
+            return false;
+        }
+
+        // ==========================================
+        // 3. State Management & Save/Load
+        // ==========================================
+        const SAVE_KEY = 'AIGP_RuneDice_Save_V1';
+        const MAX_DECK = 5;
+
+        const appState = {
+            floor: 1,
+            player: {
+                maxHp: 50,
+                hp: 50,
+                baseShield: 0,
+                diceCount: 3,
+                deck: []
+            },
+            battle: {
+                shield: 0,
+                enemy: null,
+                dices: [],
+                selectedDiceId: null,
+                turn: 1
+            },
+            tempRewardCard: null // For replace logic
+        };
+
+        function saveGame() {
+            const dataToSave = {
+                floor: appState.floor,
+                player: appState.player
+            };
+            localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem(SAVE_KEY);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    appState.floor = parsed.floor;
+                    appState.player = parsed.player;
+                    // Compatibility check
+                    if (!appState.player.baseShield) appState.player.baseShield = 0;
+                    return true;
+                } catch(e) {
+                    console.error("Save data corrupted.");
+                }
+            }
+            return false;
+        }
+
+        function initNewGame() {
+            appState.floor = 1;
+            appState.player = {
+                maxHp: 50,
+                hp: 50,
+                baseShield: 0,
+                diceCount: 3,
+                deck: [
+                    generateCard('attack', 'any'),
+                    generateCard('defend', 'any'),
+                    generateCard('attack', 'even')
+                ]
+            };
+            saveGame();
+        }
+
+        // ==========================================
+        // 4. UI Controllers & Elements
+        // ==========================================
+        const DOM = {
+            screens: {
+                title: document.getElementById('screen-title'),
+                battle: document.getElementById('screen-battle'),
+                reward: document.getElementById('screen-reward'),
+                replace: document.getElementById('screen-replace'),
+                rest: document.getElementById('screen-rest'),
+                gameover: document.getElementById('screen-gameover')
+            },
+            toast: document.getElementById('toast'),
+            deck: document.getElementById('ui-deck-container'),
+            dicePool: document.getElementById('ui-dice-pool')
+        };
+
+        function switchScreen(screenName) {
+            Object.values(DOM.screens).forEach(el => el.classList.add('hidden'));
+            if (DOM.screens[screenName]) {
+                DOM.screens[screenName].classList.remove('hidden');
+                DOM.screens[screenName].classList.add('animate-pop');
+            }
+        }
+
+        let toastTimeout;
+        function showMessage(msg, type='info') {
+            DOM.toast.textContent = msg;
+            DOM.toast.className = `absolute top-10 left-1/2 transform -translate-x-1/2 text-white px-6 py-3 rounded-full shadow-xl font-bold z-50 transition-opacity duration-300 pointer-events-none ${type==='error' ? 'bg-red-600' : 'bg-indigo-600'}`;
+            DOM.toast.style.opacity = '1';
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                DOM.toast.style.opacity = '0';
+            }, 2000);
+        }
+
+        function createCardHTML(card, context = 'battle') {
+            const isBattle = context === 'battle';
+            let slotHTML = '';
+            
+            if (isBattle) {
+                // Determine if a dice is assigned
+                const assignedDice = appState.battle.dices.find(d => d.assignedToCardUid === card.uid);
+                
+                if (assignedDice) {
+                    slotHTML = `
+                        <div class="dice-slot highlight flex items-center justify-center cursor-pointer" data-action="remove-dice" data-uid="${card.uid}">
+                            <div class="w-10 h-10 bg-white text-slate-900 rounded-lg flex items-center justify-center font-black text-xl shadow-md border-2 border-blue-500">
+                                ${assignedDice.value}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    slotHTML = `
+                        <div class="dice-slot cursor-pointer hover:border-slate-300" data-action="assign-dice" data-uid="${card.uid}">
+                            <span class="text-slate-500 text-xs">Drop<br>Dice</span>
+                        </div>
+                    `;
+                }
+            }
+
+            // Use inline styles for dynamic colors to ensure they work regardless of Tailwind purge
+            return `
+                <div class="rune-card relative w-[5.5rem] h-36 bg-slate-800 border-2 rounded-xl flex flex-col justify-between items-center p-1 ${isBattle ? '' : 'w-28 h-44 border-slate-600 hover:border-yellow-400 cursor-pointer'}" 
+                     style="border-color: ${card.color}80;"
+                     ${!isBattle ? `data-action="select-card" data-uid="${card.uid}"` : ''}>
+                    
+                    <div class="w-full text-center truncate text-[10px] font-bold" style="color: ${card.color}">${card.name}</div>
+                    
+                    <div class="text-3xl my-1 drop-shadow-md filter">${card.skillIcon}</div>
+                    
+                    <div class="text-[10px] font-bold mt-1 text-white bg-slate-700 px-2 rounded-full shadow-inner ${card.reqColor}">
+                        ${card.reqLabel}
+                    </div>
+                    
+                    <div class="text-xs font-black mt-1 text-slate-200">
+                        x ${card.multi}
+                    </div>
+                    
+                    ${isBattle ? `<div class="mt-auto mb-1">${slotHTML}</div>` : ''}
+                </div>
+            `;
+        }
+
+        // ==========================================
+        // 5. Battle Logic
+        // ==========================================
+        const ENEMY_EMOJIS = ['👾', '🐉', '😈', '💀', '🧛', '👹', '🕷️'];
+        const ENEMY_NAMES = ['スライム', 'ドラゴン', 'デーモン', 'スケルトン', 'ヴァンパイア', 'オーガ', '大蜘蛛'];
+
+        function initBattle() {
+            // Generate Enemy
+            const floorMult = 1 + (appState.floor * 0.2);
+            appState.battle.enemy = {
+                name: ENEMY_NAMES[(appState.floor - 1) % ENEMY_NAMES.length],
+                icon: ENEMY_EMOJIS[(appState.floor - 1) % ENEMY_EMOJIS.length],
+                maxHp: Math.floor(20 * floorMult),
+                hp: Math.floor(20 * floorMult),
+                baseAttack: Math.floor(5 * floorMult),
+                nextAttack: 0
+            };
+            
+            appState.battle.turn = 1;
+            appState.battle.shield = appState.player.baseShield;
+            updateBattleUI();
+            startPlayerTurn();
+            
+            switchScreen('battle');
+        }
+
+        function startPlayerTurn() {
+            appState.battle.selectedDiceId = null;
+            appState.battle.dices = [];
+            
+            // Roll dices
+            for (let i = 0; i < appState.player.diceCount; i++) {
+                appState.battle.dices.push({
+                    id: 'd_' + i,
+                    value: Math.floor(Math.random() * 6) + 1,
+                    assignedToCardUid: null
+                });
+            }
+
+            // Decide enemy intent
+            const variance = Math.floor(Math.random() * 3) - 1; // -1, 0, 1
+            appState.battle.enemy.nextAttack = Math.max(1, appState.battle.enemy.baseAttack + variance + Math.floor(appState.battle.turn * 0.5));
+
+            renderBattleState();
+        }
+
+        function renderBattleState() {
+            // Player Stats
+            document.getElementById('ui-floor').textContent = appState.floor;
+            document.getElementById('ui-player-hp').textContent = appState.player.hp;
+            document.getElementById('ui-player-maxhp').textContent = appState.player.maxHp;
+            document.getElementById('ui-player-hp-bar').style.width = `${(appState.player.hp / appState.player.maxHp) * 100}%`;
+            document.getElementById('ui-player-shield').textContent = appState.battle.shield;
+
+            // Enemy Stats
+            const enemy = appState.battle.enemy;
+            document.getElementById('ui-enemy-name').textContent = enemy.name;
+            document.getElementById('ui-enemy-sprite').textContent = enemy.icon;
+            document.getElementById('ui-enemy-hp').textContent = enemy.hp;
+            document.getElementById('ui-enemy-maxhp').textContent = enemy.maxHp;
+            document.getElementById('ui-enemy-hp-bar').style.width = `${(enemy.hp / enemy.maxHp) * 100}%`;
+            document.getElementById('ui-enemy-damage').textContent = enemy.nextAttack;
+
+            // Deck
+            DOM.deck.innerHTML = appState.player.deck.map(card => createCardHTML(card, 'battle')).join('');
+
+            // Dice Pool
+            DOM.dicePool.innerHTML = appState.battle.dices.map(d => {
+                if (d.assignedToCardUid) return ''; // Hide if assigned
+                const isSelected = appState.battle.selectedDiceId === d.id;
+                return `
+                    <div class="dice ${isSelected ? 'selected' : ''}" data-action="select-dice" data-id="${d.id}">
+                        ${d.value}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function handleBattleClick(e) {
+            const target = e.target.closest('[data-action]');
+            if (!target) return;
+
+            const action = target.dataset.action;
+
+            if (action === 'select-dice') {
+                const diceId = target.dataset.id;
+                if (appState.battle.selectedDiceId === diceId) {
+                    appState.battle.selectedDiceId = null; // deselect
+                } else {
+                    appState.battle.selectedDiceId = diceId;
+                }
+                renderBattleState();
+            }
+            else if (action === 'assign-dice') {
+                const cardUid = target.dataset.uid;
+                if (!appState.battle.selectedDiceId) {
+                    showMessage("先に下のダイスをタップして選択してください");
+                    return;
+                }
+
+                const dice = appState.battle.dices.find(d => d.id === appState.battle.selectedDiceId);
+                const card = appState.player.deck.find(c => c.uid === cardUid);
+
+                if (checkRequirement(dice.value, card.reqId)) {
+                    dice.assignedToCardUid = cardUid;
+                    appState.battle.selectedDiceId = null;
+                    renderBattleState();
+                } else {
+                    // Requirement failed
+                    target.closest('.rune-card').classList.add('animate-shake');
+                    showMessage(`条件(${card.reqLabel})を満たしていません！`, 'error');
+                    setTimeout(() => target.closest('.rune-card').classList.remove('animate-shake'), 500);
+                }
+            }
+            else if (action === 'remove-dice') {
+                const cardUid = target.dataset.uid;
+                const dice = appState.battle.dices.find(d => d.assignedToCardUid === cardUid);
+                if (dice) {
+                    dice.assignedToCardUid = null;
+                    renderBattleState();
+                }
+            }
+        }
+
+        DOM.screens.battle.addEventListener('click', handleBattleClick);
+
+        function spawnAnimText(text, color, elementId) {
+            const target = document.getElementById(elementId);
+            const rect = target.getBoundingClientRect();
+            const anim = document.createElement('div');
+            anim.className = 'anim-damage';
+            anim.textContent = text;
+            anim.style.color = color;
+            anim.style.left = `${rect.left + rect.width/2 - 20}px`;
+            anim.style.top = `${rect.top}px`;
+            document.body.appendChild(anim);
+            setTimeout(() => anim.remove(), 1000);
+        }
+
+        async function executeTurn() {
+            const executeBtn = document.getElementById('btn-execute');
+            executeBtn.disabled = true;
+            appState.battle.selectedDiceId = null;
+            renderBattleState();
+
+            // Process assigned cards from left to right
+            for (const card of appState.player.deck) {
+                const dice = appState.battle.dices.find(d => d.assignedToCardUid === card.uid);
+                if (dice) {
+                    // Highlight card
+                    const cardEl = document.querySelector(`[data-uid="${card.uid}"]`).closest('.rune-card');
+                    cardEl.classList.add('glow');
+                    await new Promise(r => setTimeout(r, 400));
+
+                    const power = Math.ceil(dice.value * card.multi);
+                    
+                    if (card.skillType === 'attack') {
+                        appState.battle.enemy.hp = Math.max(0, appState.battle.enemy.hp - power);
+                        spawnAnimText(`-${power}`, '#ef4444', 'ui-enemy-sprite');
+                        document.getElementById('ui-enemy-sprite').classList.add('animate-shake');
+                        setTimeout(() => document.getElementById('ui-enemy-sprite').classList.remove('animate-shake'), 400);
+                    } 
+                    else if (card.skillType === 'defend') {
+                        appState.battle.shield += power;
+                        spawnAnimText(`+${power}🛡️`, '#60a5fa', 'ui-player-shield');
+                    }
+                    else if (card.skillType === 'heal') {
+                        const healAmount = power;
+                        appState.player.hp = Math.min(appState.player.maxHp, appState.player.hp + healAmount);
+                        spawnAnimText(`+${healAmount}💚`, '#4ade80', 'ui-player-hp');
+                    }
+
+                    renderBattleState();
+                    cardEl.classList.remove('glow');
+                    await new Promise(r => setTimeout(r, 300));
+                    
+                    if (appState.battle.enemy.hp <= 0) break;
+                }
+            }
+
+            // Check Win
+            if (appState.battle.enemy.hp <= 0) {
+                await new Promise(r => setTimeout(r, 800));
+                winBattle();
+                executeBtn.disabled = false;
+                return;
+            }
+
+            // Enemy Turn
+            await new Promise(r => setTimeout(r, 500));
+            const dmg = appState.battle.enemy.nextAttack;
+            
+            // Apply shield
+            let actualDmg = dmg;
+            if (appState.battle.shield > actualDmg) {
+                appState.battle.shield -= actualDmg;
+                actualDmg = 0;
+            } else {
+                actualDmg -= appState.battle.shield;
+                appState.battle.shield = 0;
+            }
+
+            if (actualDmg > 0) {
+                appState.player.hp = Math.max(0, appState.player.hp - actualDmg);
+                spawnAnimText(`-${actualDmg}`, '#ef4444', 'ui-player-hp');
+                document.getElementById('game-container').classList.add('animate-shake');
+                setTimeout(() => document.getElementById('game-container').classList.remove('animate-shake'), 400);
+            } else {
+                spawnAnimText(`BLOCKED`, '#94a3b8', 'ui-player-hp');
+            }
+
+            renderBattleState();
+            await new Promise(r => setTimeout(r, 800));
+
+            // Check Lose
+            if (appState.player.hp <= 0) {
+                showGameOver();
+                executeBtn.disabled = false;
+                return;
+            }
+
+            // Reset Shield slightly (decay or clear)
+            appState.battle.shield = appState.player.baseShield; // Reset to base every turn
+            appState.battle.turn++;
+            startPlayerTurn();
+            executeBtn.disabled = false;
+        }
+
+        document.getElementById('btn-execute').addEventListener('click', executeTurn);
+
+        function updateBattleUI() {
+            // Initial render call wrapper
+            renderBattleState();
+        }
+
+        // ==========================================
+        // 6. Reward & Rest Logic
+        // ==========================================
+        function winBattle() {
+            appState.floor++;
+            saveGame();
+            
+            // Check if Rest Floor (every 5 floors)
+            if ((appState.floor - 1) % 5 === 0 && appState.floor > 1) {
+                showRestScreen();
+            } else {
+                showRewardScreen();
+            }
+        }
+
+        function showRewardScreen() {
+            const container = document.getElementById('reward-cards');
+            container.innerHTML = '';
+            
+            // Generate 3 choices
+            for(let i=0; i<3; i++) {
+                const card = generateCard();
+                const html = createCardHTML(card, 'reward');
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = html;
+                wrapper.querySelector('.rune-card').addEventListener('click', () => {
+                    handleRewardSelect(card);
+                });
+                container.appendChild(wrapper.firstElementChild);
+            }
+            
+            switchScreen('reward');
+        }
+
+        function handleRewardSelect(card) {
+            if (appState.player.deck.length >= MAX_DECK) {
+                appState.tempRewardCard = card;
+                showReplaceScreen();
+            } else {
+                appState.player.deck.push(card);
+                saveGame();
+                initBattle();
+            }
+        }
+
+        document.getElementById('btn-skip-reward').addEventListener('click', () => {
+            initBattle();
+        });
+
+        function showReplaceScreen() {
+            const newContainer = document.getElementById('replace-new-card-container');
+            newContainer.innerHTML = createCardHTML(appState.tempRewardCard, 'reward');
+            
+            const deckContainer = document.getElementById('replace-deck-cards');
+            deckContainer.innerHTML = '';
+            
+            appState.player.deck.forEach((card, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = createCardHTML(card, 'reward');
+                const el = wrapper.firstElementChild;
+                // Override click
+                el.addEventListener('click', () => {
+                    appState.player.deck[index] = appState.tempRewardCard;
+                    appState.tempRewardCard = null;
+                    saveGame();
+                    initBattle();
+                });
+                deckContainer.appendChild(el);
+            });
+            
+            switchScreen('replace');
+        }
+
+        document.getElementById('btn-cancel-replace').addEventListener('click', () => {
+            appState.tempRewardCard = null;
+            initBattle();
+        });
+
+        // --- Rest (House) Screen ---
+        function showRestScreen() {
+            const container = document.getElementById('rest-options');
+            container.innerHTML = '';
+            
+            // Pick 3 random houses
+            const shuffled = [...MASTER.houses].sort(() => 0.5 - Math.random());
+            const choices = shuffled.slice(0, 3);
+            
+            choices.forEach(house => {
+                const btn = document.createElement('button');
+                btn.className = "w-full bg-slate-800 hover:bg-slate-700 border-2 border-slate-600 rounded-xl p-4 text-left flex flex-col gap-2 transition-transform transform hover:scale-105";
+                btn.innerHTML = `
+                    <div class="font-bold text-lg text-emerald-300">⛺ ${house.name}</div>
+                    <div class="text-sm text-slate-300">${house.desc || house.description}</div>
+                `;
+                btn.addEventListener('click', () => {
+                    applyRestBonus(house);
+                });
+                container.appendChild(btn);
+            });
+            
+            switchScreen('rest');
+        }
+
+        function applyRestBonus(house) {
+            const desc = (house.desc || house.description || "").toLowerCase();
+            
+            if (desc.includes('最大hp')) {
+                appState.player.maxHp += 10;
+                appState.player.hp += 10;
+                showMessage("最大HPが10増加した！");
+            } else if (desc.includes('シールド')) {
+                appState.player.baseShield += 5;
+                showMessage("毎ターンの初期シールドが5増加した！");
+            } else {
+                // Default Heal
+                const heal = Math.floor(appState.player.maxHp * 0.4);
+                appState.player.hp = Math.min(appState.player.maxHp, appState.player.hp + heal);
+                showMessage(`HPが${heal}回復した！`);
+            }
+            
+            saveGame();
+            setTimeout(() => {
+                initBattle();
+            }, 1500);
+        }
+
+        // ==========================================
+        // 7. Game Over & Flow Control
+        // ==========================================
+        function showGameOver() {
+            document.getElementById('go-floor').textContent = appState.floor;
+            localStorage.removeItem(SAVE_KEY); // Clear save on death
+            switchScreen('gameover');
+        }
+
+        document.getElementById('btn-restart').addEventListener('click', () => {
+            checkSaveData();
+            switchScreen('title');
+        });
+
+        document.getElementById('btn-settings').addEventListener('click', () => {
+            if(confirm("進行状況を破棄してタイトルに戻りますか？ (セーブデータは消去されます)")) {
+                localStorage.removeItem(SAVE_KEY);
+                checkSaveData();
+                switchScreen('title');
+            }
+        });
+
+        // --- Title Logic ---
+        function checkSaveData() {
+            const hasSave = loadGame();
+            const btnStart = document.getElementById('btn-start');
+            const btnContinue = document.getElementById('btn-continue');
+            const loadingText = document.getElementById('loading-text');
+            
+            loadingText.classList.add('hidden');
+            btnStart.classList.remove('hidden');
+            
+            if (hasSave) {
+                btnContinue.classList.remove('hidden');
+                document.getElementById('continue-floor').textContent = appState.floor;
+            } else {
+                btnContinue.classList.add('hidden');
+            }
+        }
+
+        document.getElementById('btn-start').addEventListener('click', () => {
+            initNewGame();
+            initBattle();
+        });
+
+        document.getElementById('btn-continue').addEventListener('click', () => {
+            loadGame();
+            initBattle();
+        });
+
+        // ==========================================
+        // 8. Bootstrap
+        // ==========================================
+        window.addEventListener('load', async () => {
+            await loadMasterData();
+            checkSaveData();
+        });
+
+    </script>
+</body>
+</html>

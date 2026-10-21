@@ -1,5 +1,4 @@
 #!/bin/bash
-# ※ set -e は予期せぬ強制終了を招くため削除しました
 
 # ==============================================================================
 # 1. グローバル変数・設定
@@ -62,7 +61,6 @@ update_game_data() {
 }
 
 collect_html_games() {
-  # findの出力を安全に読み込む
   while IFS= read -r file; do
     local filename
     filename=$(basename "$file")
@@ -77,7 +75,6 @@ collect_html_games() {
 }
 
 build_index_html() {
-  # 3-1. index.html の生成（ヘッダー・CSS）
   cat << 'HTMLEOF' > index.html
 <!DOCTYPE html>
 <html lang="ja">
@@ -130,7 +127,6 @@ build_index_html() {
       <div id="noResults">見つかりませんでした 😢</div>
 HTMLEOF
 
-  # 3-2. games フォルダ内のHTMLを解析しカードを追加
   declare -A seen_titles
   GAME_LIST_TEXT=""
   GAME_COUNT=0
@@ -140,7 +136,6 @@ HTMLEOF
     local filename
     filename=$(basename "$file")
     
-    # タイトルタグの抽出
     local raw_title
     raw_title=$(grep -io '<title>.*</title>' "$file" | sed -e 's/<title>//i' -e 's/<\/title>//i' | head -n 1)
     local gametitle=${raw_title:-${filename%.*}}
@@ -154,14 +149,12 @@ HTMLEOF
     GAME_LIST_TEXT+="- ${gametitle}\n"
     ((GAME_COUNT++))
 
-    # AI-DEV-HANDOFF から「概要・ルール」を抽出
     local summary
     summary=$(sed -n '/AI-DEV-HANDOFF-START/,/AI-DEV-HANDOFF-END/p' "$file" | grep -i "^概要・ルール:" | sed 's/^概要・ルール:[  ]*//' | head -n 1)
     if [ -z "$summary" ]; then
       summary="このゲームの概要はまだ記載されていません。"
     fi
 
-    # エスケープ処理
     local safe_title
     safe_title=$(echo "$gametitle" | sed 's/"/\&quot;/g; s/</\&lt;/g; s/>/\&gt;/g')
     local safe_summary
@@ -183,7 +176,6 @@ HTMLEOF
 HTMLEOF
   done < <(ls -t "$GAMES_DIR"/*.html 2>/dev/null)
 
-  # 3-3. フッターとJavaScriptを追加
   cat << HTMLEOF >> index.html
     </div>
   </div>
@@ -240,14 +232,12 @@ HTMLEOF
 }
 
 sync_with_git() {
-  # Gitリポジトリかどうかの簡易チェック
   if [ ! -d ".git" ]; then
     echo "ℹ 現在のディレクトリはGitリポジトリではありません。Git連携をスキップします。"
     return
   fi
 
   if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
-    # 現在のブランチ名を取得（取得できない場合はmainとする）
     local current_branch
     current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
 
@@ -275,10 +265,12 @@ AI-DEV-HANDOFF-END -->"
 
   echo -e "\n--------------------------------------------------"
   echo "🤖 AIへの発注プロンプトを作成します。モードを選んでください。"
-  echo "  1) 🆕 新作を作る"
-  echo "  2) 🔧 既存ゲームを引き継ぐ（メタデータのみ添付・トークン節約）"
-  echo "  3) 🚀 既存ゲームを引き継ぐ（全コード添付・確実な改良）"
-  echo "  4) 📦 共通データ(game-data.js)のみを新しく作る・更新する"
+  echo "  1) 🆕 新作を作る（直接コード生成）"
+  echo "  2) 🔧 既存ゲームを引き継ぐ（メタデータのみ添付）"
+  echo "  3) 🚀 既存ゲームを引き継ぐ（全コード添付）"
+  echo "  4) 📦 共通データ(game-data.js)のみを更新する"
+  echo "  5) 📝 【設計図フェーズ1】ゲームの設計図をAIに考えさせる"
+  echo "  6) 🏗️ 【設計図フェーズ2】完成した設計図からゲームを実装させる"
   echo -n "👉 番号 [1]: "
   
   local mode
@@ -294,7 +286,47 @@ ${HANDOFF_RULE}"
 
   local PROMPT=""
 
-  if [ "$mode" = "4" ]; then
+  if [ "$mode" = "5" ]; then
+    echo -n "👉 設計図のテーマ・要素（空Enterでお任せ）: "
+    local custom_request
+    read -r custom_request
+    
+    local REQUEST_PART
+    if [ -n "$custom_request" ]; then
+      REQUEST_PART="次回作として「${custom_request}」という概念やテーマを組み込んだゲームを作りたいです。"
+    else
+      REQUEST_PART="次回作を作りたいのですが、既存の作品とは全く被らない新しいルールの「面白くてハマる単一ファイルゲーム」のアイデアを考えてください。"
+    fi
+
+    PROMPT="私はこれまでに以下のHTMLブラウザゲームを作成しました。
+
+$(echo -e "$GAME_LIST_TEXT")
+
+${REQUEST_PART}
+
+いきなりコードを書くのではなく、まずはゲームの【設計図（仕様書）】を作成してください。
+以下の項目を含めて、具体的かつ実装可能なレベルで記述してください。
+
+【設計図に含めてほしい項目】
+1. タイトルと概要
+2. コアとなるゲームループ（プレイヤーの目的と面白さの核）
+3. 画面レイアウト・UIの構成
+4. 必要なデータ構造と状態管理（外部データ window.RUNE_GAME_DATA をどう活かすか）
+5. ゲームの進行（開始、クリア、ゲームオーバー）
+6. 実装すべきセーブデータの要素
+7. 開発・実装のステップ
+
+※ここでは絶対にコードを生成せず、設計図のテキストのみを出力してください。"
+
+  elif [ "$mode" = "6" ]; then
+    PROMPT="以下の【ゲーム設計図】をもとに、HTML/CSS/JSが1つにまとまった1ファイルの完全なコードを生成してください。
+
+【ゲーム設計図】
+（※ここに前回のチャットでAIが作成した設計図のテキストをペーストしてください）
+
+${COMMON_RULES}"
+
+  elif [ "$mode" = "4" ]; then
     echo -n "👉 新しいデータの世界観・テーマ（例: SF、ゾンビ、現代都市、宇宙、空Enterでお任せ）: "
     local data_theme
     read -r data_theme
@@ -333,8 +365,7 @@ ${CURRENT_DATA}
 
 ダウンロードしてそのまま使える形式で出力をお願いします。"
 
-  elif [ "$mode" = "2" ] || [ "$mode" = "3" ]; then
-    # MacのBash 3.2互換のためmapfileを使用せずwhileで配列に格納
+  elif [ "$mode" = "2" ] \vert{}\vert{} [ "$mode" = "3" ]; then
     local game_files=()
     while IFS= read -r f; do
       [ -n "$f" ] && game_files+=("$f")
@@ -355,16 +386,13 @@ ${CURRENT_DATA}
     
     local num
     read -r num
-    # 不正な入力（文字など）や範囲外を弾く簡易チェック
-   
-   if ! [[ "$num" =~ ^[0-9]+$ ]] || [ "$num" -le 0 ] || [ "$num" -gt "${#game_files[@]}" ]; then
-  echo "⚠ 無効な番号です。"; exit 1
-fi 
-
-
+    
+    if ! [[ "$num" =~ ^[0-9]+$ ]] || [ "$num" -le 0 ] || [ "$num" -gt "${#game_files[@]}" ]; then
+      echo "⚠ 無効な番号です。"; exit 1
+    fi 
 
     local target="${game_files[$((num-1))]}"
-    if [ -z "$target" ] || [ ! -f "$target" ]; then
+    if [ -z "$target" ] \vert{}\vert{} [ ! -f "$target" ]; then
       echo "⚠ 無効な番号です。"; exit 1
     fi
 
@@ -411,7 +439,6 @@ $(cat "$target")
 ${COMMON_RULES}"
 
   else
-    # モード1
     echo -n "👉 新作のテーマ・要素（空Enterでお任せ）: "
     local custom_request
     read -r custom_request
@@ -433,10 +460,16 @@ ${REQUEST_PART}
 ${COMMON_RULES}"
   fi
 
-  # 転送実行
   if copy_to_clipboard "$PROMPT"; then
     echo -e "\n📋 クリップボードにAIへの指示文をコピーしました！"
-    echo "    新規チャットにペーストして発注してください。"
+    if [ "$mode" = "5" ]; then
+      echo "    📝 新規チャットを開き、ペーストして設計図を作らせてください。"
+    elif [ "$mode" = "6" ]; then
+      echo "    🏗️ 新規チャットを開き、ペーストしてください。"
+      echo "    ※ペースト後、(※ここにAIが作成した設計図のテキストをペーストしてください) の部分を上書きしてから送信してください。"
+    else
+      echo "    新規チャットにペーストして発注してください。"
+    fi
   else
     echo -e "\n⚠ クリップボード出力ツールが見つかりませんでした。以下をコピーしてください："
     echo "--------------------------------------------------"
@@ -445,9 +478,6 @@ ${COMMON_RULES}"
   fi
 }
 
-# ==============================================================================
-# 4. 設計図（メイン処理）
-# ==============================================================================
 main() {
   setup_environment
   update_game_data
@@ -457,5 +487,4 @@ main() {
   generate_ai_prompt
 }
 
-# 最後にメイン処理を1回だけ呼び出す
 main "$@"

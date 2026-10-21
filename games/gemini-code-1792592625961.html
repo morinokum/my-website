@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- AI-GAME-PORTFOLIO -->
+    <meta name="description" content="AI-GAME-PORTFOLIO">
+    <title>絶対絶望獣：神殺しの系譜</title>
+    <style>
+        :root {
+            --bg-dark: #0a0a0c;
+            --panel-bg: #1a1a20;
+            --border-color: #333;
+            --accent-red: #c22;
+            --text-main: #e0e0e0;
+            --text-muted: #888;
+            --hp-fill: #b11;
+            --part-hp: #2a8;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ヘッダー：巨獣UI */
+        #boss-ui {
+            background-color: #111;
+            padding: 15px;
+            border-bottom: 2px solid var(--accent-red);
+            flex-shrink: 0;
+        }
+        
+        #boss-hp-bar-container {
+            width: 100%;
+            background-color: #333;
+            height: 35px;
+            position: relative;
+            border: 1px solid #000;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+        }
+
+        #boss-hp-bar {
+            width: 100%;
+            background: linear-gradient(90deg, #600, var(--hp-fill), #f00);
+            height: 100%;
+            transition: width 0.3s ease-out;
+        }
+
+        #boss-hp-text {
+            position: absolute;
+            top: 50%;
+            left: 15px;
+            transform: translateY(-50%);
+            font-weight: bold;
+            font-size: 1.1em;
+            text-shadow: 1px 1px 3px #000, -1px -1px 3px #000;
+            letter-spacing: 1px;
+            pointer-events: none;
+        }
+
+        .parts-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .part-box {
+            flex: 1;
+            min-width: 120px;
+            background-color: #222;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+            border-radius: 4px;
+        }
+
+        .part-name { font-weight: bold; font-size: 0.95em; margin-bottom: 5px; }
+        .part-desc { font-size: 0.75em; color: var(--text-muted); margin-bottom: 8px; height: 32px; overflow: hidden; }
+        .part-hp-bar { width: 100%; background: #444; height: 8px; border-radius: 4px; overflow: hidden; }
+        .part-hp-fill { width: 100%; background: var(--part-hp); height: 100%; transition: width 0.3s; }
+
+        /* メインUI */
+        #main-ui {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            flex-direction: column;
+        }
+
+        @media(min-width: 768px) {
+            #main-ui { flex-direction: row; }
+        }
+
+        #left-panel {
+            flex: 1;
+            padding: 20px;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            background-color: var(--panel-bg);
+            overflow-y: auto;
+        }
+
+        #right-panel {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #0d0d0f;
+        }
+
+        /* 勇者情報 */
+        .hero-info {
+            margin-bottom: 25px;
+            padding: 20px;
+            background-color: #2a2a30;
+            border: 1px solid #444;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+        }
+
+        .hero-title { margin: 0 0 15px 0; color: #eda; font-size: 1.4em; border-bottom: 1px solid #555; padding-bottom: 5px; }
+        .hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; font-size: 1.1em; }
+        .life-text { font-size: 1.2em; }
+        .life-warning { color: var(--accent-red); font-weight: bold; animation: pulse 1s infinite; }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        /* ボタン */
+        .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        button {
+            background-color: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 15px;
+            cursor: pointer;
+            font-size: 1em;
+            border-radius: 6px;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+        button:hover:not(:disabled) { background-color: #4a4a4a; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        button:active:not(:disabled) { transform: translateY(0); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        .btn-boss { background-color: #611; border-color: #a22; color: #fcc; }
+        .btn-boss:hover:not(:disabled) { background-color: #822; }
+
+        /* ログ */
+        .log-entry { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed #333; line-height: 1.4; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+        .log-turn { color: #668; font-size: 0.85em; margin-right: 8px; }
+        .log-damage { color: #f66; font-weight: bold; }
+        .log-system { color: #eda; }
+
+        /* モーダル & オーバーレイ */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: var(--panel-bg);
+            padding: 25px;
+            border: 1px solid #555;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+
+        .upgrade-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #333;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(20, 0, 0, 0.95);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            text-align: center;
+        }
+        .overlay h1 { color: #f33; font-size: 3em; margin-bottom: 20px; text-shadow: 0 0 10px #f00; }
+        .overlay p { color: #ddd; font-size: 1.2em; line-height: 1.6; margin-bottom: 30px; }
+        
+        .clear-overlay { background: rgba(30, 30, 20, 0.95); }
+        .clear-overlay h1 { color: #fd4; text-shadow: 0 0 20px #fa0; }
+
+    </style>
+</head>
+<body>
+
+<!-- AI-DEV-HANDOFF-START
+タイトル: 絶対絶望獣：神殺しの系譜
+バージョン: 1.0.0
+概要・ルール: 
+巨獣（超高HP）を何世代にもわたって討伐する世代交代型クリッカーRPG。
+プレイヤーは行動で寿命を消費し、死ぬ直前に巨獣に特攻する。死ぬと「遺産ポイント」を得て、拠点を強化し次世代へステータスを引き継ぐ。
+インフレ（指数関数的な成長）を活用し、数億のHPを数十分〜数時間のプレイで削り切るバランス設計。
+主要な構造（関数・状態管理・画面遷移）:
+- 状態は `state` オブジェクトで一元管理（boss, lineage, hero）。
+- `game` オブジェクトにロジックをカプセル化（train, explore, attackBoss等）。
+- UI更新は `updateUI()` を通じてDOMを一括書き換え。
+- 戦闘フェーズと育成フェーズのボタン切り替え。
+セーブデータのキー: LineageRPG_Save
+実装済み機能: 
+- 寿命消費アクション（修練、探索）
+- 拠点でのアップグレード（遺産ポイント消費によるインフレ強化）
+- 巨獣とのバトル（部位破壊ギミック、ダメージ軽減）
+- 世代交代システム
+- localStorage による自動セーブ・ロード
+未実装・TODO:
+- ボスの形態変化（第2フェーズ・属性攻撃など）
+- クラス（職業）や遺伝スキルのツリー化
+- サウンド・エフェクトの追加
+設計上のこだわり・注意点:
+- インフレするステータスで「最初は絶対に勝てない絶望感」と「世代を重ねた圧倒的成長」を両立。
+- 巨獣のHPバーを常に上部に固定し、最終目標を常に意識させるUI構成。
+AI-DEV-HANDOFF-END -->
+
+<!-- ヘッダー：巨獣UI -->
+<div id="boss-ui">
+    <div id="boss-hp-bar-container">
+        <div id="boss-hp-bar"></div>
+        <div id="boss-hp-text">災厄の巨獣 HP: -- / --</div>
+    </div>
+    <div class="parts-container" id="parts-container">
+        <!-- 動的生成 -->
+    </div>
+</div>
+
+<!-- メインUI -->
+<div id="main-ui">
+    <!-- 左側：操作パネル -->
+    <div id="left-panel">
+        <div class="hero-info" id="hero-info">
+            <!-- 動的生成 -->
+        </div>
+
+        <!-- 育成アクション -->
+        <div id="action-panel" class="actions">
+            <button onclick="game.train()">修練<br><span style="font-size:0.8em; font-weight:normal;">(寿命 -1)</span></button>
+            <button onclick="game.explore()">探索<br><span style="font-size:0.8em; font-weight:normal;">(寿命 -1)</span></button>
+            <button onclick="game.openBase()">一族の拠点<br><span style="font-size:0.8em; font-weight:normal;">(施設・血脈強化)</span></button>
+            <button class="btn-boss" onclick="game.startBossBattle()">巨獣に挑む<br><span style="font-size:0.8em; font-weight:normal;">(決戦 / 寿命全消費)</span></button>
+        </div>
+
+        <!-- 戦闘アクション -->
+        <div id="battle-panel" class="actions" style="display: none;">
+            <button onclick="game.attackBoss('shell')" id="btn-atk-shell">外殻を攻撃</button>
+            <button onclick="game.attackBoss('rightArm')" id="btn-atk-arm">右腕を攻撃</button>
+            <button onclick="game.attackBoss('core')" id="btn-atk-core" class="btn-boss">本体(コア)を攻撃</button>
+            <button onclick="game.fleeBattle()" style="background-color:#444;">戦意喪失 (自害)</button>
+        </div>
+    </div>
+
+    <!-- 右側：ログパネル -->
+    <div id="right-panel">
+        <div id="logs"></div>
+    </div>
+</div>
+
+<!-- 拠点モーダル -->
+<div id="base-modal" class="modal">
+    <div class="modal-content">
+        <h2 style="margin-top:0; color:#eda; border-bottom:1px solid #555; padding-bottom:10px;">一族の拠点</h2>
+        <p>所持 遺産ポイント (LP): <span id="modal-lp" style="color:#eda; font-weight:bold; font-size:1.2em;">0</span></p>
+        <div id="upgrades-container" style="margin-top:20px;">
+            <!-- 動的生成 -->
+        </div>
+        <button onclick="game.closeBase()" style="margin-top:20px; width:100%; background:#444;">拠点を出る</button>
+    </div>
+</div>
+
+<!-- 死亡/世代交代オーバーレイ -->
+<div id="death-overlay" class="overlay">
+    <h1>勇者は斃れた</h1>
+    <p id="death-desc"></p>
+    <button onclick="game.nextGeneration()" style="font-size:1.2em; padding:15px 40px; background:#a22; border-color:#f55;">次世代へ希望を託す</button>
+</div>
+
+<!-- クリアオーバーレイ -->
+<div id="clear-overlay" class="overlay clear-overlay">
+    <h1>神 殺 し 達 成</h1>
+    <p id="clear-desc"></p>
+    <button onclick="game.resetGame()" style="font-size:1.2em; padding:15px 40px; background:#ca2; border-color:#fd4; color:#000;">世界の歴史をリセットする</button>
+</div>
+
+<script>
+// ==========================================
+// ゲームロジック・状態管理
+// ==========================================
+
+const SAVE_KEY = 'LineageRPG_Save';
+const INITIAL_BOSS_HP = 500000000; // 5億
+
+// 初期状態の定義
+const DEFAULT_STATE = {
+    boss: {
+        maxHp: INITIAL_BOSS_HP,
+        currentHp: INITIAL_BOSS_HP,
+        parts: {
+            shell: { name: '強固な外殻', maxHp: 1500000, currentHp: 1500000, broken: false, effectDesc: '本体へのダメージを 1/100 に軽減' },
+            rightArm: { name: '巨獣の剛腕', maxHp: 6000000, currentHp: 6000000, broken: false, effectDesc: '毎ターン即死級の猛攻を放つ' },
+            core: { name: '巨獣の核(本体)', maxHp: INITIAL_BOSS_HP, currentHp: INITIAL_BOSS_HP, broken: false, effectDesc: 'HPを0にすれば討伐完了' }
+        }
+    },
+    lineage: {
+        generation: 1,
+        legacyPoints: 0,
+        upgrades: {
+            trainingFacility: { level: 1, name: '修練所の拡張', desc: '修練でのステータス上昇量が飛躍的にアップ', baseCost: 10, costMult: 2.2 },
+            explorationGear: { level: 1, name: '探索網の開拓', desc: '探索での遺産ポイント(LP)獲得量が飛躍的にアップ', baseCost: 10, costMult: 2.2 },
+            lifeExtender: { level: 0, name: '生命の秘薬', desc: '次世代の初期寿命(ターン数)が少し伸びる', baseCost: 50, costMult: 3.0 },
+            baseStats: { level: 0, name: '血脈の覚醒', desc: '次世代の初期ステータス(STR/VIT)の底上げ', baseCost: 80, costMult: 3.5 }
+        }
+    },
+    hero: {
+        life: 50,
+        maxLife: 50,
+        hp: 100,
+        maxHp: 100,
+        stats: { str: 5, vit: 5, agi: 5 },
+        isBattling: false
+    }
+};
+
+let state = null;
+
+const game = {
+    init() {
+        this.load();
+        this.updateUI();
+        this.log("システム", `<span class="log-system">第 ${state.lineage.generation} 代の物語が幕を開けた。</span>`);
+        
+        // 途中リロード時に戦闘中だった場合は強制死亡扱い
+        if(state.hero.isBattling) {
+            this.log("システム", "時空の乱れにより、勇者は致命傷を負った…。");
+            this.fleeBattle(); 
+        }
+    },
+
+    load() {
+        const saved = localStorage.getItem(SAVE_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                // 簡易ディープマージ（互換性担保）
+                state = Object.assign({}, JSON.parse(JSON.stringify(DEFAULT_STATE)), parsed);
+                state.boss.parts = Object.assign({}, DEFAULT_STATE.boss.parts, parsed.boss?.parts);
+                state.lineage.upgrades = Object.assign({}, DEFAULT_STATE.lineage.upgrades, parsed.lineage?.upgrades);
+            } catch(e) {
+                console.error("Save data parsing error:", e);
+                state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+                this.setupNewHero();
+            }
+        } else {
+            state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+            this.setupNewHero();
+        }
+    },
+
+    save() {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    },
+
+    resetGame() {
+        if(confirm("全世代の記憶を消去し、最初からやり直しますか？\n（この操作は取り消せません）")) {
+            localStorage.removeItem(SAVE_KEY);
+            location.reload();
+        }
+    },
+
+    formatNum(num) {
+        return Math.floor(num).toLocaleString('en-US');
+    },
+
+    log(type, message) {
+        const logsDiv = document.getElementById('logs');
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        
+        let typeColor = '#888';
+        if(type === '戦闘') typeColor = '#f55';
+        if(type === '決戦') typeColor = '#f22';
+        if(type === 'システム') typeColor = '#eda';
+
+        entry.innerHTML = `<span class="log-turn" style="color:${typeColor}">[${type}]</span> ${message}`;
+        logsDiv.prepend(entry);
+    },
+
+    // ==========================================
+    // 世代交代・セットアップ
+    // ==========================================
+
+    setupNewHero() {
+        const u = state.lineage.upgrades;
+        state.hero.maxLife = 50 + (u.lifeExtender.level * 5);
+        state.hero.life = state.hero.maxLife;
+        
+        // ベースステータスの計算（インフレ）
+        const baseMult = Math.pow(1.5, u.baseStats.level);
+        const baseSt = Math.floor(5 * baseMult);
+        
+        state.hero.stats = { str: baseSt, vit: baseSt, agi: baseSt };
+        state.hero.maxHp = baseSt * 20;
+        state.hero.hp = state.hero.maxHp;
+        state.hero.isBattling = false;
+        
+        this.save();
+    },
+
+    nextGeneration() {
+        state.lineage.generation++;
+        this.setupNewHero();
+        
+        document.getElementById('death-overlay').style.display = 'none';
+        document.getElementById('logs').innerHTML = ''; // ログクリア
+        this.log("システム", `<span class="log-system">第 ${state.lineage.generation} 代 勇者が誕生した。遺志を継ぎ、巨獣を討て。</span>`);
+        this.updateUI();
+    },
+
+    // ==========================================
+    // アクション（育成フェーズ）
+    // ==========================================
+
+    consumeLife() {
+        state.hero.life--;
+        if (state.hero.life <= 0) {
+            this.log("システム", `<span style="color:#f55; font-weight:bold;">寿命が尽きようとしている…！ 勇者は最後の力を振り絞り、巨獣へ特攻した！</span>`);
+            this.startBossBattle();
+        } else {
+            this.updateUI();
+            this.save();
+        }
+    },
+
+    train() {
+        if(state.hero.isBattling) return;
+        const u = state.lineage.upgrades.trainingFacility;
+        // レベルによる指数関数的成長（インフレ）
+        const mult = Math.pow(1.7, u.level - 1); 
+        const strGain = Math.floor((Math.random() * 5 + 3) * mult);
+        const vitGain = Math.floor((Math.random() * 5 + 3) * mult);
+        
+        state.hero.stats.str += strGain;
+        state.hero.stats.vit += vitGain;
+        state.hero.maxHp += vitGain * 10;
+        state.hero.hp = state.hero.maxHp; // 修練でHPも回復する仕様
+        
+        this.log("行動", `過酷な修練を行った！ STR +${this.formatNum(strGain)}, VIT +${this.formatNum(vitGain)}`);
+        this.consumeLife();
+    },
+
+    explore() {
+        if(state.hero.isBattling) return;
+        const u = state.lineage.upgrades.explorationGear;
+        const mult = Math.pow(1.8, u.level - 1);
+        const lpGain = Math.floor((Math.random() * 10 + 5) * mult);
+        
+        state.lineage.legacyPoints += lpGain;
+        
+        this.log("行動", `危険な領域を探索し、次代への遺産(LP)を ${this.formatNum(lpGain)} 獲得した。`);
+        this.consumeLife();
+    },
+
+    // ==========================================
+    // 拠点システム (アップグレード)
+    // ==========================================
+
+    openBase() {
+        if(state.hero.isBattling) return;
+        document.getElementById('base-modal').style.display = 'flex';
+        this.updateBaseUI();
+    },
+
+    closeBase() {
+        document.getElementById('base-modal').style.display = 'none';
+    },
+
+    updateBaseUI() {
+        document.getElementById('modal-lp').innerText = this.formatNum(state.lineage.legacyPoints);
+        const container = document.getElementById('upgrades-container');
+        container.innerHTML = '';
+        
+        for(const key in state.lineage.upgrades) {
+            const upg = state.lineage.upgrades[key];
+            const cost = Math.floor(upg.baseCost * Math.pow(upg.costMult, upg.level));
+            const canBuy = state.lineage.legacyPoints >= cost;
+            
+            container.innerHTML += `
+                <div class="upgrade-item">
+                    <div style="flex:1;">
+                        <div style="font-weight:bold; color:#eda; font-size:1.1em; margin-bottom:5px;">
+                            ${upg.name} <span style="color:#aaa; font-size:0.8em;">(Lv ${upg.level})</span>
+                        </div>
+                        <div style="font-size:0.85em; color:#aaa; line-height:1.3;">${upg.desc}</div>
+                    </div>
+                    <div style="margin-left:15px;">
+                        <button onclick="game.buyUpgrade('${key}')" ${!canBuy ? 'disabled' : ''} style="padding:10px 15px; background:${canBuy ? '#353' : '#333'}; border-color:${canBuy ? '#5a5' : '#555'};">
+                            強化<br><span style="font-size:0.8em;">${this.formatNum(cost)} LP</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    },
+
+    buyUpgrade(key) {
+        const upg = state.lineage.upgrades[key];
+        const cost = Math.floor(upg.baseCost * Math.pow(upg.costMult, upg.level));
+        if (state.lineage.legacyPoints >= cost) {
+            state.lineage.legacyPoints -= cost;
+            upg.level++;
+            this.updateBaseUI();
+            this.updateUI();
+            this.save();
+        }
+    },
+
+    // ==========================================
+    // バトルシステム
+    // ==========================================
+
+    startBossBattle() {
+        state.hero.isBattling = true;
+        state.hero.life = 0;
+        this.log("決戦", `<span style="color:#f22; font-size:1.2em; font-weight:bold;">巨獣の咆哮が響き渡る！ 絶望の戦いが始まった！</span>`);
+        this.updateUI();
+        this.save();
+    },
+
+    attackBoss(targetId) {
+        const h = state.hero;
+        const b = state.boss;
+        const part = b.parts[targetId];
+        
+        // 1. プレイヤーの攻撃フェーズ
+        let damage = Math.floor(h.stats.str * (1 + Math.random() * 0.2));
+        
+        // ギミック：外殻が壊れていないと本体へのダメージは1/100
+        if (targetId === 'core' && !b.parts.shell.broken) {
+            damage = Math.floor(damage / 100) || 1;
+            this.log("戦闘", `【外殻】が硬すぎる！本体へのダメージが激減！`);
+        }
+        
+        // ダメージ適用
+        if (targetId === 'core') {
+            b.currentHp = Math.max(0, b.currentHp - damage);
+            b.parts.core.currentHp = b.currentHp; // UI連携用
+            this.log("戦闘", `巨獣の本体に <span class="log-damage">${this.formatNum(damage)}</span> のダメージを与えた！`);
+        } else {
+            part.currentHp = Math.max(0, part.currentHp - damage);
+            this.log("戦闘", `${part.name} に <span class="log-damage">${this.formatNum(damage)}</span> のダメージ！`);
+            
+            if (part.currentHp === 0 && !part.broken) {
+                part.broken = true;
+                this.log("システム", `<span style="color:#fd4; font-size:1.1em; font-weight:bold;">【部位破壊】${part.name} を完全に破壊した！！</span>`);
+            }
+        }
+        
+        // 討伐判定
+        if (b.currentHp === 0) {
+            this.gameClear();
+            return;
+        }
+        
+        // 2. 巨獣の反撃フェーズ
+        // 剛腕が壊れていなければ即死級ダメージ
+        let bossBaseDamage = 250000; 
+        let atkName = "天を裂く薙ぎ払い";
+        
+        if (b.parts.rightArm.broken) {
+            bossBaseDamage = 8000; // 腕破壊で大幅弱体化
+            atkName = "弱々しい叩きつけ";
+        }
+        
+        // 乱数と防御計算 (VIT * 5 を防御力とする)
+        let bossDamage = Math.floor(bossBaseDamage * (0.8 + Math.random() * 0.4));
+        let defense = h.stats.vit * 5;
+        let finalBossDamage = Math.max(1, bossDamage - defense);
+        
+        h.hp -= finalBossDamage;
+        this.log("戦闘", `巨獣の反撃『${atkName}』！ 勇者は <span class="log-damage">${this.formatNum(finalBossDamage)}</span> のダメージを受けた。`);
+        
+        if (h.hp <= 0) {
+            this.heroDeath();
+        } else {
+            this.updateUI();
+            this.save();
+        }
+    },
+
+    fleeBattle() {
+        this.log("戦闘", "巨獣の圧倒的恐怖の前に戦意を喪失し、勇者は命を散らした...");
+        state.hero.hp = 0;
+        this.heroDeath();
+    },
+
+    heroDeath() {
+        const h = state.hero;
+        // 遺産ポイントの獲得：今回の最大HPやステータスに依存してボーナスを与える
+        const lpReward = Math.floor(h.stats.str / 5 + h.stats.vit / 5 + 10);
+        state.lineage.legacyPoints += lpReward;
+        
+        document.getElementById('death-desc').innerHTML = `
+            第 ${state.lineage.generation} 代勇者は、歴史の礎となった...<br><br>
+            その戦いの記憶と肉体は、一族の<span style="color:#eda;">遺産(LP)</span>へと変換される。<br>
+            <span style="font-size:1.3em; color:#eda; font-weight:bold;">獲得LP: +${this.formatNum(lpReward)}</span>
+        `;
+        document.getElementById('death-overlay').style.display = 'flex';
+        this.save();
+    },
+
+    gameClear() {
+        this.updateUI();
+        document.getElementById('clear-desc').innerHTML = `
+            幾星霜の犠牲の果てに、ついに災厄の巨獣は崩れ落ちた。<br><br>
+            <span style="font-size:1.5em; color:#fd4;">クリア世代数：第 ${state.lineage.generation} 代</span><br><br>
+            一族の長き戦いは、ここに完結した。
+        `;
+        document.getElementById('clear-overlay').style.display = 'flex';
+        this.save();
+    },
+
+    // ==========================================
+    // UI更新
+    // ==========================================
+
+    updateUI() {
+        const h = state.hero;
+        const b = state.boss;
+
+        // 巨獣のHPバー
+        const bossHpPct = Math.max(0, (b.currentHp / b.maxHp) * 100);
+        document.getElementById('boss-hp-bar').style.width = `${bossHpPct}%`;
+        document.getElementById('boss-hp-text').innerText = `災厄の巨獣 HP: ${this.formatNum(b.currentHp)} / ${this.formatNum(b.maxHp)}`;
+
+        // 巨獣の部位情報
+        const partsDiv = document.getElementById('parts-container');
+        partsDiv.innerHTML = '';
+        const partKeys = ['shell', 'rightArm', 'core']; // 表示順序
+        
+        partKeys.forEach(key => {
+            const part = b.parts[key];
+            const pct = Math.max(0, (part.currentHp / part.maxHp) * 100);
+            let status = part.broken ? '<span style="color:#f55; margin-left:5px;">[破壊済]</span>' : '';
+            if (key === 'core') status = ''; // コアは特別扱い
+            
+            let bgCol = part.broken ? '#333' : '#222';
+            let barHtml = '';
+            
+            if (key !== 'core') {
+                barHtml = `
+                <div class="part-hp-bar">
+                    <div class="part-hp-fill" style="width:${pct}%; background:${part.broken ? '#555' : 'var(--part-hp)'}"></div>
+                </div>`;
+            }
+
+            partsDiv.innerHTML += `
+                <div class="part-box" style="background-color: ${bgCol}; opacity: ${part.broken ? 0.6 : 1}">
+                    <div class="part-name">${part.name} ${status}</div>
+                    <div class="part-desc">${part.effectDesc}</div>
+                    ${barHtml}
+                </div>
+            `;
+        });
+
+        // 勇者情報
+        const lifeClass = h.life <= 5 && !h.isBattling ? 'life-warning' : '';
+        document.getElementById('hero-info').innerHTML = `
+            <h2 class="hero-title">第 ${state.lineage.generation} 代 勇者</h2>
+            <div style="margin-bottom:10px;">
+                残り寿命: <span class="life-text ${lifeClass}">${h.life}</span> / ${h.maxLife} ターン
+            </div>
+            <div style="margin-bottom:5px;">
+                HP: ${this.formatNum(h.hp)} / ${this.formatNum(h.maxHp)}
+            </div>
+            <div class="hero-stats">
+                <div>STR (筋力): ${this.formatNum(h.stats.str)}</div>
+                <div>VIT (耐久): ${this.formatNum(h.stats.vit)}</div>
+            </div>
+            <div style="margin-top:20px; text-align:right; color:#eda; font-weight:bold;">
+                所持LP: ${this.formatNum(state.lineage.legacyPoints)}
+            </div>
+        `;
+
+        // パネルの切り替え制御
+        if(h.isBattling) {
+            document.getElementById('action-panel').style.display = 'none';
+            document.getElementById('battle-panel').style.display = 'grid';
+            
+            // 破壊された部位は攻撃できない（コアは常に攻撃可能）
+            document.getElementById('btn-atk-shell').disabled = b.parts.shell.broken;
+            document.getElementById('btn-atk-arm').disabled = b.parts.rightArm.broken;
+            
+        } else {
+            document.getElementById('action-panel').style.display = 'grid';
+            document.getElementById('battle-panel').style.display = 'none';
+        }
+    }
+};
+
+// ゲーム起動
+window.onload = () => {
+    game.init();
+};
+
+</script>
+</body>
+</html>

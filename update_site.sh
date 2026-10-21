@@ -365,7 +365,7 @@ ${CURRENT_DATA}
 
 ダウンロードしてそのまま使える形式で出力をお願いします。"
 
-  elif [ "$mode" = "2" ] \vert{}\vert{} [ "$mode" = "3" ]; then
+  elif [ "$mode" = "2" ] || [ "$mode" = "3" ]; then
     local game_files=()
     while IFS= read -r f; do
       [ -n "$f" ] && game_files+=("$f")

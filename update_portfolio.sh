@@ -1,21 +1,55 @@
 #!/bin/bash
 
-echo "🔍 ダウンロードフォルダから新しいゲーム（AI-GAME-PORTFOLIO）を探索中..."
+# スクリプトがあるディレクトリ（my-website）に移動して実行
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR" || exit 1
+
+echo "🔍 新しいゲーム（AI-GAME-PORTFOLIO）を探索中..."
 
 # 1. games フォルダを準備
 mkdir -p games
 
-# 2. ダウンロードフォルダから目印のあるファイルだけを探索
-grep -rl "AI-GAME-PORTFOLIO" ~/ダウンロード --include="*.html" --exclude-dir="my-website" 2>/dev/null | while read -r file; do
-  filename=$(basename "$file")
-  
-  if [ -f "games/$filename" ]; then
-    continue
-  fi
+# 2-A. ローカルのダウンロードフォルダ（~/ダウンロード, ~/Downloads）から探索
+SEARCH_DIRS=()
+[ -d "$HOME/ダウンロード" ] && SEARCH_DIRS+=("$HOME/ダウンロード")
+[ -d "$HOME/Downloads" ] && SEARCH_DIRS+=("$HOME/Downloads")
 
-  echo "✨ 新しく発見して収集: $filename"
-  cp "$file" games/
+for dir in "${SEARCH_DIRS[@]}"; do
+  echo "📂 ローカル探索: $dir"
+  grep -rl "AI-GAME-PORTFOLIO" "$dir" --include="*.html" --exclude-dir="my-website" 2>/dev/null | while read -r file; do
+    filename=$(basename "$file")
+    
+    if [ -f "games/$filename" ]; then
+      continue
+    fi
+
+    echo "✨ ローカルから新しく発見して収集: $filename"
+    cp "$file" games/
+  done
 done
+
+# 2-B. Googleドライブ (jojo:games) から新しいゲームを自動収集
+if command -v rclone >/dev/null 2>&1 && rclone listremotes 2>/dev/null | grep -q "^jojo:"; then
+  echo "☁️ Googleドライブ (jojo:games) を確認中..."
+  STAGING_DIR=$(mktemp -d /tmp/gdrive_games_XXXXXX)
+  
+  # GoogleドライブからHTMLファイルを一時ステージングへコピー
+  rclone copy "jojo:games" "$STAGING_DIR" --include="*.html" --quiet 2>/dev/null
+
+  for file in "$STAGING_DIR"/*.html; do
+    [ -e "$file" ] || continue
+    filename=$(basename "$file")
+
+    if [ -f "games/$filename" ]; then
+      continue
+    fi
+
+    echo "☁️✨ Googleドライブから新しく収集: $filename"
+    cp "$file" games/
+  done
+
+  rm -rf "$STAGING_DIR"
+fi
 
 # 3. index.html のデザイン部分を生成（検索窓とCSSを追加）
 cat << 'HTMLEOF' > index.html

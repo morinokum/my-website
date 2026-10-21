@@ -47,6 +47,18 @@
   <div class="container">
     <div class="grid" id="gameGrid">
       <div id="noResults">見つかりませんでした 😢</div>
+      <div class="card" data-title="FM SYNTHESIS STRIKER - 3D NEON OVERDRIVE" data-desc="Konami風の重厚かつ叙情的なFM音源BGMを搭載した横スクロールシューティング。サンドボックス環境でのWebGL制約をクリアしつつ、ワイヤーフレームとポリゴン合成による立体的なサイバー表現を実現。">
+        <div>
+          <h3>FM SYNTHESIS STRIKER - 3D NEON OVERDRIVE</h3>
+          <span class="tag">Web Game</span>
+          <div class="desc">Konami風の重厚かつ叙情的なFM音源BGMを搭載した横スクロールシューティング。サンドボックス環境でのWebGL制約をクリアしつつ、ワイヤーフレームとポリゴン合成による立体的なサイバー表現を実現。</div>
+          <div class="meta">📁 gemini-code-1792445201821.html</div>
+        </div>
+        <div class="button-group">
+          <a href="games/gemini-code-1792445201821.html" class="button" target="_blank">▶ Play</a>
+          <button class="button copy-btn" onclick="copyGameCode('gemini-code-1792445201821.html')">📋 Code</button>
+        </div>
+      </div>
       <div class="card" data-title="FM SYNC: CYBER GROOVE" data-desc="このゲームの概要はまだ記載されていません。">
         <div>
           <h3>FM SYNC: CYBER GROOVE</h3>
@@ -461,7 +473,7 @@
   <div id="toast">コードをコピーしました！</div>
 
   <script>
-    document.getElementById('gameCount').textContent = "全 34 作品";
+    document.getElementById('gameCount').textContent = "全 35 作品";
 
     function filterGames() {
       const input = document.getElementById('searchInput').value.toLowerCase();

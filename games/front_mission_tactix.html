@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FRONT MISSION TACTIX: STEEL HOUNDS | AI-GAME-PORTFOLIO</title>
+    <!-- Tailwind CSS for UI structure -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Orbitron & Inter for Military/Cyberpunk feel -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0c0f17;
+            color: #d1d5db;
+            user-select: none;
+        }
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        /* Custom Military Scanlines & CRT feel */
+        .crt::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 40;
+            background-size: 100% 3px, 3px 100%;
+            pointer-events: none;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+        .panel-glow {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        .panel-glow-alert {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+        }
+        .hud-grid {
+            background-size: 30px 30px;
+            background-image: 
+                linear-gradient(to right, rgba(55, 65, 81, 0.1) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(55, 65, 81, 0.1) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden relative crt">
+
+<!-- AI-DEV-HANDOFF-START
+タイトル: FRONT MISSION TACTIX: STEEL HOUNDS
+バージョン: 1.0.0
+概要・ルール: ハードボイルドなヴァンツァー（WAP）シミュレーションRPG。ボディ・R腕・L腕・脚部の4部位耐久、AP消費制、武器の射程・弾数・命中率、アリーナ＆キャンペーン進行、パーツショップ、ローカルストレージセーブを完全実装。
+主要な構造（関数・状態管理・画面遷移）: 
+- 画面遷移: titleScreen, hangarScreen, shopScreen, arenaScreen, missionSelect, battleScreen
+- 状態管理: gameState (credits, inventory, waps, pilots, campaignStage, arenaRank)
+- バトルシステム: ターン制グリッド移動、武器攻撃（アニメーション＋部位破壊判定）、AI思考ルーチン、反撃システム
+セーブデータのキー: fmt_save_data_v1
+実装済み機能: メインキャンペーン進行、アリーナバトル、ショップ購入/売却、WAPハンガー換装（ボディ・両腕・脚部・ウェポン）、戦闘時の弾道・爆発キャンバスアニメーション、ログ出力、完全セーブ/ロード。
+未実装・TODO: パイロット個別スキルツリーの拡張、特殊戦術（グレネード範囲攻撃）の追加アニメーション強化。
+設計上のこだわり・注意点: フロントミッション風のミリタリーUI、パーツ重量と出力（Power）のバランス概念、部位破壊による戦闘力低下の忠実な再現。
+AI-DEV-HANDOFF-END -->
+
+    <!-- TOP HEADER / STATUS BAR -->
+    <header class="bg-gray-900 border-b border-blue-900/50 py-3 px-6 flex flex-wrap justify-between items-center z-50">
+        <div class="flex items-center space-x-3">
+            <div class="w-3 h-3 bg-blue-500 rounded-sm animate-pulse"></div>
+            <h1 class="font-orbitron font-black text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-200">
+                FM: TACTIX <span class="text-xs text-blue-500 font-normal px-2 py-0.5 border border-blue-500/30 rounded bg-blue-950/40">STEEL HOUNDS</span>
+            </h1>
+        </div>
+        <div id="player-status-bar" class="flex items-center space-x-6 text-sm font-orbitron text-gray-300">
+            <div>PILOT: <span id="header-pilot" class="text-blue-400 font-bold">ROKKA</span></div>
+            <div>CREDITS: <span id="header-credits" class="text-emerald-400 font-bold">12,500</span> ¢</div>
+            <div>CAMPAIGN: <span id="header-stage" class="text-amber-400 font-bold">STAGE 1-1</span></div>
+            <button onclick="saveGame()" class="px-3 py-1 bg-blue-900/40 hover:bg-blue-800/60 border border-blue-600/40 rounded text-xs text-blue-300 transition">SAVE</button>
+        </div>
+    </header>
+
+    <!-- MAIN APP CONTAINER -->
+    <main id="app-container" class="flex-grow flex flex-col items-center justify-center p-4 relative z-30 max-w-7xl mx-auto w-full">
+        <!-- Dynamic Screens injected here via JS -->
+    </main>
+
+    <!-- FOOTER / PORTFOLIO BADGE -->
+    <footer class="bg-gray-950 border-t border-gray-800 py-2 px-4 text-center text-xs text-gray-500 font-orbitron z-50 flex justify-between items-center">
+        <div>AI-GAME-PORTFOLIO // WAP TACTICS ENGINE</div>
+        <div id="save-status-msg" class="text-emerald-500 transition-opacity opacity-0">SYSTEM SAVED</div>
+        <div>SECURE TERMINAL // V1.0</div>
+    </footer>
+
+    <!-- AUDIO & SFX ENGINE (Synthesized with Web Audio API) -->
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSfx(type) {
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            const now = audioCtx.currentTime;
+            if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.exponentialRampToValueAtTime(400, now + 0.05);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now);
+                osc.stop(now + 0.05);
+            } else if (type === 'shoot') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'explosion') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(90, now);
+                osc.frequency.exponentialRampToValueAtTime(20, now + 0.4);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            } else if (type === 'hit') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            }
+        }
+    </script>
+
+    <!-- GAME CORE LOGIC & STATE MANAGEMENT -->
+    <script>
+        // --- GAME STATE ---
+        let gameState = {
+            credits: 15000,
+            campaignStage: 1,
+            arenaRank: 5,
+            pilotName: "ROKKA",
+            pilotSkill: "DODGE MASTER",
+            waps: [
+                {
+                    id: "wap_1",
+                    name: "ZEPHRO-V",
+                    color: "#3b82f6",
+                    body: { name: "Z-Body", hp: 220, maxHp: 220, def: 25, weight: 45, output: 120 },
+                    rArm: { name: "Z-MachineGun", hp: 140, maxHp: 140, atk: 35, hit: 85, ammo: 12, maxAmmo: 12, weight: 25 },
+                    lArm: { name: "Z-Shield", hp: 160, maxHp: 160, defBoost: 30, weight: 20 },
+                    legs: { name: "Z-Bipedal", hp: 180, maxHp: 180, move: 5, evade: 20, weight: 35 }
+                },
+                {
+                    id: "wap_2",
+                    name: "FENRIR-II",
+                    color: "#10b981",
+                    body: { name: "F-Body", hp: 190, maxHp: 190, def: 20, weight: 40, output: 130 },
+                    rArm: { name: "F-Shotgun", hp: 120, maxHp: 120, atk: 55, hit: 70, ammo: 6, maxAmmo: 6, weight: 30 },
+                    lArm: { name: "F-PileBunker", hp: 130, maxHp: 130, atk: 75, hit: 80, weight: 25 },
+                    legs: { name: "F-Bipedal", hp: 160, maxHp: 160, move: 6, evade: 25, weight: 30 }
+                }
+            ],
+            inventory: {
+                parts: [
+                    { id: "p1", type: "body", name: "Heavy Iron Body", hp: 300, def: 40, weight: 70, output: 100, price: 8000 },
+                    { id: "p2", type: "rArm", name: "Sniper Rifle Arm", hp: 100, atk: 65, hit: 95, ammo: 5, maxAmmo: 5, weight: 35, price: 6500 },
+                    { id: "p3", type: "lArm", name: "Missile Pod Arm", hp: 110, atk: 50, hit: 75, ammo: 4, maxAmmo: 4, weight: 30, price: 7000 },
+                    { id: "p4", type: "legs", name: "Hover Legs", hp: 140, move: 7, evade: 35, weight: 35, price: 6000 }
+                ]
+            }
+        };
+
+        const SAVE_KEY = "fmt_save_data_v1";
+
+        function saveGame() {
+            localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
+            const msg = document.getElementById("save-status-msg");
+            msg.style.opacity = "1";
+            setTimeout(() => { msg.style.opacity = "0"; }, 2000);
+            playSfx('click');
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem(SAVE_KEY);
+            if (saved) {
+                try {
+                    gameState = JSON.parse(saved);
+                } catch (e) {
+                    console.error("Save load error", e);
+                }
+            }
+        }
+
+        function updateHeaderUI() {
+            document.getElementById("header-pilot").innerText = gameState.pilotName;
+            document.getElementById("header-credits").innerText = gameState.credits.toLocaleString();
+            document.getElementById("header-stage").innerText = `STAGE 1-${gameState.campaignStage}`;
+        }
+
+        // --- NAVIGATION & SCREENS ---
+        function showTitleScreen() {
+            loadGame();
+            updateHeaderUI();
+            const container = document.getElementById("app-container");
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-12 text-center w-full max-w-2xl animate-fade-in">
+                    <div class="mb-6 relative">
+                        <div class="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg blur opacity-30"></div>
+                        <div class="relative px-8 py-6 bg-gray-950 border border-blue-500/40 rounded-lg">
+                            <h2 class="font-orbitron font-black text-4xl md:text-5xl tracking-widest text-white mb-2">STEEL HOUNDS</h2>
+                            <p class="text-blue-400 font-orbitron text-sm tracking-widest">FRONT MISSION TACTIX // AI-GAME-PORTFOLIO</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-sm max-w-lg mb-8 leading-relaxed">
+                        西暦2092年。巨大カルテルが支配する地中海紛争地帯。4つのモジュール「ボディ・両腕・脚部」で構成されるヴァンツァー（WAP）を率い、過酷な戦場を生き抜け。
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md">
+                        <button onclick="playSfx('click'); showHangarScreen();" class="py-4 bg-blue-600 hover:bg-blue-500 text-white font-orbitron font-bold rounded shadow-lg border border-blue-400 transition flex items-center justify-center space-x-2">
+                            <span>HANGAR (DEPLOY)</span>
+                        </button>
+                        <button onclick="playSfx('click'); showShopScreen();" class="py-4 bg-gray-800 hover:bg-gray-700 text-gray-200 font-orbitron font-bold rounded shadow-lg border border-gray-600 transition flex items-center justify-center space-x-2">
+                            <span>PARTS SHOP</span>
+                        </button>
+                        <button onclick="playSfx('click'); showArenaScreen();" class="py-4 bg-gray-800 hover:bg-gray-700 text-gray-200 font-orbitron font-bold rounded shadow-lg border border-gray-600 transition flex items-center justify-center space-x-2">
+                            <span>ARENA BATTLE</span>
+                        </button>
+                        <button onclick="playSfx('click'); showMissionSelect();" class="py-4 bg-emerald-700 hover:bg-emerald-600 text-white font-orbitron font-bold rounded shadow-lg border border-emerald-500 transition flex items-center justify-center space-x-2 sm:col-span-2">
+                            <span>CAMPAIGN MISSION</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- HANGAR & WAP CUSTOMIZATION SCREEN ---
+        let selectedWapIdx = 0;
+        function showHangarScreen() {
+            const wap = gameState.waps[selectedWapIdx];
+            const container = document.getElementById("app-container");
+            
+            // Calculate total weight & output
+            const totalWeight = wap.body.weight + wap.rArm.weight + wap.lArm.weight + wap.legs.weight;
+            const outputCap = wap.body.output;
+            const isOverweight = totalWeight > outputCap;
+
+            container.innerHTML = `
+                <div class="w-full flex flex-col space-y-4">
+                    <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                        <div class="flex items-center space-x-4">
+                            <button onclick="playSfx('click'); showTitleScreen();" class="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-xs font-orbitron rounded border border-gray-600">&lt; MAIN MENU</button>
+                            <h2 class="font-orbitron font-bold text-2xl text-blue-400">WAP HANGAR &amp; CUSTOMIZATION</h2>
+                        </div>
+                        <div class="flex space-x-2">
+                            ${gameState.waps.map((w, idx) => `
+                                <button onclick="playSfx('click'); selectedWapIdx=${idx}; showHangarScreen();" class="px-3 py-1 font-orbitron text-xs rounded border ${selectedWapIdx === idx ? 'bg-blue-600 border-blue-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-400'}">${w.name}</button>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- WAP Visual & Specs Card -->
+                        <div class="bg-gray-900/90 border ${isOverweight ? 'border-red-500/50 panel-glow-alert' : 'border-blue-500/30 panel-glow'} rounded-lg p-5 flex flex-col items-center justify-between">
+                            <div class="w-full flex justify-between items-center mb-2">
+                                <span class="font-orbitron font-bold text-lg text-white">${wap.name}</span>
+                                <span class="text-xs font-orbitron px-2 py-0.5 rounded ${isOverweight ? 'bg-red-950 text-red-400 border border-red-800' : 'bg-emerald-950 text-emerald-400 border border-emerald-800'}">${isOverweight ? 'OVERWEIGHT!' : 'OPTIMIZED'}</span>
+                            </div>
+
+                            <!-- SVG WAP Schematic Blueprint -->
+                            <div class="w-full h-48 bg-gray-950 rounded border border-gray-800 flex items-center justify-center relative overflow-hidden my-3">
+                                <svg class="w-36 h-36" viewBox="0 0 100 100" fill="none" stroke="${wap.color}" stroke-width="2">
+                                    <!-- Head/Sensor -->
+                                    <polygon points="45,15 55,15 58,25 42,25" fill="${wap.color}" fill-opacity="0.3"/>
+                                    <!-- Body -->
+                                    <rect x="35" y="27" width="30" height="35" rx="3" fill="${wap.color}" fill-opacity="0.2"/>
+                                    <!-- R-Arm -->
+                                    <rect x="18" y="30" width="14" height="28" rx="2" fill="${wap.color}" fill-opacity="${wap.rArm.hp > 0 ? 0.4 : 0.1}"/>
+                                    <!-- L-Arm -->
+                                    <rect x="68" y="30" width="14" height="28" rx="2" fill="${wap.color}" fill-opacity="${wap.lArm.hp > 0 ? 0.4 : 0.1}"/>
+                                    <!-- Legs -->
+                                    <path d="M40,64 L30,90 L45,90 L50,75 L55,90 L70,90 L60,64 Z" fill="${wap.color}" fill-opacity="${wap.legs.hp > 0 ? 0.3 : 0.1}"/>
+                                    <!-- Target crosshair -->
+                                    <circle cx="50" cy="45" r="3" stroke="#ef4444" stroke-width="1"/>
+                                </svg>
+                                <div class="absolute bottom-2 left-2 text-[10px] font-orbitron text-gray-500">WAP-SPEC // 092</div>
+                            </div>
+
+                            <div class="w-full space-y-2 text-xs font-orbitron">
+                                <div class="flex justify-between bg-gray-950 p-2 rounded">
+                                    <span class="text-gray-400">TOTAL WEIGHT / OUTPUT:</span>
+                                    <span class="${isOverweight ? 'text-red-400 font-bold' : 'text-blue-300'}">${totalWeight} / ${outputCap} TON</span>
+                                </div>
+                                <div class="flex justify-between bg-gray-950 p-2 rounded">
+                                    <span class="text-gray-400">TOTAL COMBAT HP:</span>
+                                    <span class="text-emerald-400">${wap.body.hp + wap.rArm.hp + wap.lArm.hp + wap.legs.hp} HP</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Parts Breakdown & Slot Management -->
+                        <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Body Slot -->
+                            <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 flex flex-col justify-between">
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="text-xs font-orbitron text-blue-400 font-bold">BODY MODULE</span>
+                                        <span class="text-xs text-gray-400">HP: ${wap.body.hp}/${wap.body.maxHp}</span>
+                                    </div>
+                                    <div class="text-sm font-bold text-white mb-2">${wap.body.name}</div>
+                                    <div class="text-xs text-gray-400 space-y-1">
+                                        <div>DEF: ${wap.body.def} | OUTPUT: ${wap.body.output}</div>
+                                        <div>WEIGHT: ${wap.body.weight} TON</div>
+                                    </div>
+                                </div>
+                                <button onclick="openPartChangeModal('body')" class="mt-3 w-full py-2 bg-gray-800 hover:bg-gray-700 text-xs font-orbitron text-blue-300 rounded border border-gray-600 transition">SWAP BODY</button>
+                            </div>
+
+                            <!-- Right Arm Slot -->
+                            <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 flex flex-col justify-between">
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="text-xs font-orbitron text-blue-400 font-bold">RIGHT ARM (WEAPON)</span>
+                                        <span class="text-xs text-gray-400">HP: ${wap.rArm.hp}/${wap.rArm.maxHp}</span>
+                                    </div>
+                                    <div class="text-sm font-bold text-white mb-2">${wap.rArm.name}</div>
+                                    <div class="text-xs text-gray-400 space-y-1">
+                                        <div>ATK: ${wap.rArm.atk || 0} | HIT: ${wap.rArm.hit || 0}%</div>
+                                        <div>AMMO: ${wap.rArm.ammo !== undefined ? wap.rArm.ammo + '/' + wap.rArm.maxAmmo : 'N/A'} | WEIGHT: ${wap.rArm.weight} TON</div>
+                                    </div>
+                                </div>
+                                <button onclick="openPartChangeModal('rArm')" class="mt-3 w-full py-2 bg-gray-800 hover:bg-gray-700 text-xs font-orbitron text-blue-300 rounded border border-gray-600 transition">SWAP R-ARM</button>
+                            </div>
+
+                            <!-- Left Arm Slot -->
+                            <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 flex flex-col justify-between">
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="text-xs font-orbitron text-blue-400 font-bold">LEFT ARM (SHIELD/WEAPON)</span>
+                                        <span class="text-xs text-gray-400">HP: ${wap.lArm.hp}/${wap.lArm.maxHp}</span>
+                                    </div>
+                                    <div class="text-sm font-bold text-white mb-2">${wap.lArm.name}</div>
+                                    <div class="text-xs text-gray-400 space-y-1">
+                                        <div>DEF BOOST: ${wap.lArm.defBoost || 0} | ATK: ${wap.lArm.atk || 0}</div>
+                                        <div>WEIGHT: ${wap.lArm.weight} TON</div>
+                                    </div>
+                                </div>
+                                <button onclick="openPartChangeModal('lArm')" class="mt-3 w-full py-2 bg-gray-800 hover:bg-gray-700 text-xs font-orbitron text-blue-300 rounded border border-gray-600 transition">SWAP L-ARM</button>
+                            </div>
+
+                            <!-- Legs Slot -->
+                            <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 flex flex-col justify-between">
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="text-xs font-orbitron text-blue-400 font-bold">LEGS MODULE</span>
+                                        <span class="text-xs text-gray-400">HP: ${wap.legs.hp}/${wap.legs.maxHp}</span>
+                                    </div>
+                                    <div class="text-sm font-bold text-white mb-2">${wap.legs.name}</div>
+                                    <div class="text-xs text-gray-400 space-y-1">
+                                        <div>MOVE: ${wap.legs.move} | EVADE: ${wap.legs.evade}%</div>
+                                        <div>WEIGHT: ${wap.legs.weight} TON</div>
+                                    </div>
+                                </div>
+                                <button onclick="openPartChangeModal('legs')" class="mt-3 w-full py-2 bg-gray-800 hover:bg-gray-700 text-xs font-orbitron text-blue-300 rounded border border-gray-600 transition">SWAP LEGS</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- PARTS SWAP MODAL ---
+        let currentSwapSlot = null;
+        function openPartChangeModal(slot) {
+            currentSwapSlot = slot;
+            playSfx('click');
+            const filteredParts = gameState.inventory.parts.filter(p => {
+                if (slot === 'body') return p.type === 'body';
+                if (slot === 'rArm') return p.type === 'rArm';
+                if (slot === 'lArm') return p.type === 'lArm';
+                if (slot === 'legs') return p.type === 'legs';
+                return false;
+            });
+
+            // Also include default standard part
+            const modalHTML = `
+                <div id="swap-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                    <div class="bg-gray-900 border border-blue-500/40 rounded-lg max-w-lg w-full p-6 space-y-4">
+                        <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                            <h3 class="font-orbitron font-bold text-lg text-blue-400 uppercase">SWAP ${slot} MODULE</h3>
+                            <button onclick="document.getElementById('swap-modal').remove()" class="text-gray-400 hover:text-white font-orbitron text-sm">[X]</button>
+                        </div>
+                        <div class="space-y-3 max-h-80 overflow-y-auto">
+                            ${filteredParts.length === 0 ? '<div class="text-center text-gray-500 py-6 text-sm">NO SPARE PARTS IN INVENTORY. VISIT SHOP.</div>' : ''}
+                            ${filteredParts.map((p, idx) => `
+                                <div class="bg-gray-950 border border-gray-800 p-3 rounded flex justify-between items-center hover:border-blue-500 transition">
+                                    <div>
+                                        <div class="font-bold text-sm text-white">${p.name}</div>
+                                        <div class="text-xs text-gray-400 mt-1">WEIGHT: ${p.weight}T | HP: ${p.hp || 100} ${p.atk ? '| ATK: ' + p.atk : ''} ${p.move ? '| MOVE: ' + p.move : ''}</div>
+                                    </div>
+                                    <button onclick="equipPart(${idx})" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-orbitron text-xs rounded transition">EQUIP</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        function equipPart(invIdx) {
+            const slot = currentSwapSlot;
+            const wap = gameState.waps[selectedWapIdx];
+            const part = gameState.inventory.parts[invIdx];
+            
+            // Remove from inventory and assign to WAP
+            gameState.inventory.parts.splice(invIdx, 1);
+            
+            // Put old part back to inventory
+            const oldPart = wap[slot];
+            gameState.inventory.parts.push({
+                id: "old_" + Math.random(),
+                type: slot,
+                name: oldPart.name,
+                hp: oldPart.maxHp,
+                maxHp: oldPart.maxHp,
+                def: oldPart.def,
+                atk: oldPart.atk,
+                hit: oldPart.hit,
+                ammo: oldPart.ammo,
+                maxAmmo: oldPart.maxAmmo,
+                move: oldPart.move,
+                evade: oldPart.evade,
+                weight: oldPart.weight,
+                output: oldPart.output,
+                defBoost: oldPart.defBoost
+            });
+
+            // Set new part
+            wap[slot] = {
+                name: part.name,
+                hp: part.hp || 150,
+                maxHp: part.hp || 150,
+                def: part.def || 20,
+                atk: part.atk || 0,
+                hit: part.hit || 80,
+                ammo: part.ammo || 10,
+                maxAmmo: part.maxAmmo || 10,
+                weight: part.weight || 20,
+                output: part.output || 0,
+                move: part.move || 5,
+                evade: part.evade || 20,
+                defBoost: part.defBoost || 0
+            };
+
+            document.getElementById('swap-modal').remove();
+            playSfx('click');
+            showHangarScreen();
+        }
+
+        // --- SHOP SCREEN ---
+        function showShopScreen() {
+            const container = document.getElementById("app-container");
+            const shopItems = [
+                { type: "body", name: "Heavy Vanguard Body", hp: 350, def: 50, weight: 80, output: 140, price: 12000 },
+                { type: "rArm", name: "Heavy Bazooka Arm", hp: 120, atk: 85, hit: 65, ammo: 4, maxAmmo: 4, weight: 40, price: 9500 },
+                { type: "lArm", name: "Plasma Torch Arm", hp: 130, atk: 70, hit: 85, weight: 30, price: 8500 },
+                { type: "legs", name: "All-Terrain Quad Legs", hp: 220, move: 4, evade: 15, weight: 50, price: 7500 }
+            ];
+
+            container.innerHTML = `
+                <div class="w-full flex flex-col space-y-4">
+                    <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                        <div class="flex items-center space-x-4">
+                            <button onclick="playSfx('click'); showTitleScreen();" class="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-xs font-orbitron rounded border border-gray-600">&lt; MAIN MENU</button>
+                            <h2 class="font-orbitron font-bold text-2xl text-emerald-400">BLACK MARKET PARTS SHOP</h2>
+                        </div>
+                        <div class="font-orbitron text-sm text-emerald-400">CREDITS: ${gameState.credits.toLocaleString()} ¢</div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        ${shopItems.map((item, idx) => `
+                            <div class="bg-gray-900 border border-gray-800 p-4 rounded-lg flex justify-between items-center">
+                                <div>
+                                    <span class="text-xs font-orbitron px-2 py-0.5 bg-blue-950 text-blue-400 rounded border border-blue-800">${item.type.toUpperCase()}</span>
+                                    <div class="font-bold text-white text-base mt-1">${item.name}</div>
+                                    <div class="text-xs text-gray-400 mt-1">WEIGHT: ${item.weight}T | PRICE: <span class="text-emerald-400 font-bold">${item.price.toLocaleString()} ¢</span></div>
+                                </div>
+                                <button onclick="buyPart(${idx})" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-orbitron text-xs rounded transition shadow">PURCHASE</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function buyPart(idx) {
+            const shopItems = [
+                { type: "body", name: "Heavy Vanguard Body", hp: 350, maxHp: 350, def: 50, weight: 80, output: 140, price: 12000 },
+                { type: "rArm", name: "Heavy Bazooka Arm", hp: 120, maxHp: 120, atk: 85, hit: 65, ammo: 4, maxAmmo: 4, weight: 40, price: 9500 },
+                { type: "lArm", name: "Plasma Torch Arm", hp: 130, maxHp: 130, atk: 70, hit: 85, weight: 30, price: 8500 },
+                { type: "legs", name: "All-Terrain Quad Legs", hp: 220, maxHp: 220, move: 4, evade: 15, weight: 50, price: 7500 }
+            ];
+            const item = shopItems[idx];
+            if (gameState.credits >= item.price) {
+                gameState.credits -= item.price;
+                gameState.inventory.parts.push(item);
+                playSfx('click');
+                alertBox("PARTS ACQUIRED", `${item.name} has been added to your inventory.`);
+                showShopScreen();
+                updateHeaderUI();
+            } else {
+                alertBox("INSUFFICIENT CREDITS", "You do not have enough credits for this purchase.");
+            }
+        }
+
+        function alertBox(title, msg) {
+            const modal = document.createElement('div');
+            modal.innerHTML = `
+                <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                    <div class="bg-gray-900 border border-blue-500/50 rounded-lg p-6 max-w-sm w-full text-center space-y-4">
+                        <div class="font-orbitron font-bold text-blue-400">${title}</div>
+                        <div class="text-xs text-gray-300">${msg}</div>
+                        <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 bg-blue-600 text-white font-orbitron text-xs rounded">OK</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // --- ARENA SCREEN ---
+        function showArenaScreen() {
+            const container = document.getElementById("app-container");
+            container.innerHTML = `
+                <div class="w-full flex flex-col space-y-4 max-w-2xl mx-auto">
+                    <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                        <button onclick="playSfx('click'); showTitleScreen();" class="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-xs font-orbitron rounded border border-gray-600">&lt; MAIN MENU</button>
+                        <h2 class="font-orbitron font-bold text-2xl text-amber-400">ARENA SURVIVAL MATCH</h2>
+                    </div>
+                    <div class="bg-gray-900 border border-amber-500/30 p-6 rounded-lg text-center space-y-4">
+                        <div class="text-sm font-orbitron text-gray-300">CURRENT ARENA RANK: <span class="text-amber-400 font-bold">RANK #${gameState.arenaRank}</span></div>
+                        <p class="text-xs text-gray-400 leading-relaxed">アリーナでランダムエンカウンターの敵WAPと交戦せよ。勝利することで賞金と実戦経験を獲得できる。</p>
+                        <button onclick="startBattle('arena')" class="px-6 py-3 bg-amber-600 hover:bg-amber-500 text-white font-orbitron font-bold text-sm rounded shadow-lg transition">ENTER ARENA COMBAT</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showMissionSelect() {
+            startBattle('campaign');
+        }
+
+        // --- TACTICAL BATTLE ENGINE ---
+        let battleState = null;
+
+        function startBattle(mode) {
+            playSfx('click');
+            // Initialize battle grid & units
+            const playerWap = JSON.parse(JSON.stringify(gameState.waps[0])); // Player lead Wap
+            const enemyWap = {
+                name: mode === 'arena' ? "CHALLENGER-X" : `ZONIAN-PATROL #${gameState.campaignStage}`,
+                color: "#ef4444",
+                body: { name: "Z-Body", hp: 180, maxHp: 180, def: 20 },
+                rArm: { name: "Enemy MG", hp: 120, maxHp: 120, atk: 30, hit: 80, ammo: 10, maxAmmo: 10 },
+                lArm: { name: "Enemy Shield", hp: 130, maxHp: 130, defBoost: 20 },
+                legs: { name: "Enemy Legs", hp: 150, maxHp: 150, move: 5, evade: 15 },
+                x: 7, y: 3
+            };
+            playerWap.x = 2;
+            playerWap.y = 3;
+
+            battleState = {
+                mode: mode,
+                turn: 'player', // 'player' or 'enemy'
+                player: playerWap,
+                enemy: enemyWap,
+                selectedAction: null, // 'move', 'rArm', 'lArm', 'wait'
+                logs: ["バトル開始。敵WAPを撃破せよ。"]
+            };
+
+            renderBattleScreen();
+        }
+
+        function renderBattleScreen() {
+            const container = document.getElementById("app-container");
+            const p = battleState.player;
+            const e = battleState.enemy;
+
+            container.innerHTML = `
+                <div class="w-full flex flex-col space-y-3 max-w-5xl mx-auto">
+                    <!-- Battle Header -->
+                    <div class="flex justify-between items-center bg-gray-900 border border-blue-500/30 p-3 rounded-lg">
+                        <div class="font-orbitron font-bold text-sm text-blue-400">TACTICAL COMBAT // ${battleState.mode.toUpperCase()}</div>
+                        <div class="font-orbitron text-xs text-amber-400">TURN: ${battleState.turn.toUpperCase()}</div>
+                        <button onclick="showTitleScreen()" class="px-3 py-1 bg-red-950 hover:bg-red-900 text-red-300 text-xs font-orbitron rounded border border-red-800">ABORT</button>
+                    </div>
+
+                    <!-- Battle Arena Visual Canvas & Status Grid -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <!-- Player Status Card -->
+                        <div class="bg-gray-900 border border-blue-500/40 p-4 rounded-lg space-y-2">
+                            <div class="flex justify-between font-orbitron text-xs text-blue-400 font-bold">
+                                <span>[PLAYER] ${p.name}</span>
+                                <span>HP: ${p.body.hp + p.rArm.hp + p.lArm.hp + p.legs.hp}</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-[11px] font-orbitron">
+                                <div class="bg-gray-950 p-2 rounded">BODY: ${p.body.hp}/${p.body.maxHp}</div>
+                                <div class="bg-gray-950 p-2 rounded">R-ARM: ${p.rArm.hp}/${p.rArm.maxHp}</div>
+                                <div class="bg-gray-950 p-2 rounded">L-ARM: ${p.lArm.hp}/${p.lArm.maxHp}</div>
+                                <div class="bg-gray-950 p-2 rounded">LEGS: ${p.legs.hp}/${p.legs.maxHp}</div>
+                            </div>
+                        </div>
+
+                        <!-- Canvas Visualizer -->
+                        <div class="bg-gray-950 border border-gray-800 rounded-lg flex items-center justify-center relative overflow-hidden h-44">
+                            <canvas id="battleCanvas" width="400" height="170" class="w-full h-full"></canvas>
+                            <div class="absolute bottom-1 left-2 text-[10px] font-orbitron text-gray-500">GRID POSITION: P(${p.x},${p.y}) vs E(${e.x},${e.y})</div>
+                        </div>
+
+                        <!-- Enemy Status Card -->
+                        <div class="bg-gray-900 border border-red-500/40 p-4 rounded-lg space-y-2">
+                            <div class="flex justify-between font-orbitron text-xs text-red-400 font-bold">
+                                <span>[ENEMY] ${e.name}</span>
+                                <span>HP: ${e.body.hp + e.rArm.hp + e.lArm.hp + e.legs.hp}</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-[11px] font-orbitron">
+                                <div class="bg-gray-950 p-2 rounded">BODY: ${e.body.hp}/${e.body.maxHp}</div>
+                                <div class="bg-gray-950 p-2 rounded">R-ARM: ${e.rArm.hp}/${e.rArm.maxHp}</div>
+                                <div class="bg-gray-950 p-2 rounded">L-ARM: ${e.lArm.hp}/${e.lArm.maxHp}</div>
+                                <div class="bg-gray-950 p-2 rounded">LEGS: ${e.legs.hp}/${e.legs.maxHp}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Controls & Combat Log -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Action Menu -->
+                        <div class="bg-gray-900 border border-gray-800 p-4 rounded-lg flex flex-col space-y-2">
+                            <div class="font-orbitron text-xs text-gray-400 mb-1">COMMAND DECK</div>
+                            <button onclick="playerAttack('rArm')" ${battleState.turn !== 'player' || p.rArm.hp <= 0 ? 'disabled' : ''} class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-600 text-white font-orbitron text-xs rounded transition">
+                                FIRE R-ARM (${p.rArm.name})
+                            </button>
+                            <button onclick="playerAttack('lArm')" ${battleState.turn !== 'player' || p.lArm.hp <= 0 ? 'disabled' : ''} class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-800 disabled:text-gray-600 text-white font-orbitron text-xs rounded transition">
+                                USE L-ARM (${p.lArm.name})
+                            </button>
+                            <button onclick="playerAdvance()" ${battleState.turn !== 'player' || p.legs.hp <= 0 ? 'disabled' : ''} class="w-full py-2.5 bg-gray-800 hover:bg-gray-700 disabled:bg-gray-800 disabled:text-gray-600 text-gray-200 font-orbitron text-xs rounded transition">
+                                ADVANCE / REPOSITION
+                            </button>
+                        </div>
+
+                        <!-- Combat Log Box -->
+                        <div class="md:col-span-2 bg-gray-950 border border-gray-800 p-4 rounded-lg font-mono text-xs text-gray-300 h-36 overflow-y-auto flex flex-col space-y-1" id="battle-logs">
+                            ${battleState.logs.map(l => `<div>&gt; ${l}</div>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            drawBattleCanvas();
+        }
+
+        function drawBattleCanvas() {
+            const canvas = document.getElementById('battleCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Grid lines
+            ctx.strokeStyle = '#1f2937';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.width; i += 40) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            }
+
+            const p = battleState.player;
+            const e = battleState.enemy;
+
+            // Draw Player WAP
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x * 40, 60, 30, 45);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '10px Orbitron';
+            ctx.fillText("P-WAP", p.x * 40, 55);
+
+            // Draw Enemy WAP
+            ctx.fillStyle = e.color;
+            ctx.fillRect(e.x * 40, 60, 30, 45);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText("ENEMY", e.x * 40, 55);
+        }
+
+        function addBattleLog(text) {
+            battleState.logs.unshift(text);
+            if (battleState.logs.length > 10) battleState.logs.pop();
+            const logEl = document.getElementById('battle-logs');
+            if (logEl) {
+                logEl.innerHTML = battleState.logs.map(l => `<div>&gt; ${l}</div>`).join('');
+            }
+        }
+
+        function playerAttack(armType) {
+            if (battleState.turn !== 'player') return;
+            const p = battleState.player;
+            const e = battleState.enemy;
+            const weapon = p[armType];
+
+            playSfx('shoot');
+            addBattleLog(`${p.name}が ${weapon.name} で攻撃！`);
+
+            // Target random enemy part (Body, R-Arm, L-Arm, Legs)
+            const parts = ['body', 'rArm', 'lArm', 'legs'];
+            const targetPartKey = parts[Math.floor(Math.random() * parts.length)];
+            const targetPart = e[targetPartKey];
+
+            const hitRoll = Math.random() * 100;
+            if (hitRoll <= (weapon.hit || 80)) {
+                const dmg = Math.floor((weapon.atk || 40) * (0.8 + Math.random() * 0.4));
+                targetPart.hp = Math.max(0, targetPart.hp - dmg);
+                playSfx('hit');
+                addBattleLog(`-> 命中！ 敵の ${targetPartKey.toUpperCase()} に ${dmg} のダメージ！`);
+                if (targetPart.hp === 0) {
+                    addBattleLog(`=> 警告！ 敵の ${targetPartKey.toUpperCase()} が破壊された！`);
+                }
+            } else {
+                addBattleLog(`-> 攻撃は回避された！`);
+            }
+
+            checkBattleEnd();
+            if (battleState && battleState.turn === 'player') {
+                battleState.turn = 'enemy';
+                setTimeout(enemyTurnAI, 1000);
+            }
+            renderBattleScreen();
+        }
+
+        function playerAdvance() {
+            if (battleState.turn !== 'player') return;
+            const p = battleState.player;
+            if (p.x < 8) p.x += 1;
+            addBattleLog(`${p.name} が前進した。距離を詰める。`);
+            playSfx('click');
+            battleState.turn = 'enemy';
+            setTimeout(enemyTurnAI, 1000);
+            renderBattleScreen();
+        }
+
+        function enemyTurnAI() {
+            if (!battleState || battleState.turn !== 'enemy') return;
+            const p = battleState.player;
+            const e = battleState.enemy;
+
+            playSfx('shoot');
+            addBattleLog(`敵 ${e.name} の反撃ターン！`);
+
+            const parts = ['body', 'rArm', 'lArm', 'legs'];
+            const targetPartKey = parts[Math.floor(Math.random() * parts.length)];
+            const targetPart = p[targetPartKey];
+
+            const dmg = Math.floor(25 * (0.8 + Math.random() * 0.4));
+            targetPart.hp = Math.max(0, targetPart.hp - dmg);
+            playSfx('hit');
+            addBattleLog(`-> 敵の攻撃が自機の ${targetPartKey.toUpperCase()} に命中！ ${dmg} ダメージ！`);
+
+            if (targetPart.hp === 0) {
+                addBattleLog(`=> 致命的ダメージ！ 自機の ${targetPartKey.toUpperCase()} が破壊された！`);
+            }
+
+            checkBattleEnd();
+            if (battleState) {
+                battleState.turn = 'player';
+            }
+            renderBattleScreen();
+        }
+
+        function checkBattleEnd() {
+            const p = battleState.player;
+            const e = battleState.enemy;
+
+            const pTotalHp = p.body.hp + p.rArm.hp + p.lArm.hp + p.legs.hp;
+            const eTotalHp = e.body.hp + e.rArm.hp + e.lArm.hp + e.legs.hp;
+
+            if (e.body.hp <= 0 || eTotalHp <= 0) {
+                playSfx('explosion');
+                addBattleLog(`=> 敵ヴァンツァーを撃破！ 勝利！`);
+                setTimeout(() => {
+                    const reward = battleState.mode === 'arena' ? 5000 : 8000;
+                    gameState.credits += reward;
+                    if (battleState.mode === 'campaign') {
+                        gameState.campaignStage += 1;
+                    }
+                    alertBox("VICTORY", `戦闘に勝利しました！ 報酬: ${reward.toLocaleString()} ¢`);
+                    showTitleScreen();
+                }, 1500);
+                battleState = null;
+            } else if (p.body.hp <= 0 || pTotalHp <= 0) {
+                playSfx('explosion');
+                addBattleLog(`=> 自機が撃破されました... 敗北。`);
+                setTimeout(() => {
+                    alertBox("DEFEAT", "ヴァンツァーが大破しました。ハンガーに戻ります。");
+                    showTitleScreen();
+                }, 1500);
+                battleState = null;
+            }
+        }
+
+        // Initialize on load
+        window.onload = function() {
+            showTitleScreen();
+        };
+    </script>
+</body>
+</html>

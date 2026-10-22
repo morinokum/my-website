@@ -1,0 +1,662 @@
+-- title:  Stele (Double Dash Edition)
+-- author: Zus / Modified
+-- desc:   Platformer game with Double Dash
+-- script: lua
+
+t=true
+f=false
+
+mode=0
+--toggle music,snow
+togm=f
+togs=0
+--level end:coords,flag,timer
+lvex=0
+lvey=0
+lve=false
+lvet=0
+
+lvd=0
+--collected strawberries
+lvs=0
+lvts=0
+lvt=0
+
+--animation timer
+anm=0
+--die timer
+dt=0
+--player coordinates
+px=0
+py=0
+psx=16
+psy=133*8
+cx=0
+cy=0
+ox=-1
+oy=-1
+slds={[1]=t,[2]=t,[3]=t,[4]=t,[5]=t,[6]=t,[17]=t,[18]=t,[19]=t,[20]=t,[21]=t,[26]=t,[33]=t,[34]=t,[35]=t,[36]=t,[37]=t}
+objs={}
+objsw={}
+sobjs={}
+prts={}
+snow={}
+
+function spawn()
+ px=psx
+ pxv=0
+ pxm=0
+ py=psy
+ pyv=0
+ pym=0
+ ps=0
+ pa=0
+ pd=0
+ pdx=0
+ pdy=0
+ ph=0
+ phx=0
+ paus=0
+ pdc=f
+ pdt=0
+ pg=f
+ bjp=f
+ bdp=f
+ pc=0
+ 
+ -- ★【追加】ダッシュ回数管理（最大2回）
+ pmax = 2
+ pnum = 2
+
+ for i,o in pairs(objs) do
+  if o.ox and o.oy then
+   o.x=o.ox o.y=o.oy o.f=f
+  end
+ end
+ for i,o in pairs(objsw) do
+  if o.ox and o.oy then
+   o.x=o.ox o.y=o.oy o.f=f
+  end
+ end
+end
+spawn()
+
+function TIC()
+ cls()
+ if mode==0 then 
+  spr(436,72,24,0,1,0,0,12,5)
+  print("PRESS Z TO START",9*8,9*8+10,15)
+  if (btnp(4) or btnp(5)) then 
+   lvd=0
+   lvs=0
+   lvts=0
+   lvt=0
+   lve=f
+   lvet=0
+   objs={}
+   sobjs={}
+   prts={}
+   sync(4,0,f)
+   scan()
+   spawn()
+   mode=1
+  end
+ elseif mode==1 then
+  if lve then
+   paus=2
+   ps=6
+   lvet=lvet+1 
+  else 
+   lvt=lvt+1
+  end
+  if dt>0 then dt=dt-1 end
+  if dt==0 then
+   dt=-1
+   spawn()
+  end
+  if paus>0 then
+   paus=paus-1 
+  else 
+   control()
+   move()
+  end
+  objrun()
+  animate()
+  draw()
+ end
+end
+
+function scan()
+ psx=-1
+ psy=-1
+ lvex=-1
+ lvey=-1
+ for i=0,240 do
+  for ii=0,136 do
+   if mget(i,ii)==51 then 
+    oi={x=i,y=ii,i=1}
+    table.insert(objsw,#objsw+1,oi)
+    lvts=lvts+1
+    mset(i,ii,0)
+   end
+   if mget(i,ii)==67 then 
+    oi={x=i,y=ii,i=2,f=f,ox=i,oy=ii}
+    table.insert(objsw,#objsw+1,oi)
+    lvts=lvts+1
+    mset(i,ii,0)
+   end   
+   if mget(i,ii)==13 then 
+    psx=i*8
+    psy=ii*8
+   end
+   if mget(i,ii)==83 then 
+    lvex=i*8
+    lvey=ii*8
+    mset(i,ii,0)
+   end
+  end
+ end
+ if psx==-1 then err("No start point!") end
+ if lvex==-1 then err("No end point!") end
+ cr(((psx+4)//240)*240,((psy+4)//136)*136)
+end
+
+function control()
+ if pdt==0 then
+  if btn(3) then
+   pd=0
+   if pxv<1.25 then pxv=pxv+0.25 end
+  end
+  if btn(2) then
+   pd=1
+   if pxv>-1.25 then pxv=pxv-0.25 end
+  end
+ end
+ 
+ if btn(4) and pg and not bjp then 
+  pyv=-2
+  prt(10,px+4,py+7,-5,5,-5,-3,10,15)
+  bjp=true
+  pxv=pxv+pxm
+  pyv=pyv+pym
+  pdt=0
+  sfx(2,"B-6",8,3,10,0)
+ end
+
+ -- (壁登りなどの処理はそのまま省略せず維持)
+ if not pg and pc<180 and (sld(px-1,py) or sld(px-1,py+7)) then 
+  pd=1 
+  if btns(t,f,t,f) then pyv=-0.625; pc=pc+2; ph=0 end 
+ end
+ if not pg and pc<180 and (sld(px+8,py) or sld(px+8,py+7)) then
+  pd=0
+  if btns(t,f,f,t) then pyv=-0.625; pc=pc+2; ph=0 end 
+ end
+ if not pg and pc<180 and (sld(px-1,py) or sld(px-1,py+7)) then 
+  pd=1 
+  if btns(f,t,t,f) then pyv=0; pc=pc+1; ph=0 end 
+ end
+ if not pg and pc<180 and (sld(px+8,py) or sld(px+8,py+7)) then 
+  pd=0
+  if btns(f,t,f,t) then pyv=0; pc=pc+1; ph=0 end 
+ end
+
+ if btn(4) and (sld(px+8,py) or sld(px-1,py)) and not bjp then
+  pyv=-1.625
+  pdt=0
+  sfx(2,"B-6",8,3,10,0)
+  prt(10,px+4,py+7,-2,2,-3,-2,10,15)
+  bjp=true
+  if (sld(px+8,py) or sld(px+8,py+7)) then pxv=-3 end
+  if (sld(px-1,py) or sld(px-1,py+7)) then pxv=3 end
+  pxv=pxv+pxm
+  pyv=pyv+pym
+ end
+
+ -- ★【変更】ダッシュ回復処理（地上にいる時）
+ if pg then
+  pnum = pmax
+  pdc = true
+ end
+
+ -- ★【変更】ダッシュボタンの判定（残数が1以上ある場合）
+ if btn(5) and pnum > 0 and not bdp then
+  pnum = pnum - 1
+  if pnum <= 0 then pdc = false end
+  
+  pdt=10
+  col2()
+  bdp=true
+  pdx=px
+  pdy=py
+  paus=3
+  
+  if btns(f,f,f,f) then
+   if pd==0 then pxv=3 else pxv=-3 end
+   pyv=0
+  elseif btns(t,f,f,f) then
+   pyv=-3; pxv=0
+  elseif btns(f,t,f,f) then
+   pyv=3; pxv=0
+  elseif btns(f,f,t,f) then
+   pxv=-3; pyv=0
+  elseif btns(f,f,f,t) then 
+   pxv=3; pyv=0
+  elseif btns(t,f,t,f) then
+   pxv=-2.375; pyv=-1.5  
+  elseif btns(t,f,f,t) then
+   pxv=2.375; pyv=-1.5
+  elseif btns(f,t,t,f) then 
+   pxv=-2.375; pyv=2.5
+  elseif btns(f,t,f,t) then
+   pxv=2.375; pyv=2.5
+  else
+   pnum = pnum + 1 -- キャンセル時は回数を戻す
+   pdc=true
+   col1()
+   bdp=false
+   paus=1
+   pdt=0 
+  end
+  
+  if pdt==10 then 
+   sfx(1,"B-5",15,3,10,0) 
+  end
+ end
+
+ if not btn(5) then bdp=false end
+ if not btn(4) then bjp=false end
+end
+
+function move()
+ if pdt>0 then
+  pxm=(pxv*0.125)*3
+  pym=(pyv*0.125)*4
+  pdt=pdt-1
+ else
+  pxm=0
+  pym=0
+ end
+ 
+ if pdc then
+  col1()
+ end
+ 
+ if pxv>0 then pxv=pxv-0.125 end
+ if pxv<0 then pxv=pxv+0.125 end
+ px=px+pxv
+ 
+ if sld(px+7,py) or sld(px+7,py+7) then
+  while sld(px+7,py) or sld(px+7,py+7) do px=px-0.125 end
+  pxv=0
+ end
+ if sld(px,py) or sld(px,py+7) then
+  while sld(px,py) or sld(px,py+7) do px=px+0.125 end
+  pxv=0
+ end
+ 
+ py=py+pyv
+ if (pdt==0 or (pdt>0 and pxv==0)) and pyv<2.5 then
+  pyv=pyv+0.125 
+ end
+ 
+ if sld(px,py) or sld(px+7,py) then
+  while sld(px,py) or sld(px+7,py) do py=py+0.125 end
+  pyv=0
+ end
+ 
+ if sld(px,py+7) or sld(px+7,py+7) or plt(0) then
+  while sld(px,py+7) or sld(px+7,py+7) or sld(px+7,py+7) or plt(0) do py=py-0.125 end
+  pyv=0 
+ end
+ 
+ if sld(px,py+8) or sld(px+7,py+8) or plt(1) then
+  if pg==f then 
+   sfx(5,"B-6",8,3,5,0)
+   prt(5,px+4,py+7,-3,3,-2,-1,10,15)
+  end
+  pg=t
+  pc=0 
+ else
+  pg=f 
+ end
+ 
+ if btns(f,f,f,t) and pc<180 and (sld(px+8,py) or sld(px+8,py+7)) and not pg and pyv>0.5 then pyv=0.5 end
+ if btns(f,f,t,f) and pc<180 and (sld(px-1,py) or sld(px-1,py+7)) and not pg and pyv>0.5 then pyv=0.5 end
+
+ if tils(px,py,px+7,py+2,7) then pyv=-3.5; pnum=pmax; pdc=t; pdt=0; sfx(2,"D-6",8,3,10,0) end
+ if tils(px+5,py,px+7,py+7,8) then pyv=-1.75; pxv=4.5; pnum=pmax; pdc=t; pdt=0; sfx(2,"D-6",8,3,10,0) end
+ if tils(px,py+5,px+7,py+7,9) then pyv=4.5; pnum=pmax; pdc=t; pdt=0; sfx(2,"D-6",8,3,10,0) end
+ if tils(px,py,px+2,py+7,10) then pyv=-1.75; pnum=pmax; pdc=t; pdt=0; pxv=-4.5; sfx(2,"D-6",8,3,10,0) end
+
+ if tils(px+1,py+1,px+6,py+6,38) and pnum<pmax then
+  ox,oy=tilf(px+1,py+1,px+6,py+6,38)
+  mset(ox,oy,0)
+  pnum=pmax
+  pdc=t
+  pc=0
+  paus=5
+  oi={i=0,x=ox,y=oy,t=0}
+  table.insert(objs,#objs+1,oi) 
+  sfx(3,"C-3",32,3,10,-1)
+  prt(20,ox*8+4,oy*8+4,-7,7,-7,7,30,8) 
+ end
+
+ if tils(px+1,py+1,px+6,py+6,11) then
+  ox,oy=tilf(px+1,py+1,px+6,py+6,11)
+  mset(ox,oy,12)
+  psx=ox*8
+  psy=oy*8
+  sfx(6,"C-4",44,2,15,0)
+  prt(20,ox*8+4,oy*8+4,-7,7,-7,7,30,2) 
+ end
+
+ if tils(px,py,px+7,py+3,22) then die() end
+ if tils(px+4,py,px+7,py+7,23) then die() end
+ if tils(px,py+4,px+7,py+7,24) then die() end
+ if tils(px,py,px+3,py+7,25) then die() end
+
+ if tils(px,py+8,px+7,py+8,26) then
+  ox,oy=tilf(px,py+8,px+7,py+8,26)
+  mset(ox,oy,0)
+  oi={i=0,x=ox,y=oy,s=t,t=0}
+  table.insert(sobjs,#sobjs+1,oi)
+ end
+
+ if px>30*8*8 then px=0; pdx=pdx-30*8*8 end
+ if px<0 then px=30*8*8; pdx=pdx+30*8*8 end
+ if py>17*8*8 then py=0; pdy=pdy-17*8*8 end
+ if py<0 then py=17*8*8; pdy=pdy+17*8*8 end
+ cr(((px+4)//240)*240,((py+4)//136)*136)
+end
+
+function inr(x,y)
+ return cx==((x)//240)*240 and cy==((y)//136)*136
+end
+
+function cr(nx,ny)
+ if nx==cx and ny==cy then return end
+ cx=nx
+ cy=ny
+ objst = objs
+ objs = {}
+ for i=#objsw,1,-1 do
+  o=objsw[i]
+  if inr(o.x*8,o.y*8) then
+   table.remove(objsw,i)
+   table.insert(objs,o)
+  end
+ end
+ for i,o in pairs(objst) do
+  table.insert(objsw,o)
+ end
+end
+
+function animate()
+ anm=anm+1
+ if anm==60 then anm=0 end
+ if pa>0 then pa=pa-1 end
+ if btns(f,t,f,f) and pg then ps=7; ph=15
+ elseif btns(t,f,f,f) and pg then ps=8; ph=16
+ elseif btns(f,f,f,t) and pc<180 and (sld(px+8,py) or sld(px+8,py+7)) and not pg then
+  if pyv>=0.5 then prt(1,px+7,py+7,0,0,-1,-1,20,15); ps=3 end
+ elseif btns(f,f,t,f) and pc<180 and (sld(px-1,py) or sld(px-1,py+7)) and not pg then
+  if pyv>=0.5 then prt(1,px,py+7,0,0,-1,-1,20,15); ps=3 end
+ elseif pdt>0 then ps=5
+ elseif (not pg) and pyv>1 then ps=6
+ elseif pxv>0 or pxv<0 and pg then 
+  ph=1
+  if pxv>1 or pxv<-1 then ph=2 end
+  if pa<1 then
+   pa=5
+   if not (ps==2) then ps=2 else ps=1 end 
+  end 
+ elseif (((sld(px-1,py) or sld(px-1,py+7)) and btns(t,f,t,f)) or ((sld(px+8,py) or sld(px+8,py+7)) and btns(t,f,f,t))) and not pg then
+  if pa<1 then
+   pa=5
+   if not (ps==4) then ps=4 else ps=3 end
+  end
+ elseif ((sld(px-1,py) or sld(px-1,py+7)) and btns(f,t,t,f)) or ((sld(px+8,py) or sld(px+8,py+7)) and btns(f,t,f,t)) then
+  if pa<1 then pa=5 end
+  ps=3
+ else
+  ps=0
+  ph=0
+ end
+
+ if pc>90 then
+  if pa>4 then pal(1,255,255,255)
+  elseif pdc then col1()
+  else col2() end
+ end
+
+ if ps==0 or ps==6 then phx=0
+ elseif ps==1 or ps==2 or ps==5 or ps==7 then phx=1
+ elseif ps==3 or ps==4 then phx=2
+ elseif ps==8 then phx=-1 end
+
+ if not pg then
+  ph=2
+  if pxv*(1-2*pd)>1 then ph=ph+1 end
+  if pyv>2 then ph=ph+2 end
+  if pxv*(1-2*pd)<-1 then ph=ph+4 end
+  if pyv<-1 then ph=ph+8 end
+
+  if ph==2 then ph=0
+  elseif ph==3 then ph=2
+  elseif ph==11 then ph=1 
+  elseif ph==10 then ph=0 
+  end
+ end
+end
+
+function objrun()
+ for i,o in pairs(objs) do
+  if o.i==0 then 
+   o.t=o.t+1
+   if o.t==120 then
+    mset(o.x,o.y,38)
+    prt(5,o.x*8+4,o.y*8+4,-5,5,-5,5,30,8)
+    table.remove(objs,i) 
+   end
+  end
+  if o.i==1 then
+   if px+7>=o.x*8 and px<=o.x*8+7 and py+7>=o.y*8 and py<=o.y*8+7 then
+    prt(20,o.x*8+4,o.y*8+4,-5,5,-5,5,30,9)
+    sfx(7,"C-4",16,2,15,0)
+    lvs=lvs+1
+    table.remove(objs,i)
+   end
+  end
+  if o.i==2 then
+   if o.f then o.y=o.y-0.25 end
+   if px+7>=o.x*8 and px<=o.x*8+7 and py+7>=o.y*8 and py<=o.y*8+7 then
+    prt(20,o.x*8+4,o.y*8+4,-5,5,-5,5,30,9)
+    sfx(7,"C-4",16,2,15,0)
+    lvs=lvs+1
+    table.remove(objs,i) 
+   end
+   if pdt>=1 and o.x*8-cx>=0 and o.x*8-cx<=240 and o.y*8-cy>=0 and o.y*8-cy<=240 then 
+    o.f=t 
+   end
+   if not (o.ox*8-cx>=0 and o.ox*8-cx<=240 and o.oy*8-cy>=0 and o.oy*8-cy<=240) then 
+    o.f=f 
+    o.x=o.ox
+    o.y=o.oy 
+   end
+  end
+ end
+
+ for i,o in pairs(sobjs) do
+  if o.i==0 then
+   o.t=o.t+1
+   if o.t<40 and o.t//5==o.t/5 then 
+    prt(1,o.x*8+r(0,7),o.y*8+8,0,0,3,10,600,10)
+   end
+   if o.t==40 then o.s=f end
+   if o.t==160 then
+    mset(o.x,o.y,26)
+    prt(5,o.x*8+4,o.y*8+4,-5,5,-5,5,30,10)
+    table.remove(sobjs,i) 
+   end
+  end
+ end
+
+ if px+7>=lvex and px<=lvex+15 and py+7>=lvey and py<=lvey+15 and not(lve) then 
+  lve=t
+  prt(300,lvex+8,lvey+8,-20,20,-20,20, 500,15)
+  pdt=0
+  sfx(4,"C-4",16,3,10,0)
+  if not togm then music(0,0,-1,f) end
+ end
+ if lvet==720 then mode=0 end
+end
+
+function draw()
+ if togs==0 then
+  if anm%3==0 then
+   oi={x=r(0,480),y=0,xv=r(-30,-10),yv=r(10,30)}
+   table.insert(snow,#snow+1,oi)
+  end
+  for i,o in pairs(snow) do
+   rect(o.x,o.y,1,1,15)
+   o.x=o.x+(o.xv/10)
+   o.y=o.y+(o.yv/10)
+   if o.x<0 or o.y>136 then table.remove(snow,i) end
+  end
+ end
+
+ map(cx//8,cy//8,31,18, -cx+((cx//8)*8),-cy+((cy//8)*8),0)
+
+ for i,o in pairs(objs) do
+  if o.i==1 then
+   spr(51,o.x*8-cx,o.y*8+anm//30-cy,0,1)
+   if anm%25==0 then prt(1,o.x*8+r(-1,9),o.y*8+r(-1,9),0,0,0,0,15,15) end
+  end
+  if o.i==2 then
+   spr(67+anm//30,o.x*8-cx,o.y*8+anm//30-cy,0,1)
+   if anm%25==0 then prt(1,o.x*8+r(-1,9),o.y*8+r(-1,9),0,0,0,0,15,15) end
+  end
+ end
+
+ for i,o in pairs(sobjs) do
+  if o.i==0 then
+   if o.s then
+    if o.t//3==o.t/3 then spr(27,o.x*8-cx+r(-1,1),o.y*8-cy+r(-1,1))
+    else spr(27,o.x*8-cx,o.y*8-cy) end
+   end
+  end
+ end
+
+ for i,o in pairs(prts) do
+  rect(o.x-cx,o.y-cy,1,1,o.c)
+  o.x=o.x+o.xv
+  o.y=o.y+o.yv
+  o.t=o.t-1
+  if o.t<1 or not(inr(o.x,o.y)) then table.remove(prts,i) end
+ end
+
+ if not lve then
+  if anm<56 then spr(49,lvex-cx,lvey-cy,0,1,0,0,2,2)
+  else spr(81,lvex-cx,lvey-cy,0,1,0,0,2,2) end
+ end
+
+ if not (dt>0) and not(lve) then
+  if pdt>0 then
+   prt(1,px+4,py+4,-3,3,-3,3,20,2)
+   line(pdx+3-cx,pdy+3-cy,px+3-cx,py+3-cy,15) 
+  end
+
+  if ph==0 then spr(272,px-cx+phx*(1-2*pd),py-cy,0,1,pd,0)
+  elseif ph==1 then spr(273,px-cx+phx*(1-2*pd)+((1-2*pd)*-1),py-cy,0,1,pd,0)
+  elseif ph==2 then spr(274,px-cx+phx*(1-2*pd)+((1-2*pd)*-7),py-cy-1,0,1,pd,0); spr(275,px-cx+phx*(1-2*pd),py-cy,0,1,pd,0)
+  elseif ph==4 then spr(278,px-cx+phx*(1-2*pd),py-cy-4,0,1,pd,0)
+  elseif ph==5 then spr(277,px-cx+phx*(1-2*pd),py-cy-2,0,1,pd,0); spr(276,px-cx+phx*(1-2*pd)+((1-2*pd)*-7),py-cy-2,0,1,pd,0)
+  elseif ph==6 then spr(280,px-cx+phx*(1-2*pd),py-cy,0,1,pd,0); spr(281,px-cx+phx*(1-2*pd)+((1-2*pd)*7),py-cy,0,1,pd,0)
+  elseif ph==8 then spr(279,px-cx+phx*(1-2*pd),py-cy-2,0,1,pd,0)
+  elseif ph==14 then spr(282,px-cx+phx*(1-2*pd),py-cy,0,1,pd,0); spr(283,px-cx+phx*(1-2*pd)+((1-2*pd)*7),py-cy,0,1,pd,0)
+  elseif ph==15 then spr(284,px-cx+phx*(1-2*pd)+((1-2*pd)*-1),py-cy+2,0,1,pd,0)
+  elseif ph==16 then spr(285,px-cx+phx*(1-2*pd),py-cy,0,1,pd,0) end
+
+  spr(256+ps,px-cx,py-cy,0,1,pd,0)
+ end
+
+ if lvet>60 then print("GREAT.!!", 48,32,15,f,2) end
+ if lvet>180 then print("Time: " .. tostring(lvt//60) .. "s",48,48,15) end
+ if lvet>270 then print("Deaths: " .. tostring(lvd),48,64,15) end -- 修正: 連結演算子は ..
+ if lvet>360 then print("Cubes: " .. tostring(lvs) .. "/" .. tostring(lvts),48,80,15) end
+end
+
+function die()
+ lvd=lvd+1
+ prt(100,px+3,py+3,-10,10,-10,10,55,1)
+ sfx(4,"C-8",16,3,10,0)
+ paus=60
+ dt=60
+end
+
+function prt(a,x,y,xv,xv2,yv,yv2,t,c)
+ for i=0,a do
+  oi={x=x,y=y,xv=r(xv,xv2)/10,yv=r(yv,yv2)/10,t=t+r(-5,5),c=c}
+  table.insert(prts,#prts+1,oi)
+ end
+end
+
+function plt(off)
+ ox=-1
+ oy=-1
+ if tils(px,py+7+off,px+7,py+7+off,39) then ox,oy=tilf(px,py+7+off,px+7,py+7+off,39) end
+ if tils(px,py+7+off,px+7,py+7+off,40) then ox,oy=tilf(px,py+7+off,px+7,py+7+off,40) end
+ if tils(px,py+7+off,px+7,py+7+off,41) then ox,oy=tilf(px,py+7+off,px+7,py+7+off,41) end
+ if not (ox==-1) and py+7-pyv<oy*8 then return true end
+end
+
+function sld(x,y)
+ if x>30*8*8 then x=0 end
+ if x<0 then x=30*8*8 end
+ if y>17*8*8 then y=0 end
+ if y<0 then y=17*8*8 end
+
+ if slds[mget(x//8,y//8)] then return true
+ else 
+  for i,o in pairs(sobjs) do
+   if o.s and x>=o.x*8 and x<=(o.x*8+8) and y>=o.y*8 and y<=(o.y*8+8) then return true end
+  end
+ end
+end
+
+function col1()
+ pal(1,0,244,104)
+end
+
+function col2()
+ pal(1,76,170,255)
+end
+
+function err(m)
+ trace("Error: "..m)
+ exit()
+end
+
+function r(a,b) return math.random(a,b) end
+
+function btns(u,d,l,r)
+ return u==btn(0) and d==btn(1) and l==btn(2) and r==btn(3)
+end
+
+function tils(x,y,x2,y2,t)
+ return mget(x//8,y//8)==t or mget(x2//8,y//8)==t or mget(x//8,y2//8)==t or mget(x2//8,y2//8)==t
+end
+
+function tilf(x,y,x2,y2,t)
+ if mget(x//8,y//8)==t then return x//8,y//8 end
+ if mget(x2//8,y//8)==t then return x2//8,y//8 end
+ if mget(x//8,y2//8)==t then return x//8,y2//8 end
+ if mget(x2//8,y2//8)==t then return x2//8,y2//8 end
+end
+
+function pal(i,r,g,b)
+ poke(0x3fc0+(i*3)+2,b)
+ poke(0x3fc0+(i*3)+1,g)
+ poke(0x3fc0+(i*3),r)
+--end

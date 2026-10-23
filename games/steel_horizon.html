@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- サーチプログラム検索用メタデータ -->
+    <meta name="AI-GAME-PORTFOLIO" content="STEEL HORIZON">
+    <title>STEEL HORIZON - 荒野の機械化戦線</title>
+    <style>
+        :root {
+            --bg-color: #050505;
+            --text-main: #33ff33;
+            --text-dim: #1a801a;
+            --text-alert: #ff3333;
+            --border-color: #33ff33;
+            --bg-modal: #0a140a;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Courier New', Consolas, monospace;
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            box-sizing: border-box;
+            overflow: hidden;
+            position: relative;
+        }
+        #game-container {
+            width: 100%;
+            max-width: 800px;
+            height: 100%;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            gap: 10px;
+        }
+        header {
+            text-align: center;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 5px;
+        }
+        h1 {
+            margin: 0;
+            font-size: 1.5em;
+            letter-spacing: 2px;
+        }
+        .main-panel {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 10px;
+            overflow: hidden;
+        }
+        .panel {
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            background: rgba(0, 20, 0, 0.5);
+        }
+        .panel-title {
+            border-bottom: 1px dashed var(--text-dim);
+            margin-top: 0;
+            padding-bottom: 5px;
+            font-size: 1.1em;
+        }
+        .stat-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        #log-area {
+            font-size: 0.9em;
+            line-height: 1.4;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+        .log-entry {
+            margin-bottom: 4px;
+            animation: fadeIn 0.3s ease-in;
+        }
+        .log-entry.damage { color: var(--text-alert); }
+        .log-entry.loot { color: #ffff33; }
+        .log-entry.system { color: #33ccff; }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            padding-top: 10px;
+            border-top: 2px solid var(--border-color);
+        }
+        button {
+            background-color: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        button:hover:not(:disabled) {
+            background-color: var(--text-main);
+            color: var(--bg-color);
+        }
+        button:disabled {
+            border-color: var(--text-dim);
+            color: var(--text-dim);
+            cursor: not-allowed;
+        }
+        .active-state {
+            background-color: var(--text-main);
+            color: var(--bg-color);
+        }
+        
+        /* クラフトメニューのモーダル */
+        #craft-modal {
+            display: none;
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-modal);
+            border: 2px solid var(--border-color);
+            padding: 20px;
+            z-index: 100;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 0 20px rgba(51, 255, 51, 0.2);
+        }
+        .recipe-btn {
+            display: block;
+            width: 100%;
+            margin-bottom: 8px;
+            text-align: left;
+            font-size: 0.9em;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: var(--text-dim); }
+
+        @media (max-width: 600px) {
+            .main-panel { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+            .controls { grid-template-columns: 1fr 1fr; }
+            #btn-sound { grid-column: span 2; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- AI-DEV-HANDOFF-START
+タイトル: STEEL HORIZON - 荒野の機械化戦線
+バージョン: 1.1.0
+概要・ルール: 共通データと紋章システムを完全廃止し、想定60時間の長期的な成長曲線を描けるように設計されたスタンドアロン型RPG。探索でスクラップを集め、工作機械モチーフのクラフトでステータスを底上げしていく。
+主要な構造（関数・状態管理・画面遷移）: 
+  - GameManagerクラスによる状態管理。
+  - SoundSystemクラスを追加。Web Audio APIにより外部アセット不要でBGM/SEを合成生成。
+  - promptによる入力を廃止し、DOMベースのクラフトメニュー(モーダル)を実装しUIを強化。
+セーブデータのキー: steel_horizon_save_v1
+実装済み機能: 
+  - ローカルストレージへの自動保存/手動保存・ロード
+  - 敵とのターン制(自動進行)バトル、素材のドロップ
+  - 専用UIによるクラフトシステム
+  - Web Audio APIによる動的な8-bit/FM音源風サウンドの再生
+未実装・TODO: 
+  - 深度(Depth)100以降のボスイベントおよびエンディング分岐の実装
+設計上のこだわり・注意点: 
+  - ブラウザの自動再生ポリシーに対応するため、ユーザーが何らかのボタンをクリックしたタイミングでAudioContextを初期化・レジュームする仕組みを入れている。
+AI-DEV-HANDOFF-END -->
+
+<div id="game-container">
+    <header>
+        <h1>STEEL HORIZON: TERMINAL</h1>
+    </header>
+
+    <div class="main-panel">
+        <div class="panel" id="status-panel">
+            <h2 class="panel-title">STATUS</h2>
+            <div id="status-content"></div>
+            <h2 class="panel-title" style="margin-top: 15px;">INVENTORY</h2>
+            <div id="inventory-content"></div>
+        </div>
+        
+        <div class="panel" id="log-panel">
+            <h2 class="panel-title">SYSTEM LOG</h2>
+            <div id="log-area"></div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="btn-explore" onclick="window.game.manualExplore()">[E] 探索進行</button>
+        <button id="btn-auto" onclick="window.game.toggleAuto()">[A] オート探索: OFF</button>
+        <button id="btn-craft" onclick="window.game.openCraftMenu()">[C] 工作室</button>
+        <button id="btn-save" onclick="window.game.saveGame()">[S] データ保存</button>
+        <button id="btn-sound" onclick="window.game.toggleSound()">[M] 音声: OFF</button>
+    </div>
+</div>
+
+<!-- クラフトメニュー用モーダル -->
+<div id="craft-modal">
+    <h2 style="margin-top:0; border-bottom: 1px dashed var(--text-dim); padding-bottom:5px;">NCプログラム一覧</h2>
+    <div id="craft-list"></div>
+    <button onclick="window.game.closeCraftMenu()" style="margin-top:15px; width:100%;">[ターミナル切断]</button>
+</div>
+
+<script>
+/** マスタデータ */
+const ENEMIES = [
+    { name: "ジャンクドローン", hp: 30, atk: 5, exp: 10, drop: { id: "ss45", chance: 0.6, amount: 1 } },
+    { name: "暴走警備ロボ", hp: 60, atk: 12, exp: 25, drop: { id: "ss45", chance: 0.8, amount: 2 } },
+    { name: "変異クリーチャー", hp: 100, atk: 18, exp: 45, drop: { id: "sus304", chance: 0.4, amount: 1 } },
+    { name: "重装甲B.O.S機兵", hp: 250, atk: 35, exp: 120, drop: { id: "sus304", chance: 0.7, amount: 3 } },
+    { name: "自律型フェイスミル", hp: 500, atk: 60, exp: 300, drop: { id: "sus304", chance: 1.0, amount: 5 } }
+];
+
+const CRAFT_RECIPES = [
+    { id: "weapon_upgrade", name: "削り出しブレード強化", cost: { ss45: 5, sus304: 0 }, effect: (p) => { p.atk += 3; }, desc: "攻撃力を+3" },
+    { id: "armor_upgrade", name: "平面加工アーマー強化", cost: { ss45: 3, sus304: 2 }, effect: (p) => { p.def += 3; p.maxHp += 20; }, desc: "防御+3, 最大HP+20" },
+    { id: "heal_item", name: "ナノマシン修復", cost: { ss45: 1, sus304: 0 }, effect: (p) => { p.hp = p.maxHp; }, desc: "HPを全回復" }
+];
+
+/** 
+ * Web Audio API を用いたシンセサイザー・サウンドシステム 
+ * 外部音声ファイルを使わずに音を生成する
+ */
+class SoundSystem {
+    constructor() {
+        this.ctx = null;
+        this.masterGain = null;
+        this.isMuted = true;
+        this.bgmInterval = null;
+        this.isPlayingBgm = false;
+        
+        // インダストリアル風ベースライン (周波数)
+        this.bgmSequence = [
+            110, 110, 110, 0,
+            110, 110, 146.83, 0,
+            98, 98, 98, 0,
+            98, 98, 130.81, 0
+        ];
+        this.bgmStep = 0;
+    }
+
+    init() {
+        if (!this.ctx) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioContext();
+            this.masterGain = this.ctx.createGain();
+            this.masterGain.gain.value = 0.2; // 全体の音量
+            this.masterGain.connect(this.ctx.destination);
+        }
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    }
+
+    toggle() {
+        this.isMuted = !this.isMuted;
+        if (!this.isMuted) {
+            this.init();
+            if(!this.isPlayingBgm) this.startBGM();
+        } else {
+            this.stopBGM();
+        }
+        return !this.isMuted;
+    }
+
+    startBGM() {
+        if (this.isMuted || !this.ctx) return;
+        this.isPlayingBgm = true;
+        this.bgmStep = 0;
+        this.bgmInterval = setInterval(() => this.playBGMNote(), 200); // テンポ
+    }
+    
+    stopBGM() {
+        this.isPlayingBgm = false;
+        if (this.bgmInterval) {
+            clearInterval(this.bgmInterval);
+            this.bgmInterval = null;
+        }
+    }
+
+    playBGMNote() {
+        if (this.isMuted) return;
+        const freq = this.bgmSequence[this.bgmStep % this.bgmSequence.length];
+        this.bgmStep++;
+        
+        if (freq === 0) return; // 休符
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        
+        // ローパスフィルターでくぐもった重いベース音に
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 400;
+        
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+        
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+        
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.15);
+    }
+
+    playSE(type) {
+        if (this.isMuted || !this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        const now = this.ctx.currentTime;
+
+        switch (type) {
+            case 'attack':
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+                break;
+            case 'damage':
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+                gain.gain.setValueAtTime(0.6, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+                break;
+            case 'enemy_die':
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.linearRampToValueAtTime(50, now + 0.3);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+                break;
+            case 'loot':
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.setValueAtTime(1200, now + 0.1);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+                break;
+            case 'craft':
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.setValueAtTime(554, now + 0.1); // C#
+                osc.frequency.setValueAtTime(659, now + 0.2); // E
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.4);
+                break;
+            case 'levelup':
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.setValueAtTime(554, now + 0.1);
+                osc.frequency.setValueAtTime(659, now + 0.2);
+                osc.frequency.setValueAtTime(880, now + 0.4);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.8);
+                osc.start(now);
+                osc.stop(now + 0.8);
+                break;
+            case 'click':
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1200, now);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now);
+                osc.stop(now + 0.05);
+                break;
+        }
+    }
+}
+
+class GameManager {
+    constructor() {
+        this.saveKey = 'steel_horizon_save_v1';
+        this.autoInterval = null;
+        this.state = "IDLE"; 
+        this.sound = new SoundSystem();
+        
+        this.player = {
+            level: 1, exp: 0, hp: 100, maxHp: 100, atk: 15, def: 5, depth: 1,
+            inventory: { ss45: 0, sus304: 0 }
+        };
+
+        this.currentEnemy = null;
+        this.init();
+    }
+
+    init() {
+        if (!this.loadGame()) {
+            this.log("システム起動... 生体反応リンク完了。", "system");
+            this.log("目標：荒野の最深部を探索し、生存せよ。");
+        }
+        this.updateUI();
+        setInterval(() => this.saveGame(true), 60000);
+    }
+    
+    // 操作前にAudioContextを確実に起動する
+    ensureAudio() {
+        this.sound.init();
+    }
+
+    toggleSound() {
+        this.ensureAudio();
+        const isOn = this.sound.toggle();
+        const btn = document.getElementById('btn-sound');
+        if (isOn) {
+            btn.innerText = "[M] 音声: ON";
+            btn.classList.add("active-state");
+            this.sound.playSE('click');
+        } else {
+            btn.innerText = "[M] 音声: OFF";
+            btn.classList.remove("active-state");
+        }
+    }
+
+    updateUI() {
+        const expReq = this.getExpRequirement();
+        document.getElementById('status-content').innerHTML = `
+            <div class="stat-line"><span>LEVEL:</span><span>${this.player.level}</span></div>
+            <div class="stat-line"><span>DEPTH:</span><span>B${this.player.depth}F</span></div>
+            <div class="stat-line"><span>HP:</span><span>${this.player.hp} / ${this.player.maxHp}</span></div>
+            <div class="stat-line"><span>ATK / DEF:</span><span>${this.player.atk} / ${this.player.def}</span></div>
+            <div class="stat-line"><span>EXP:</span><span>${this.player.exp} / ${expReq}</span></div>
+        `;
+        document.getElementById('inventory-content').innerHTML = `
+            <div class="stat-line"><span>SS45鋼材:</span><span>${this.player.inventory.ss45}</span></div>
+            <div class="stat-line"><span>SUS304鋼板:</span><span>${this.player.inventory.sus304}</span></div>
+        `;
+    }
+
+    log(message, type = "normal") {
+        const logArea = document.getElementById('log-area');
+        if(!logArea) return;
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${type}`;
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+        entry.innerText = `[${timeStr}] ${message}`;
+        logArea.appendChild(entry);
+        if (logArea.children.length > 50) logArea.removeChild(logArea.firstChild);
+        logArea.scrollTop = logArea.scrollHeight;
+    }
+
+    getExpRequirement() { return Math.floor(50 * Math.pow(1.2, this.player.level - 1)); }
+
+    checkLevelUp() {
+        let req = this.getExpRequirement();
+        let leveledUp = false;
+        while (this.player.exp >= req) {
+            this.player.exp -= req;
+            this.player.level++;
+            this.player.maxHp += 15;
+            this.player.hp = this.player.maxHp;
+            this.player.atk += 2;
+            this.player.def += 1;
+            this.log(`LEVEL UP! レベルが ${this.player.level} に上昇した。`, "system");
+            leveledUp = true;
+            req = this.getExpRequirement();
+        }
+        if (leveledUp) {
+            this.sound.playSE('levelup');
+            this.updateUI();
+        }
+    }
+
+    spawnEnemy() {
+        const depthMultiplier = 1 + (this.player.depth * 0.1);
+        let enemyTemplate = ENEMIES[Math.floor(Math.random() * Math.min(ENEMIES.length, 1 + this.player.depth / 5))];
+        if(!enemyTemplate) enemyTemplate = ENEMIES[ENEMIES.length - 1];
+
+        this.currentEnemy = {
+            name: enemyTemplate.name,
+            hp: Math.floor(enemyTemplate.hp * depthMultiplier),
+            maxHp: Math.floor(enemyTemplate.hp * depthMultiplier),
+            atk: Math.floor(enemyTemplate.atk * depthMultiplier),
+            exp: Math.floor(enemyTemplate.exp * depthMultiplier),
+            drop: enemyTemplate.drop
+        };
+
+        this.state = "BATTLE";
+        this.log(`警告: ${this.currentEnemy.name} と遭遇！`, "damage");
+    }
+
+    processTurn() {
+        if (this.player.hp <= 0) {
+            this.log("システムダウン。致命的な損傷を受けました...", "damage");
+            this.toggleAuto(false);
+            this.player.hp = this.player.maxHp;
+            this.player.depth = Math.max(1, this.player.depth - 2);
+            this.state = "IDLE";
+            this.log("再起動プロトコル実行。手動操作で復帰してください。", "system");
+            this.updateUI();
+            return;
+        }
+
+        if (this.state === "IDLE") {
+            this.log(`深度 B${this.player.depth}F を探索中...`);
+            if (Math.random() < 0.6) {
+                this.spawnEnemy();
+            } else {
+                if(Math.random() < 0.3) {
+                    this.player.inventory.ss45++;
+                    this.log("瓦礫の中から SS45鋼材 を1つ発見した。", "loot");
+                    this.sound.playSE('loot');
+                } else {
+                    this.sound.playSE('click'); // 探索の足音代わり
+                }
+                this.player.depth++;
+            }
+            this.updateUI();
+            return;
+        }
+
+        if (this.state === "BATTLE") {
+            let pDamage = Math.max(1, this.player.atk - Math.floor(this.currentEnemy.atk * 0.2));
+            pDamage = Math.floor(pDamage * (0.9 + Math.random() * 0.2));
+            this.currentEnemy.hp -= pDamage;
+            this.log(`${this.currentEnemy.name}に ${pDamage} のダメージ！`);
+            this.sound.playSE('attack');
+
+            if (this.currentEnemy.hp <= 0) {
+                this.log(`${this.currentEnemy.name} を撃破した！`, "system");
+                this.player.exp += this.currentEnemy.exp;
+                this.log(`経験値 ${this.currentEnemy.exp} を獲得。`);
+                this.sound.playSE('enemy_die');
+                
+                if (Math.random() < this.currentEnemy.drop.chance) {
+                    const dropItem = this.currentEnemy.drop.id;
+                    const amount = this.currentEnemy.drop.amount;
+                    this.player.inventory[dropItem] += amount;
+                    this.log(`ドロップ: ${dropItem === 'ss45' ? 'SS45鋼材' : 'SUS304鋼板'} x${amount}`, "loot");
+                    setTimeout(()=> this.sound.playSE('loot'), 300); // 撃破音の後に鳴らす
+                }
+
+                this.checkLevelUp();
+                this.state = "IDLE";
+                this.currentEnemy = null;
+                this.player.depth++;
+                this.updateUI();
+                return;
+            }
+
+            let eDamage = Math.max(1, this.currentEnemy.atk - this.player.def);
+            eDamage = Math.floor(eDamage * (0.9 + Math.random() * 0.2));
+            this.player.hp -= eDamage;
+            this.log(`${this.currentEnemy.name}の攻撃！ ${eDamage} のダメージを受けた。`, "damage");
+            setTimeout(()=> this.sound.playSE('damage'), 100);
+            this.updateUI();
+        }
+    }
+
+    manualExplore() {
+        this.ensureAudio();
+        if(this.state === "CRAFT") this.closeCraftMenu();
+        this.processTurn();
+    }
+
+    toggleAuto(forceState = null) {
+        this.ensureAudio();
+        if (this.state === "CRAFT") this.closeCraftMenu();
+
+        const btn = document.getElementById('btn-auto');
+        const enable = forceState !== null ? forceState : (this.autoInterval === null);
+
+        if (enable) {
+            if (!this.autoInterval) {
+                this.autoInterval = setInterval(() => this.processTurn(), 1000);
+                btn.innerText = "[A] オート探索: ON";
+                btn.classList.add("active-state");
+                this.log("オートパイロットON", "system");
+                this.sound.playSE('click');
+            }
+        } else {
+            if (this.autoInterval) {
+                clearInterval(this.autoInterval);
+                this.autoInterval = null;
+                btn.innerText = "[A] オート探索: OFF";
+                btn.classList.remove("active-state");
+                this.log("オートパイロットOFF", "system");
+                this.sound.playSE('click');
+            }
+        }
+    }
+
+    // --- クラフトシステム（独自モーダルUI） ---
+    openCraftMenu() {
+        this.ensureAudio();
+        this.sound.playSE('click');
+        if(this.autoInterval) this.toggleAuto(false);
+        this.state = "CRAFT";
+        this.log("--- 工作機ターミナルへ接続 ---", "system");
+        
+        this.renderCraftMenu();
+        document.getElementById('craft-modal').style.display = "block";
+    }
+
+    renderCraftMenu() {
+        const list = document.getElementById('craft-list');
+        list.innerHTML = "";
+        
+        CRAFT_RECIPES.forEach((r, idx) => {
+            const canCraft = this.player.inventory.ss45 >= r.cost.ss45 && this.player.inventory.sus304 >= r.cost.sus304;
+            const btn = document.createElement('button');
+            btn.className = "recipe-btn";
+            btn.innerHTML = `<strong>${r.name}</strong><br>必要: SS45 x${r.cost.ss45} / SUS304 x${r.cost.sus304}<br><span style="color:var(--text-dim);font-size:0.9em;">効果: ${r.desc}</span>`;
+            btn.disabled = !canCraft;
+            btn.onclick = () => this.executeCraft(idx);
+            list.appendChild(btn);
+        });
+    }
+
+    executeCraft(idx) {
+        this.ensureAudio();
+        const r = CRAFT_RECIPES[idx];
+        if (this.player.inventory.ss45 >= r.cost.ss45 && this.player.inventory.sus304 >= r.cost.sus304) {
+            this.player.inventory.ss45 -= r.cost.ss45;
+            this.player.inventory.sus304 -= r.cost.sus304;
+            r.effect(this.player);
+            this.sound.playSE('craft');
+            this.log(`NCプログラム実行... 【${r.name}】を加工完了！`, "system");
+            this.updateUI();
+            this.renderCraftMenu(); // リストの[可能/不可]を再判定して描画
+        }
+    }
+
+    closeCraftMenu() {
+        this.ensureAudio();
+        this.sound.playSE('click');
+        document.getElementById('craft-modal').style.display = "none";
+        this.state = "IDLE";
+        this.log("工作機ターミナルから切断しました。");
+    }
+
+    saveGame(isAuto = false) {
+        if(!isAuto) this.ensureAudio();
+        try {
+            localStorage.setItem(this.saveKey, JSON.stringify(this.player));
+            if (!isAuto) {
+                this.sound.playSE('click');
+                this.log("ローカルストレージへデータを書き込みました。", "system");
+            }
+        } catch (e) {
+            if (!isAuto) this.log("セーブエラー: 環境の制限により保存できません。", "damage");
+        }
+    }
+
+    loadGame() {
+        try {
+            const data = localStorage.getItem(this.saveKey);
+            if (data) {
+                const parsed = JSON.parse(data);
+                this.player = { ...this.player, ...parsed };
+                this.player.inventory = { ...{ss45: 0, sus304: 0}, ...(parsed.inventory || {}) };
+                this.log("前回セーブデータを復元しました。", "system");
+                return true;
+            }
+        } catch (e) {
+            this.log("ロードエラー: セーブデータへのアクセスが制限されています。", "damage");
+        }
+        return false;
+    }
+}
+
+try {
+    window.game = new GameManager();
+} catch (error) {
+    console.error(error);
+    const logArea = document.getElementById('log-area');
+    if(logArea) logArea.innerHTML += `<div class="log-entry damage">致命的なエラー: ${error.message}</div>`;
+}
+</script>
+</body>
+</html>

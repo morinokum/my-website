@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI App Portfolio</title>
+  <style>
+    :root { --bg: #1e1e1e; --panel: #2d2d30; --primary: #009688; --primary-hover: #00796b; --text: #f0f0f0; }
+    body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; }
+    header { text-align: center; padding: 40px; background: #252526; border-bottom: 2px solid var(--primary); }
+    h1 { margin: 0 0 10px 0; color: var(--primary); }
+    .nav-buttons { margin-top: 25px; }
+    .controls { max-width: 1000px; margin: 20px auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
+    input { width: 100%; max-width: 300px; padding: 10px; border-radius: 20px; border: 1px solid #3e3e42; background: var(--panel); color: white; outline: none; }
+    input:focus { border-color: var(--primary); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; max-width: 1000px; margin: auto; padding: 20px; min-height: 50vh; }
+    .card { background: var(--panel); padding: 20px; border-radius: 10px; border: 1px solid #3e3e42; display: flex; flex-direction: column; }
+    .card h3 { margin-top: 0; color: #fff; }
+    .desc { flex-grow: 1; font-size: 0.9em; color: #ccc; margin-bottom: 15px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .buttons { display: flex; gap: 10px; }
+    .btn { flex: 1; padding: 10px; text-align: center; background: var(--primary); color: white; text-decoration: none; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; }
+    .btn:hover { background: var(--primary-hover); }
+    .btn.copy { background: #3e3e42; }
+    .btn.copy:hover { background: #505055; }
+    #toast { visibility: hidden; min-width: 250px; background-color: var(--primary); color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 1000; left: 50%; bottom: 30px; transform: translateX(-50%); box-shadow: 0 4px 12px rgba(0,0,0,0.4); font-weight: bold; }
+    #toast.show { visibility: visible; animation: fadein 0.3s, fadeout 0.4s 2.5s; }
+    @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+    @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AI App Portfolio</h1><p>AIと共に制作した実用Webツール・アプリ群</p>
+    <div class="nav-buttons"><a href="index.html" style="color: #007acc; text-decoration: none; font-weight: bold; font-size: 1.1em; background: #1e1e1e; padding: 10px 20px; border-radius: 20px; border: 1px solid #007acc;">🎮 ゲーム一覧へ</a></div>
+  </header>
+  <div class="controls">
+    <input type="text" id="search" placeholder="🔍 検索..." onkeyup="search()">
+    <span id="count" style="color: #ccc; font-weight: bold;"></span>
+  </div>
+  <div class="grid" id="grid">
+  </div>
+  <div id="toast">コピーしました！</div>
+  <script>
+    document.getElementById('count').textContent = "全 0 ツール";
+    function search() {
+      const q = document.getElementById('search').value.toLowerCase();
+      document.querySelectorAll('.card').forEach(c => {
+        c.style.display = c.dataset.text.toLowerCase().includes(q) ? '' : 'none';
+      });
+    }
+    async function copyCode(file) {
+      try {
+        const res = await fetch('apps/' + file);
+        if (!res.ok) throw new Error('Network error');
+        const text = await res.text();
+        await navigator.clipboard.writeText(text);
+        const t = document.getElementById('toast');
+        t.textContent = '📋 ' + file + ' のコードをコピーしました！';
+        t.className = 'show';
+        setTimeout(() => { t.className = ''; }, 2800);
+      } catch (err) {
+        console.error(err);
+        alert('コードの読み込みに失敗しました。');
+      }
+    }
+  </script>
+</body>
+</html>

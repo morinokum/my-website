@@ -7,7 +7,8 @@
     :root { --bg: #1e1e1e; --panel: #2d2d30; --primary: #007acc; --primary-hover: #005999; --text: #f0f0f0; }
     body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; }
     header { text-align: center; padding: 40px; background: #252526; border-bottom: 2px solid var(--primary); }
-    h1 { margin: 0; color: var(--primary); }
+    h1 { margin: 0 0 10px 0; color: var(--primary); }
+    .nav-buttons { margin-top: 25px; }
     .controls { max-width: 1000px; margin: 20px auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
     input { width: 100%; max-width: 300px; padding: 10px; border-radius: 20px; border: 1px solid #3e3e42; background: var(--panel); color: white; outline: none; }
     input:focus { border-color: var(--primary); }
@@ -27,7 +28,10 @@
   </style>
 </head>
 <body>
-  <header><h1>AI Game Portfolio</h1><p>AIと共に制作したゲーム展示室</p></header>
+  <header>
+    <h1>AI Game Portfolio</h1><p>AIと共に制作したゲーム展示室</p>
+    <div class="nav-buttons"><a href="apps.html" style="color: #009688; text-decoration: none; font-weight: bold; font-size: 1.1em; background: #1e1e1e; padding: 10px 20px; border-radius: 20px; border: 1px solid #009688;">🛠️ 実用アプリ・ツール一覧へ</a></div>
+  </header>
   <div class="controls">
     <input type="text" id="search" placeholder="🔍 検索..." onkeyup="search()">
     <span id="count" style="color: #ccc; font-weight: bold;"></span>
@@ -37,7 +41,7 @@
         <h3>STEEL HORIZON - 荒野の機械化戦線</h3>
         <div class="desc">Web Audio APIによるBGMおよび各アクションのSE（効果音）機能を統合したスタンドアロン型RPG。既存セーブデータ互換(steel_horizon_save_v1)を保持。</div>
         <div class="buttons">
-          <a href="games/gemini-code-1792751706314.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/gemini-code-1792751706314.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('gemini-code-1792751706314.html')">📋 Code</button>
         </div>
       </div>
@@ -45,15 +49,15 @@
         <h3>FRONT MISSION TACTIX: STEEL HOUNDS | AI-GAME-PORTFOLIO</h3>
         <div class="desc">ハードボイルドなヴァンツァー（WAP）シミュレーションRPG。ボディ・R腕・L腕・脚部の4部位耐久、AP消費制、武器の射程・弾数・命中率、アリーナ＆キャンペーン進行、パーツショップ、ローカルストレージセーブを完全実装。</div>
         <div class="buttons">
-          <a href="games/front_mission_tactix.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/front_mission_tactix.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('front_mission_tactix.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="絶対絶望獣：神殺しの系譜 このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="絶対絶望獣：神殺しの系譜 概要はまだ記載されていません。">
         <h3>絶対絶望獣：神殺しの系譜</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/gemini-code-1792653718036.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/gemini-code-1792653718036.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('gemini-code-1792653718036.html')">📋 Code</button>
         </div>
       </div>
@@ -61,7 +65,7 @@
         <h3>紋章ダイスタクティクス：ルーン・ロール・サバイバー</h3>
         <div class="desc">毎ターン振られるダイスをルーンカードに配置し、条件を満たして効果（攻撃、防御、回復）を発動して敵を倒すローグライク・デッキ構築型サバイバルゲーム。</div>
         <div class="buttons">
-          <a href="games/code_artifact (10).html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/code_artifact (10).html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('code_artifact (10).html')">📋 Code</button>
         </div>
       </div>
@@ -69,7 +73,7 @@
         <h3>電脳妖怪ネットダイバー</h3>
         <div class="desc">サイバーパンク×妖怪の世界観。カードをめくり素材を集めるチキンレース（Push-Your-Luck）。同じ妖怪を2回引くと全ロス（クラッシュ）。ジャックアウトで素材を持ち帰り、ガチャ（コンパイル）で妖怪を仲間にすると、レア度に応じたパッシブスキルが解放され探索が有利になる。</div>
         <div class="buttons">
-          <a href="games/code_artifact (11).html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/code_artifact (11).html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('code_artifact (11).html')">📋 Code</button>
         </div>
       </div>
@@ -77,15 +81,15 @@
         <h3>FM SYNTHESIS STRIKER - 3D NEON OVERDRIVE</h3>
         <div class="desc">Konami風の重厚かつ叙情的なFM音源BGMを搭載した横スクロールシューティング。サンドボックス環境でのWebGL制約をクリアしつつ、ワイヤーフレームとポリゴン合成による立体的なサイバー表現を実現。</div>
         <div class="buttons">
-          <a href="games/gemini-code-1792445201821.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/gemini-code-1792445201821.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('gemini-code-1792445201821.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="FM SYNC: CYBER GROOVE このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="FM SYNC: CYBER GROOVE 概要はまだ記載されていません。">
         <h3>FM SYNC: CYBER GROOVE</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/fm_sync_cyber_groove (2).html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/fm_sync_cyber_groove (2).html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('fm_sync_cyber_groove (2).html')">📋 Code</button>
         </div>
       </div>
@@ -93,7 +97,7 @@
         <h3>FM SYNTHESIS STRIKER - 鋼鉄の残響 (Enhanced Melody &amp; Smooth Edition)</h3>
         <div class="desc">Konami風の重厚かつ叙情的なFM音源BGM（陰陽表現・128ステップ複合旋律）を搭載した横スクロールシューティング。描画最適化（shadowBlur削減、アルファ合成最適化、オブジェクト管理軽量化）により滑らかな60FPS動作を実現。</div>
         <div class="buttons">
-          <a href="games/fm_synthesis_striker (1).html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/fm_synthesis_striker (1).html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('fm_synthesis_striker (1).html')">📋 Code</button>
         </div>
       </div>
@@ -101,7 +105,7 @@
         <h3>FM SYNTHESIS STRIKER - 鋼鉄の残響</h3>
         <div class="desc">Konami風の重厚なFM音源サラウンドBGMとSEにこだわった横スクロールシューティング。自機を操作し敵を撃破してスコアを稼ぐ。ボスを倒すとループ進行。</div>
         <div class="buttons">
-          <a href="games/fm_synthesis_striker.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/fm_synthesis_striker.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('fm_synthesis_striker.html')">📋 Code</button>
         </div>
       </div>
@@ -109,39 +113,39 @@
         <h3>紋章カードの自動化工場：ルーン・コンベア・オートメーション | AI-GAME-PORTFOLIO</h3>
         <div class="desc">画面上にコンベア・分岐器・錬金窯・フィルターを自由に配置し、搬送・合成・出荷を自動化するファクトリーパズル。マスターデータのレシピに従って高級ルーンをクラフトし、出荷して納品クエストをクリアしてゴールドを稼ぐ。ゴールドで領地/マイホームを強化して工場をパワーアップ。</div>
         <div class="buttons">
-          <a href="games/code_artifact (9).html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/code_artifact (9).html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('code_artifact (9).html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="Neon Prism: Draw &amp; Defend | AI-GAME-PORTFOLIO このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="Neon Prism: Draw &amp; Defend | AI-GAME-PORTFOLIO 概要はまだ記載されていません。">
         <h3>Neon Prism: Draw &amp; Defend | AI-GAME-PORTFOLIO</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/neon_prism_draw_defend (1).html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/neon_prism_draw_defend (1).html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('neon_prism_draw_defend (1).html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="紋章カードの怠惰なる生活 - Rune Craft Puzzle (拡張版) このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="紋章カードの怠惰なる生活 - Rune Craft Puzzle (拡張版) 概要はまだ記載されていません。">
         <h3>紋章カードの怠惰なる生活 - Rune Craft Puzzle (拡張版)</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/gemini-code-1792274904676.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/gemini-code-1792274904676.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('gemini-code-1792274904676.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="紋章カードの怠惰なる生活 - Rune Craft Puzzle このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="紋章カードの怠惰なる生活 - Rune Craft Puzzle 概要はまだ記載されていません。">
         <h3>紋章カードの怠惰なる生活 - Rune Craft Puzzle</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/rune_craft_puzzle (1).html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/rune_craft_puzzle (1).html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('rune_craft_puzzle (1).html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="紋章ルーン・コレクター このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="紋章ルーン・コレクター 概要はまだ記載されていません。">
         <h3>紋章ルーン・コレクター</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/gemini-code-1792359576046.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/gemini-code-1792359576046.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('gemini-code-1792359576046.html')">📋 Code</button>
         </div>
       </div>
@@ -149,7 +153,7 @@
         <h3>紋章カードの領地経営：ルーン・オートバトラー | AI-GAME-PORTFOLIO</h3>
         <div class="desc">RUNE_GAME_DATAのカード・素材・召喚ルーンを活用し、領地施設を建設・強化しながら、カードでチームを編成してウェーブごとに迫り来る魔物を自動戦闘（オートバトル）で退治する戦略シミュレーション＆オートバトラーゲーム。勝利報酬でルーンカードを購入・合成・進化させ、領地を発展させつつ高難易度ウェーブを目指す。</div>
         <div class="buttons">
-          <a href="games/code_artifact (7).html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/code_artifact (7).html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('code_artifact (7).html')">📋 Code</button>
         </div>
       </div>
@@ -157,199 +161,199 @@
         <h3>紋章カードと漆黒の狙撃手 - Mouse Aim Rune Action | AI-GAME-PORTFOLIO</h3>
         <div class="desc">プレイヤーはマウスカーソルで「精度と照準（マウスエイム）」をコントロールし、画面を飛び交うルーン（紋章カード）や襲来する魔物を狙い撃つハイスピード・マウスエイムアクションゲーム。RUNE_GAME_DATAのカード・ルーン素材を活用し、狙撃・コンボ・合成・装備強化を行いつつ階層（ステージ）を攻略していく。</div>
         <div class="buttons">
-          <a href="games/gemini-code-1792292913438.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/gemini-code-1792292913438.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('gemini-code-1792292913438.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="紋章カードの錬金市場：ルーン・トレード | AI-GAME-PORTFOLIO このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="紋章カードの錬金市場：ルーン・トレード | AI-GAME-PORTFOLIO 概要はまだ記載されていません。">
         <h3>紋章カードの錬金市場：ルーン・トレード | AI-GAME-PORTFOLIO</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/gemini-code-1792280377735.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/gemini-code-1792280377735.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('gemini-code-1792280377735.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="紋章カードの怠惰なる生活 - Rune Craft Puzzle (マイホーム拡張版) このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="紋章カードの怠惰なる生活 - Rune Craft Puzzle (マイホーム拡張版) 概要はまだ記載されていません。">
         <h3>紋章カードの怠惰なる生活 - Rune Craft Puzzle (マイホーム拡張版)</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/gemini-code-1792275752537.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/gemini-code-1792275752537.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('gemini-code-1792275752537.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="NEON BLADE - Cyber Action このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="NEON BLADE - Cyber Action 概要はまだ記載されていません。">
         <h3>NEON BLADE - Cyber Action</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/gemini-code-1791973327125.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/gemini-code-1791973327125.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('gemini-code-1791973327125.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="CHROMA DECA - AI-GAME-PORTFOLIO このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="CHROMA DECA - AI-GAME-PORTFOLIO 概要はまだ記載されていません。">
         <h3>CHROMA DECA - AI-GAME-PORTFOLIO</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/chroma_deca.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/chroma_deca.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('chroma_deca.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="Idle Drakkhen RPG このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="Idle Drakkhen RPG 概要はまだ記載されていません。">
         <h3>Idle Drakkhen RPG</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/idle_drakkhen.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/idle_drakkhen.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('idle_drakkhen.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="エピック・アドベンチャー このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="エピック・アドベンチャー 概要はまだ記載されていません。">
         <h3>エピック・アドベンチャー</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/gemini-code-1791971187588.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/gemini-code-1791971187588.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('gemini-code-1791971187588.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="Neon Swarm Survivor | AI-GAME-PORTFOLIO このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="Neon Swarm Survivor | AI-GAME-PORTFOLIO 概要はまだ記載されていません。">
         <h3>Neon Swarm Survivor | AI-GAME-PORTFOLIO</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/neon_swarm_survivor.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/neon_swarm_survivor.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('neon_swarm_survivor.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="CROSSROAD CHAOS | AI-GAME-PORTFOLIO このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="CROSSROAD CHAOS | AI-GAME-PORTFOLIO 概要はまだ記載されていません。">
         <h3>CROSSROAD CHAOS | AI-GAME-PORTFOLIO</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/crossroad_chaos.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/crossroad_chaos.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('crossroad_chaos.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="Neon Chain: Cascade | AI-GAME-PORTFOLIO このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="Neon Chain: Cascade | AI-GAME-PORTFOLIO 概要はまだ記載されていません。">
         <h3>Neon Chain: Cascade | AI-GAME-PORTFOLIO</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/gemini-code-1791574937101.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/gemini-code-1791574937101.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('gemini-code-1791574937101.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="Echoes of Frequency | AI-GAME-PORTFOLIO このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="Echoes of Frequency | AI-GAME-PORTFOLIO 概要はまだ記載されていません。">
         <h3>Echoes of Frequency | AI-GAME-PORTFOLIO</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/echoes_of_frequency.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/echoes_of_frequency.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('echoes_of_frequency.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="AI-GAME-PORTFOLIO - Short Video Reels このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="AI-GAME-PORTFOLIO - Short Video Reels 概要はまだ記載されていません。">
         <h3>AI-GAME-PORTFOLIO - Short Video Reels</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/ai_game_portfolio.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/ai_game_portfolio.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('ai_game_portfolio.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="AI-GAME-PORTFOLIO - Immersive Scene Experience このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="AI-GAME-PORTFOLIO - Immersive Scene Experience 概要はまだ記載されていません。">
         <h3>AI-GAME-PORTFOLIO - Immersive Scene Experience</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/gorgeous_scene_transition_portfolio.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/gorgeous_scene_transition_portfolio.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('gorgeous_scene_transition_portfolio.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="天空の呪い - Fallout-style Narrative RPG このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="天空の呪い - Fallout-style Narrative RPG 概要はまだ記載されていません。">
         <h3>天空の呪い - Fallout-style Narrative RPG</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/gemini-code-1791547276422.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/gemini-code-1791547276422.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('gemini-code-1791547276422.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="レトロ町並みアドベンチャー - Humanized Edition このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="レトロ町並みアドベンチャー - Humanized Edition 概要はまだ記載されていません。">
         <h3>レトロ町並みアドベンチャー - Humanized Edition</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/code_artifact (2).html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/code_artifact (2).html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('code_artifact (2).html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="Conquistador: Smoke &amp; Rank (1519 Mexico Expedition) このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="Conquistador: Smoke &amp; Rank (1519 Mexico Expedition) 概要はまだ記載されていません。">
         <h3>Conquistador: Smoke &amp; Rank (1519 Mexico Expedition)</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/conquistador_smoke_rank (1).html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/conquistador_smoke_rank (1).html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('conquistador_smoke_rank (1).html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="壁ドン即死回避：空気抵抗のみ このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="壁ドン即死回避：空気抵抗のみ 概要はまだ記載されていません。">
         <h3>壁ドン即死回避：空気抵抗のみ</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/survival_wall_throw.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/survival_wall_throw.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('survival_wall_throw.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="Wizardry-style RPG: Labyrinth of Legends (Enhanced) このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="Wizardry-style RPG: Labyrinth of Legends (Enhanced) 概要はまだ記載されていません。">
         <h3>Wizardry-style RPG: Labyrinth of Legends (Enhanced)</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/wizardry_style_rpg_labyrinth_of_legends (1).html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/wizardry_style_rpg_labyrinth_of_legends (1).html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('wizardry_style_rpg_labyrinth_of_legends (1).html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="Wizardry-style RPG: Labyrinth of Legends このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="Wizardry-style RPG: Labyrinth of Legends 概要はまだ記載されていません。">
         <h3>Wizardry-style RPG: Labyrinth of Legends</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/wizardry_rpg.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/wizardry_rpg.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('wizardry_rpg.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="Pseudo-3D Raycasting FPS このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="Pseudo-3D Raycasting FPS 概要はまだ記載されていません。">
         <h3>Pseudo-3D Raycasting FPS</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/fps_game.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/fps_game.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('fps_game.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="レトロ町並みアドベンチャー このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="レトロ町並みアドベンチャー 概要はまだ記載されていません。">
         <h3>レトロ町並みアドベンチャー</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/pc88 (1).html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/pc88 (1).html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('pc88 (1).html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="蒸気機関：プレッシャー・ライン このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="蒸気機関：プレッシャー・ライン 概要はまだ記載されていません。">
         <h3>蒸気機関：プレッシャー・ライン</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/code_artifact (1).html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/code_artifact (1).html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('code_artifact (1).html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="Retro Kyoto Run このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="Retro Kyoto Run 概要はまだ記載されていません。">
         <h3>Retro Kyoto Run</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/retro_kyoto_run.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/retro_kyoto_run.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('retro_kyoto_run.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="ミニマム文字RPG：ストーリー討伐 このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="ミニマム文字RPG：ストーリー討伐 概要はまだ記載されていません。">
         <h3>ミニマム文字RPG：ストーリー討伐</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/minimal_rpg.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/minimal_rpg.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('minimal_rpg.html')">📋 Code</button>
         </div>
       </div>
-      <div class="card" data-text="Cyber Maze: God Hand このゲームの概要はまだ記載されていません。">
+      <div class="card" data-text="Cyber Maze: God Hand 概要はまだ記載されていません。">
         <h3>Cyber Maze: God Hand</h3>
-        <div class="desc">このゲームの概要はまだ記載されていません。</div>
+        <div class="desc">概要はまだ記載されていません。</div>
         <div class="buttons">
-          <a href="games/kabe.html" class="btn" target="_blank">▶ Play</a>
+          <a href="games/kabe.html" class="btn" target="_blank">▶ Open</a>
           <button class="btn copy" onclick="copyCode('kabe.html')">📋 Code</button>
         </div>
       </div>
@@ -375,7 +379,7 @@
         setTimeout(() => { t.className = ''; }, 2800);
       } catch (err) {
         console.error(err);
-        alert('コードの読み込みに失敗しました。ローカル環境の場合はサーバー経由で開く必要があります。');
+        alert('コードの読み込みに失敗しました。');
       }
     }
   </script>

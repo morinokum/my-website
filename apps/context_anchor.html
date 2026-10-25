@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Context Anchor</title>
+    <!-- 指定された識別メタタグ -->
+    <meta name="generator" content="AI-APP-PORTFOLIO">
+    
+    <!-- Tailwind CSS 読み込みとカスタム設定 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            DEFAULT: 'var(--primary-color, #4f46e5)',
+                            50: 'color-mix(in srgb, var(--primary-color, #4f46e5) 10%, white)',
+                            100: 'color-mix(in srgb, var(--primary-color, #4f46e5) 20%, white)',
+                            500: 'var(--primary-color, #4f46e5)',
+                            600: 'color-mix(in srgb, var(--primary-color, #4f46e5) 85%, black)',
+                            700: 'color-mix(in srgb, var(--primary-color, #4f46e5) 70%, black)',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* スクロールバーのカスタマイズ */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+
+    <!-- 外部設定データのフォールバック用スクリプト -->
+    <script>
+        window.APP_SHARED_DATA_FALLBACK = {
+            appName: "Context Anchor",
+            primaryColor: "#4f46e5", // デフォルトはIndigo系
+            welcomeTitle: "作業の文脈を保存しよう",
+            welcomeText: "タスクを切り替える際に「どこまでやったか」「次は何をするか」を記録し、再開時の迷いをなくすツールです。"
+        };
+    </script>
+    <!-- 外部設定データの読み込み (失敗時は上記フォールバックを使用) -->
+    <script src="https://morinokum.github.io/my-website/app-data.js" onerror="console.warn('外部設定の読み込みに失敗しました。フォールバックを使用します。')"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 h-screen w-screen overflow-hidden flex flex-col md:flex-row antialiased">
+
+    <!-- サイドバー (タスクリスト) -->
+    <aside class="w-full md:w-80 bg-white border-r border-gray-200 flex flex-col h-1/3 md:h-full z-10 shadow-sm flex-shrink-0">
+        <!-- ヘッダー -->
+        <div class="p-4 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0">
+            <div class="flex items-center font-extrabold text-lg text-gray-800 tracking-tight">
+                <div class="w-7 h-7 rounded-lg bg-primary text-white flex items-center justify-center mr-2 shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
+                </div>
+                <span id="brand-name">App</span>
+            </div>
+            <button id="add-btn" class="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-primary-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 shadow-sm" title="新しいタスクを追加">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            </button>
+        </div>
+        <!-- リストエリア -->
+        <div class="flex-1 overflow-y-auto p-3 bg-gray-50/50">
+            <ul id="task-list" class="space-y-2 pb-12 md:pb-0">
+                <!-- JSでリストが動的に挿入されます -->
+            </ul>
+        </div>
+    </aside>
+
+    <!-- メインエリア (コンテキスト編集) -->
+    <main id="main-area" class="flex-1 bg-gray-50 p-4 md:p-8 h-2/3 md:h-full overflow-y-auto relative flex flex-col">
+        
+        <!-- Welcome Screen (タスク未選択時) -->
+        <div id="welcome-screen" class="flex flex-col items-center justify-center h-full text-center fade-in">
+            <div class="w-20 h-20 mb-6 rounded-2xl bg-primary-50 border border-primary-100 flex items-center justify-center text-primary-500 shadow-sm">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-3" id="welcome-title">Loading...</h2>
+            <p class="text-gray-500 max-w-md leading-relaxed" id="welcome-text">Loading...</p>
+        </div>
+
+        <!-- Editor Screen (タスク選択時) -->
+        <div id="editor-screen" class="hidden h-full flex-col fade-in max-w-3xl mx-auto w-full">
+            <!-- タイトル入力 -->
+            <input type="text" id="edit-title" class="text-2xl md:text-3xl font-extrabold text-gray-900 bg-transparent border-b-2 border-transparent hover:border-gray-200 focus:border-primary-500 focus:outline-none py-2 mb-6 transition-colors w-full placeholder-gray-300" placeholder="タスクのタイトル">
+            
+            <div class="flex-1 space-y-6 overflow-y-visible">
+                <!-- 現在の状況 -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col transition-shadow hover:shadow-md">
+                    <label class="flex items-center text-sm font-bold text-gray-700 mb-3">
+                        <span class="w-7 h-7 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center mr-3">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                        </span>
+                        現在の状況 <span class="text-gray-400 font-normal ml-2 text-xs">どこまで進んだ？</span>
+                    </label>
+                    <textarea id="edit-status" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 focus:bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none resize-y min-h-[100px] text-sm md:text-base leading-relaxed" placeholder="例: 企画書の3ページ目まで作成完了。売上データは最新版を反映済み。"></textarea>
+                </div>
+
+                <!-- 次にやること -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col transition-shadow hover:shadow-md">
+                    <label class="flex items-center text-sm font-bold text-gray-700 mb-3">
+                        <span class="w-7 h-7 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center mr-3">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </span>
+                        次にやること <span class="text-gray-400 font-normal ml-2 text-xs">再開時は何から始める？</span>
+                    </label>
+                    <textarea id="edit-next" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 focus:bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none resize-y min-h-[100px] text-sm md:text-base leading-relaxed" placeholder="例: 4ページ目のグラフ作成から着手する。〇〇さんに確認のチャットを送る。"></textarea>
+                </div>
+
+                <!-- メモ・関連リンク -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col transition-shadow hover:shadow-md">
+                    <label class="flex items-center text-sm font-bold text-gray-700 mb-3">
+                        <span class="w-7 h-7 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center mr-3">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                        </span>
+                        メモ・関連リンク
+                    </label>
+                    <textarea id="edit-notes" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 focus:bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none resize-y min-h-[80px] text-sm md:text-base leading-relaxed" placeholder="参考資料のURLや、引き継ぎ時の補足事項など"></textarea>
+                </div>
+            </div>
+            
+            <!-- ステータスバー -->
+            <div class="flex justify-between items-center text-xs font-medium text-gray-400 mt-6 pt-4 border-t border-gray-200">
+                <span id="save-status" class="transition-colors duration-300">自動保存されています</span>
+                <span id="last-updated-text"></span>
+            </div>
+        </div>
+    </main>
+
+    <!-- 削除確認用カスタムモーダル (alert/confirm代替) -->
+    <div id="delete-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden flex-col items-center justify-center z-50 transition-opacity">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 transform scale-95 transition-transform duration-200" id="delete-modal-content">
+            <div class="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600 mb-4 mx-auto">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900 text-center mb-2">タスクの削除</h3>
+            <p class="text-sm text-gray-500 text-center mb-6">このタスクを削除してもよろしいですか？<br>この操作は取り消せません。</p>
+            <div class="flex justify-center space-x-3">
+                <button id="cancel-delete-btn" class="px-5 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300 w-1/2">キャンセル</button>
+                <button id="confirm-delete-btn" class="px-5 py-2.5 bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 w-1/2 shadow-sm">削除する</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // ==========================================
+            // 1. 外部データの読み込みと初期設定
+            // ==========================================
+            const sharedData = window.APP_SHARED_DATA || window.APP_SHARED_DATA_FALLBACK || {};
+            const settings = { ...window.APP_SHARED_DATA_FALLBACK, ...sharedData };
+
+            // テーマカラーとテキストの適用
+            document.documentElement.style.setProperty('--primary-color', settings.primaryColor);
+            document.getElementById('brand-name').textContent = settings.appName;
+            document.title = settings.appName;
+            document.getElementById('welcome-title').textContent = settings.welcomeTitle;
+            document.getElementById('welcome-text').textContent = settings.welcomeText;
+
+            // ==========================================
+            // 2. 状態管理 (State)
+            // ==========================================
+            const STORAGE_KEY = 'context_anchor_tasks_v1';
+            let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+            let activeTaskId = null;
+            let taskToDelete = null;
+
+            // DOM要素の参照
+            const els = {
+                taskList: document.getElementById('task-list'),
+                welcomeScreen: document.getElementById('welcome-screen'),
+                editorScreen: document.getElementById('editor-screen'),
+                editTitle: document.getElementById('edit-title'),
+                editStatus: document.getElementById('edit-status'),
+                editNext: document.getElementById('edit-next'),
+                editNotes: document.getElementById('edit-notes'),
+                lastUpdatedText: document.getElementById('last-updated-text'),
+                saveStatus: document.getElementById('save-status'),
+                deleteModal: document.getElementById('delete-modal'),
+                deleteModalContent: document.getElementById('delete-modal-content'),
+            };
+
+            // ==========================================
+            // 3. コア関数
+            // ==========================================
+            function saveTasks() {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+            }
+
+            function formatDate(isoString) {
+                const d = new Date(isoString);
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                const hh = String(d.getHours()).padStart(2, '0');
+                const min = String(d.getMinutes()).padStart(2, '0');
+                return `${mm}/${dd} ${hh}:${min}`;
+            }
+
+            // ==========================================
+            // 4. レンダリング処理
+            // ==========================================
+            
+            // サイドバーのリスト描画
+            function renderSidebar() {
+                els.taskList.innerHTML = '';
+                if (tasks.length === 0) {
+                    els.taskList.innerHTML = `
+                        <div class="text-sm text-gray-400 text-center mt-10 px-4">
+                            タスクがありません。<br>右上の＋ボタンから追加してください。
+                        </div>`;
+                    return;
+                }
+
+                tasks.forEach(task => {
+                    const li = document.createElement('li');
+                    const isActive = activeTaskId === task.id;
+                    
+                    // リストアイテムのスタイリング
+                    li.className = `group relative p-3.5 rounded-xl cursor-pointer transition-all duration-200 border-l-4 shadow-sm mb-2.5 overflow-hidden flex flex-col justify-center ${
+                        isActive 
+                        ? 'bg-primary-50 border-primary-500 ring-1 ring-primary-100' 
+                        : 'bg-white border-transparent hover:bg-gray-50/80 hover:border-gray-200'
+                    }`;
+                    
+                    // クリックでアクティブ化
+                    li.onclick = () => {
+                        activeTaskId = task.id;
+                        renderSidebar();
+                        renderMainArea();
+                        scrollToMainOnMobile();
+                    };
+
+                    // タイトル
+                    const titleDiv = document.createElement('div');
+                    titleDiv.id = `task-title-list-${task.id}`;
+                    titleDiv.className = `font-bold text-sm truncate pr-8 ${isActive ? 'text-primary-700' : 'text-gray-800'}`;
+                    titleDiv.textContent = task.title || '無題のタスク';
+
+                    // 日時
+                    const dateDiv = document.createElement('div');
+                    dateDiv.className = `text-[11px] mt-1 font-medium ${isActive ? 'text-primary-400' : 'text-gray-400'}`;
+                    dateDiv.textContent = `最終更新: ${formatDate(task.updatedAt)}`;
+
+                    // 削除ボタン
+                    const delBtn = document.createElement('button');
+                    delBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>';
+                    delBtn.className = `absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 focus:outline-none ${isActive ? 'opacity-100 text-primary-300' : ''}`;
+                    delBtn.title = "タスクを削除";
+                    delBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        openDeleteModal(task.id);
+                    };
+
+                    li.appendChild(titleDiv);
+                    li.appendChild(dateDiv);
+                    li.appendChild(delBtn);
+                    els.taskList.appendChild(li);
+                });
+            }
+
+            // メインエリア(エディタ)の描画
+            function renderMainArea() {
+                if (!activeTaskId) {
+                    els.welcomeScreen.classList.remove('hidden');
+                    els.editorScreen.classList.add('hidden');
+                    els.editorScreen.classList.remove('flex');
+                    return;
+                }
+
+                const task = tasks.find(t => t.id === activeTaskId);
+                if (!task) return;
+
+                // 画面切り替え
+                els.welcomeScreen.classList.add('hidden');
+                els.editorScreen.classList.remove('hidden');
+                els.editorScreen.classList.add('flex');
+
+                // 値のセット
+                els.editTitle.value = task.title;
+                els.editStatus.value = task.status;
+                els.editNext.value = task.nextAction;
+                els.editNotes.value = task.notes;
+                els.lastUpdatedText.textContent = `最終更新: ${formatDate(task.updatedAt)}`;
+            }
+
+            // ==========================================
+            // 5. インタラクション & イベント
+            // ==========================================
+            
+            // 新規タスク追加
+            document.getElementById('add-btn').addEventListener('click', () => {
+                const newTask = {
+                    id: 'task_' + Date.now(),
+                    title: '',
+                    status: '',
+                    nextAction: '',
+                    notes: '',
+                    updatedAt: new Date().toISOString()
+                };
+                // 先頭に追加
+                tasks.unshift(newTask);
+                activeTaskId = newTask.id;
+                saveTasks();
+                renderSidebar();
+                renderMainArea();
+                
+                // 少し待ってからフォーカス (UIアニメーション対応)
+                setTimeout(() => {
+                    els.editTitle.focus();
+                }, 50);
+                scrollToMainOnMobile();
+            });
+
+            // エディタ入力イベント (自動保存)
+            let saveTimeout;
+            const fields = [
+                { id: 'edit-title', key: 'title' },
+                { id: 'edit-status', key: 'status' },
+                { id: 'edit-next', key: 'nextAction' },
+                { id: 'edit-notes', key: 'notes' }
+            ];
+
+            fields.forEach(field => {
+                document.getElementById(field.id).addEventListener('input', (e) => {
+                    if (!activeTaskId) return;
+                    const task = tasks.find(t => t.id === activeTaskId);
+                    if (task) {
+                        task[field.key] = e.target.value;
+                        task.updatedAt = new Date().toISOString();
+                        saveTasks();
+                        
+                        // タイトル変更時はサイドバーのテキストだけ更新 (再描画によるフォーカス外れ防止)
+                        if (field.key === 'title') {
+                            const titleDiv = document.getElementById(`task-title-list-${task.id}`);
+                            if (titleDiv) titleDiv.textContent = e.target.value || '無題のタスク';
+                        }
+                        
+                        // 更新日時の反映
+                        els.lastUpdatedText.textContent = `最終更新: ${formatDate(task.updatedAt)}`;
+
+                        // 保存ステータス表示
+                        els.saveStatus.textContent = '保存しました';
+                        els.saveStatus.classList.add('text-primary-600');
+                        els.saveStatus.classList.remove('text-gray-400');
+                        
+                        clearTimeout(saveTimeout);
+                        saveTimeout = setTimeout(() => {
+                            els.saveStatus.textContent = '自動保存されています';
+                            els.saveStatus.classList.remove('text-primary-600');
+                            els.saveStatus.classList.add('text-gray-400');
+                        }, 2000);
+                    }
+                });
+            });
+
+            // モバイル用スクロール関数
+            function scrollToMainOnMobile() {
+                if (window.innerWidth < 768) {
+                    document.getElementById('main-area').scrollIntoView({ behavior: 'smooth' });
+                }
+            }
+
+            // ==========================================
+            // 6. カスタム確認モーダル (alert/confirm禁止対応)
+            // ==========================================
+            function openDeleteModal(id) {
+                taskToDelete = id;
+                els.deleteModal.classList.remove('hidden');
+                els.deleteModal.classList.add('flex');
+                // アニメーション用
+                setTimeout(() => {
+                    els.deleteModalContent.classList.remove('scale-95');
+                    els.deleteModalContent.classList.add('scale-100');
+                }, 10);
+            }
+
+            function closeDeleteModal() {
+                taskToDelete = null;
+                els.deleteModalContent.classList.remove('scale-100');
+                els.deleteModalContent.classList.add('scale-95');
+                setTimeout(() => {
+                    els.deleteModal.classList.add('hidden');
+                    els.deleteModal.classList.remove('flex');
+                }, 200); // transition時間と合わせる
+            }
+
+            document.getElementById('cancel-delete-btn').addEventListener('click', closeDeleteModal);
+            
+            document.getElementById('confirm-delete-btn').addEventListener('click', () => {
+                if (taskToDelete) {
+                    tasks = tasks.filter(t => t.id !== taskToDelete);
+                    if (activeTaskId === taskToDelete) {
+                        activeTaskId = null;
+                    }
+                    saveTasks();
+                    renderSidebar();
+                    renderMainArea();
+                }
+                closeDeleteModal();
+            });
+
+            // モーダル外枠クリックで閉じる
+            els.deleteModal.addEventListener('click', (e) => {
+                if(e.target === els.deleteModal) closeDeleteModal();
+            });
+
+            // ==========================================
+            // 7. 初期描画の実行
+            // ==========================================
+            renderSidebar();
+            renderMainArea();
+        });
+    </script>
+
+    <!-- AI-DEV-HANDOFF-START
+    タイトル: Context Anchor (コンテキスト・アンカー)
+    バージョン: 1.0.0
+    目的・概要: 現代のマルチタスク環境において、作業を中断・切り替える際に「どこまでやったか（現在の状況）」「次は何をするか（次のアクション）」というコンテキスト（文脈）を素早く一時保存し、再開時の認知負荷を下げるための実用的なツール。
+    主要な機能・UI構成: 
+    - 2ペイン構成: 左側にタスク一覧（最新順）、右側に選択したタスクのコンテキストエディタ。モバイル時は縦並び＋自動スクロール。
+    - タスクのCRUD機能（作成、読み込み、更新、削除）。
+    - 意識を途切れさせない「自動保存」機能と通知UI。
+    - alert()/confirm()を使わないカスタム削除確認モーダル。
+    - 外部設定（APP_SHARED_DATA）からのテーマカラーやアプリ名読み込みと安全なフォールバック。
+    データ構造・保存キー:
+    - キー: `context_anchor_tasks_v1`
+    - データ構造: Array of Object { id: string, title: string, status: string, nextAction: string, notes: string, updatedAt: string(ISO) }
+    実装済み機能: LocalStorage永続化、リアルタイム自動保存、外部データ連動、レスポンシブデザイン(Tailwind CSS)、スムーズなUIトランジション。
+    未実装・TODO: タスクのアーカイブ機能、Markdownでの入力対応、コンテキスト履歴（過去に何をしていたかのログ）の保存、カテゴリ・タグ付け機能。
+    設計上のこだわり・注意点: 
+    - 「タスク管理」ではなく「状態のセーブポイント」に特化するため、期限や進捗率といった複雑な機能を意図的に排除し、素早くテキストを入力できるシンプルなUIに設計しました。
+    - 入力ごとにリスト全体を再描画するとフォーカスが外れるため、エディタ入力時は該当DOMのテキストノードのみ更新する設計にしています。
+    - TailwindのカスタムカラーをJSから動的に生成し、外部データのテーマカラーを美しくUI全体（背景、ボーダー、ボタン）に適用できるよう工夫しています。
+    AI-DEV-HANDOFF-END -->
+</body>
+</html>

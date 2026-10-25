@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 必須条件: AI-APP-PORTFOLIO のメタタグ -->
+    <meta name="ai-app-identifier" content="AI-APP-PORTFOLIO">
+    <title>認知負荷バランサー</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        /* カスタムプロパティ (外部データやフォールバックで上書き想定) */
+        :root { --primary-color: #3b82f6; } 
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen p-4 md:p-8">
+
+    <!-- AI-DEV-HANDOFF-START
+タイトル: 認知負荷バランサー (Cognitive Load Balancer)
+バージョン: 1.0.0
+目的・概要: 単なるタスク管理ではなく、各タスクが脳に与える「認知負荷（疲れやすさ）」を数値化し、1日の許容量（キャパシティ）を超えないようにスケジュールを組むためのツール。
+主要な機能・UI構成: 
+- 1日の認知容量（キャパシティ）設定
+- タスクの追加（タスク名、認知負荷 1〜10）
+- 負荷ゲージ（現在抱えている未完了タスクの負荷合計と上限の視覚化）
+- タスクの完了・削除
+- TailwindCSSを用いたモダンなUI
+データ構造・保存キー: 
+- localStorage key: `clb_app_data_v1`
+- format: { capacity: number, tasks: Array<{id: string, text: string, load: number, completed: boolean}> }
+実装済み機能:
+- タスクのCRUD（作成、読み込み、更新、削除）
+- ローカルストレージによるデータ永続化
+- 外部設定データ（app-data.js）の非同期読み込みとフォールバック処理
+未実装・TODO:
+- ドラッグ＆ドロップによるタスクの並び替え
+- 日付ごとのタスク履歴保存・グラフ化
+- 外部データと連携したテーマカラーの動的変更（一部実装済み）
+設計上のこだわり・注意点:
+- 外部スクリプトの読み込み失敗時にもアプリが停止しないよう、Promiseを用いたタイムアウト付きのフォールバック処理を実装。
+- Vanilla JSで状態管理（render()関数への集約）を行い、外部ライブラリに依存しすぎない保守しやすい構造。
+AI-DEV-HANDOFF-END -->
+
+    <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden fade-in">
+        <!-- ヘッダー -->
+        <div id="app-header" class="bg-blue-600 p-6 text-white text-center">
+            <h1 id="app-title" class="text-2xl font-bold tracking-wider">認知負荷バランサー</h1>
+            <p class="text-blue-100 text-sm mt-1" id="app-subtitle">あなたの脳のキャパシティを守るタスク管理</p>
+        </div>
+
+        <div class="p-6">
+            <!-- キャパシティ設定 -->
+            <div class="flex items-center justify-between bg-gray-100 p-4 rounded-lg mb-6">
+                <div>
+                    <span class="block text-sm text-gray-500 font-bold">1日の認知キャパシティ</span>
+                    <p class="text-xs text-gray-400">あなたが1日に処理できる負荷の合計値</p>
+                </div>
+                <div class="flex items-center">
+                    <input type="number" id="capacity-input" min="10" max="100" class="w-20 text-right p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 font-bold text-lg">
+                    <span class="ml-2 text-gray-600 font-bold">pt</span>
+                </div>
+            </div>
+
+            <!-- ゲージ表示 -->
+            <div class="mb-8">
+                <div class="flex justify-between items-end mb-2">
+                    <span class="text-sm font-bold text-gray-700">現在の負荷状況</span>
+                    <span class="text-sm font-bold"><span id="current-load-display" class="text-2xl text-blue-600">0</span> / <span id="max-capacity-display">30</span> pt</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-4 relative overflow-hidden">
+                    <div id="load-progress-bar" class="bg-blue-500 h-4 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+                </div>
+                <p id="load-message" class="text-xs text-right mt-1 text-gray-500"></p>
+            </div>
+
+            <!-- タスク追加フォーム -->
+            <form id="task-form" class="flex gap-2 mb-6">
+                <input type="text" id="task-text" placeholder="タスクを入力 (例: 企画書の作成)" required class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select id="task-load" class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer">
+                    <option value="1">負荷: 1 (極小)</option>
+                    <option value="3" selected>負荷: 3 (小)</option>
+                    <option value="5">負荷: 5 (中)</option>
+                    <option value="8">負荷: 8 (大)</option>
+                    <option value="10">負荷: 10 (激重)</option>
+                </select>
+                <button type="submit" class="bg-gray-800 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition font-bold whitespace-nowrap">追加</button>
+            </form>
+
+            <!-- タスクリスト -->
+            <ul id="task-list" class="space-y-3">
+                <!-- タスクアイテムがここに動的に追加されます -->
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 状態管理 (State)
+         */
+        let state = {
+            capacity: 30,
+            tasks: []
+        };
+        const STORAGE_KEY = 'clb_app_data_v1';
+
+        /**
+         * 1. 外部共通設定データの読み込みとフォールバック
+         */
+        async function loadSharedData() {
+            const fallbackData = {
+                title: "認知負荷バランサー",
+                subtitle: "あなたの脳のキャパシティを守るタスク管理 (Fallback mode)",
+                themeColor: "#3b82f6" // default blue
+            };
+
+            return new Promise((resolve) => {
+                // タイムアウト設定 (3秒でフォールバックに切り替え)
+                const timeoutId = setTimeout(() => {
+                    console.warn("外部データの読み込みがタイムアウトしました。フォールバックを使用します。");
+                    resolve(fallbackData);
+                }, 3000);
+
+                const script = document.createElement('script');
+                script.src = 'https://morinokum.github.io/my-website/app-data.js';
+                
+                script.onload = () => {
+                    clearTimeout(timeoutId);
+                    if (window.APP_SHARED_DATA) {
+                        console.log("外部データを正常に読み込みました。");
+                        // 外部データが存在する場合はマージする
+                        resolve({ ...fallbackData, ...window.APP_SHARED_DATA });
+                    } else {
+                        resolve(fallbackData);
+                    }
+                };
+
+                script.onerror = () => {
+                    clearTimeout(timeoutId);
+                    console.warn("外部データの読み込みに失敗しました。フォールバックを使用します。");
+                    resolve(fallbackData);
+                };
+
+                document.head.appendChild(script);
+            });
+        }
+
+        // UIへ外部データを適用
+        function applySharedData(data) {
+            if (data.title) document.getElementById('app-title').textContent = data.title;
+            if (data.subtitle) document.getElementById('app-subtitle').textContent = data.subtitle;
+            if (data.themeColor) {
+                document.getElementById('app-header').style.backgroundColor = data.themeColor;
+                document.documentElement.style.setProperty('--primary-color', data.themeColor);
+            }
+        }
+
+        /**
+         * 2. ローカルストレージ関連
+         */
+        function loadLocalData() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    state = JSON.parse(saved);
+                } catch (e) {
+                    console.error("データのパースに失敗しました", e);
+                }
+            }
+            document.getElementById('capacity-input').value = state.capacity;
+        }
+
+        function saveLocalData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+
+        /**
+         * 3. アプリケーションロジック & UI更新
+         */
+        function render() {
+            const taskList = document.getElementById('task-list');
+            taskList.innerHTML = '';
+
+            let currentLoad = 0;
+
+            state.tasks.forEach(task => {
+                if (!task.completed) {
+                    currentLoad += task.load;
+                }
+
+                const li = document.createElement('li');
+                li.className = `flex items-center justify-between p-4 rounded-lg border ${task.completed ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-200 shadow-sm'} transition-all`;
+                
+                li.innerHTML = `
+                    <div class="flex items-center gap-3 overflow-hidden">
+                        <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask('${task.id}')" class="w-5 h-5 text-blue-600 rounded cursor-pointer">
+                        <span class="${task.completed ? 'line-through text-gray-400' : 'text-gray-800 font-medium'} truncate">${escapeHTML(task.text)}</span>
+                    </div>
+                    <div class="flex items-center gap-4 flex-shrink-0">
+                        <span class="px-2 py-1 rounded text-xs font-bold ${task.completed ? 'bg-gray-200 text-gray-400' : getLoadColorClass(task.load)}">
+                            負荷: ${task.load}
+                        </span>
+                        <button onclick="deleteTask('${task.id}')" class="text-gray-400 hover:text-red-500 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                        </button>
+                    </div>
+                `;
+                taskList.appendChild(li);
+            });
+
+            // ゲージの更新
+            const progressBar = document.getElementById('load-progress-bar');
+            const currentLoadDisplay = document.getElementById('current-load-display');
+            const maxCapacityDisplay = document.getElementById('max-capacity-display');
+            const loadMessage = document.getElementById('load-message');
+
+            const percentage = Math.min((currentLoad / state.capacity) * 100, 100);
+            
+            progressBar.style.width = `${percentage}%`;
+            currentLoadDisplay.textContent = currentLoad;
+            maxCapacityDisplay.textContent = state.capacity;
+
+            // 負荷状態による色とメッセージの変更
+            progressBar.className = 'h-4 rounded-full transition-all duration-500 ease-out ';
+            if (currentLoad > state.capacity) {
+                progressBar.classList.add('bg-red-500');
+                currentLoadDisplay.classList.replace('text-blue-600', 'text-red-600');
+                currentLoadDisplay.classList.replace('text-yellow-600', 'text-red-600');
+                loadMessage.textContent = '⚠️ キャパシティをオーバーしています！タスクを減らすか延期してください。';
+                loadMessage.className = 'text-xs text-right mt-1 text-red-500 font-bold';
+            } else if (percentage > 80) {
+                progressBar.classList.add('bg-yellow-500');
+                currentLoadDisplay.classList.replace('text-blue-600', 'text-yellow-600');
+                currentLoadDisplay.classList.replace('text-red-600', 'text-yellow-600');
+                loadMessage.textContent = 'もうすぐ限界です。これ以上の追加は控えましょう。';
+                loadMessage.className = 'text-xs text-right mt-1 text-yellow-600';
+            } else {
+                progressBar.classList.add('bg-blue-500');
+                currentLoadDisplay.classList.replace('text-yellow-600', 'text-blue-600');
+                currentLoadDisplay.classList.replace('text-red-600', 'text-blue-600');
+                loadMessage.textContent = 'まだ余裕があります。';
+                loadMessage.className = 'text-xs text-right mt-1 text-gray-500';
+            }
+
+            saveLocalData();
+        }
+
+        // 負荷量に応じたバッジの色
+        function getLoadColorClass(load) {
+            if (load >= 8) return 'bg-red-100 text-red-700';
+            if (load >= 5) return 'bg-yellow-100 text-yellow-700';
+            return 'bg-blue-100 text-blue-700';
+        }
+
+        // XSS対策
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag] || tag)
+            );
+        }
+
+        /**
+         * 4. イベントハンドラー
+         */
+        document.getElementById('task-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const textInput = document.getElementById('task-text');
+            const loadInput = document.getElementById('task-load');
+            
+            if (!textInput.value.trim()) return;
+
+            state.tasks.unshift({
+                id: 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                text: textInput.value.trim(),
+                load: parseInt(loadInput.value, 10),
+                completed: false
+            });
+
+            textInput.value = '';
+            render();
+        });
+
+        document.getElementById('capacity-input').addEventListener('change', (e) => {
+            const val = parseInt(e.target.value, 10);
+            if (val > 0) {
+                state.capacity = val;
+                render();
+            }
+        });
+
+        window.toggleTask = function(id) {
+            const task = state.tasks.find(t => t.id === id);
+            if (task) {
+                task.completed = !task.completed;
+                render();
+            }
+        }
+
+        window.deleteTask = function(id) {
+            state.tasks = state.tasks.filter(t => t.id !== id);
+            render();
+        }
+
+        /**
+         * 5. 初期化処理
+         */
+        async function init() {
+            // 外部データの取得と適用
+            const sharedData = await loadSharedData();
+            applySharedData(sharedData);
+
+            // ローカルデータの読み込みと描画
+            loadLocalData();
+            render();
+        }
+
+        // アプリ起動
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 必須条件: 識別メタタグ -->
+    <meta name="portfolio" content="AI-APP-PORTFOLIO">
+    <title>自動動画開発 ヴォイスボックス ほか</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* カスタムスクロールバーの設定 */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
+
+    <!-- AI-DEV-HANDOFF-START
+タイトル: 自動動画開発 ヴォイスボックス ほか
+バージョン: 1.0.0
+目的・概要: 動画のシーン構成と音声(Voicebox)・映像プロンプトを一元管理・計画するツール
+主要な機能・UI構成: シーン一覧、スクリプト入力、音声設定、アセット指示、ローカルストレージ保存
+データ構造・保存キー: auto_video_dev_data (scenes配列を保存)
+実装済み機能: シーンの追加・削除・編集、ローカルストレージ保存・読込、外部設定データの読込(フォールバック付)
+未実装・TODO: 実際の動画生成API・音声合成APIとの連携、動画のプレビュー再生
+設計上のこだわり・注意点: Tailwindを使用したクリーンなUI。外部データ非依存で動作するフォールバック設計。
+AI-DEV-HANDOFF-END -->
+
+    <!-- ヘッダー -->
+    <header class="bg-indigo-600 text-white shadow-md z-10 flex-none">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="text-xl font-bold flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                自動動画開発 ヴォイスボックス
+            </h1>
+            <div class="flex items-center gap-4">
+                <div id="data-status" class="text-sm px-3 py-1 rounded-full bg-indigo-800/50 border border-indigo-400/30 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-gray-400 animate-pulse" id="status-indicator"></span>
+                    <span id="status-text">設定読み込み中...</span>
+                </div>
+                <button id="manual-save-btn" class="bg-indigo-500 hover:bg-indigo-400 transition-colors px-4 py-1.5 rounded-md text-sm font-medium flex items-center gap-1 shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                    保存
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <div class="flex-1 flex overflow-hidden">
+        <!-- 左側：シーン一覧 -->
+        <aside class="w-1/3 max-w-sm bg-white border-r border-slate-200 flex flex-col">
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h2 class="font-semibold text-slate-700">シーン構成</h2>
+                <button id="add-scene-btn" class="bg-slate-800 hover:bg-slate-700 text-white text-xs px-3 py-1.5 rounded flex items-center gap-1 transition-colors">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    追加
+                </button>
+            </div>
+            <div id="scene-list" class="flex-1 overflow-y-auto p-3 space-y-2">
+                <!-- シーンリストがここにレンダリングされます -->
+            </div>
+        </aside>
+
+        <!-- 右側：エディタ -->
+        <main class="flex-1 bg-slate-50 overflow-y-auto relative">
+            <div id="editor-container" class="max-w-4xl mx-auto p-6 md:p-8">
+                <!-- エディタ内容がここにレンダリングされます -->
+                <div class="h-full flex flex-col items-center justify-center text-slate-400 mt-20">
+                    <svg class="w-16 h-16 mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <p>左側のメニューからシーンを選択するか、新しく追加してください。</p>
+                </div>
+            </div>
+            
+            <!-- 保存通知トースト -->
+            <div id="toast" class="absolute bottom-6 right-6 bg-slate-800 text-white px-4 py-2 rounded shadow-lg transform transition-all duration-300 translate-y-20 opacity-0 flex items-center gap-2 pointer-events-none">
+                <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <span>保存しました</span>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        /**
+         * 状態管理 (State Management)
+         */
+        const STORAGE_KEY = 'auto_video_dev_data';
+        
+        let state = {
+            scenes: [],
+            activeSceneId: null
+        };
+
+        // フォールバック用の共通データ
+        const FALLBACK_SHARED_DATA = {
+            voiceTypes: [
+                { id: 'female_neutral', name: '女性 (ノーマル)' },
+                { id: 'female_happy', name: '女性 (明るい)' },
+                { id: 'male_neutral', name: '男性 (ノーマル)' },
+                { id: 'male_calm', name: '男性 (落ち着いた)' },
+                { id: 'robot', name: 'ロボット / 機械音' }
+            ],
+            appSettings: {
+                defaultScenePrefix: "Scene"
+            }
+        };
+
+        let appData = { ...FALLBACK_SHARED_DATA };
+
+        /**
+         * ユーティリティ関数
+         */
+        function generateId() {
+            return Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2000);
+        }
+
+        /**
+         * データ保存・読み込み機能
+         */
+        function loadLocalData() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    // 以前のセーブデータがある場合
+                    state.scenes = Array.isArray(parsed) ? parsed : (parsed.scenes || []);
+                }
+            } catch (e) {
+                console.error("Failed to load data from localStorage", e);
+                state.scenes = [];
+            }
+        }
+
+        function saveLocalData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state.scenes));
+            showToast();
+            renderSceneList(); // タイトル等の変更をリストに反映
+        }
+
+        /**
+         * 外部スクリプトの動的読み込み
+         */
+        function loadExternalSharedData() {
+            return new Promise((resolve) => {
+                const scriptUrl = 'https://morinokum.github.io/my-website/app-data.js';
+                const script = document.createElement('script');
+                script.src = scriptUrl;
+                script.async = true;
+
+                // タイムアウト設定 (3秒)
+                const timeoutId = setTimeout(() => {
+                    resolve({ success: false, reason: 'timeout' });
+                }, 3000);
+
+                script.onload = () => {
+                    clearTimeout(timeoutId);
+                    if (window.APP_SHARED_DATA) {
+                        resolve({ success: true, data: window.APP_SHARED_DATA });
+                    } else {
+                        resolve({ success: false, reason: 'missing_variable' });
+                    }
+                };
+
+                script.onerror = () => {
+                    clearTimeout(timeoutId);
+                    resolve({ success: false, reason: 'network_error' });
+                };
+
+                document.head.appendChild(script);
+            });
+        }
+
+        async function initDataConfig() {
+            const indicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+
+            const result = await loadExternalSharedData();
+
+            indicator.classList.remove('animate-pulse', 'bg-gray-400');
+            
+            if (result.success) {
+                // 成功時: 外部データをマージ
+                appData = { ...FALLBACK_SHARED_DATA, ...result.data };
+                indicator.classList.add('bg-green-400');
+                statusText.textContent = 'データ: 外部読込完了';
+            } else {
+                // 失敗時: フォールバックデータを使用
+                console.warn(`External data load failed (${result.reason}). Using fallback data.`);
+                indicator.classList.add('bg-yellow-400');
+                statusText.textContent = 'データ: フォールバック使用';
+            }
+        }
+
+        /**
+         * UI レンダリング機能
+         */
+        function renderSceneList() {
+            const listContainer = document.getElementById('scene-list');
+            listContainer.innerHTML = '';
+
+            if (state.scenes.length === 0) {
+                listContainer.innerHTML = '<div class="text-sm text-slate-400 text-center py-4">シーンがありません</div>';
+                return;
+            }
+
+            state.scenes.forEach((scene, index) => {
+                const isActive = scene.id === state.activeSceneId;
+                
+                const el = document.createElement('div');
+                el.className = `p-3 rounded-lg border cursor-pointer transition-all duration-200 group flex flex-col gap-1
+                    ${isActive 
+                        ? 'bg-indigo-50 border-indigo-200 shadow-sm' 
+                        : 'bg-white border-slate-200 hover:border-indigo-300 hover:shadow-sm'}`;
+                
+                el.onclick = () => selectScene(scene.id);
+
+                // スクリプトプレビューの生成
+                const scriptPreview = scene.script 
+                    ? (scene.script.length > 25 ? scene.script.substring(0, 25) + '...' : scene.script)
+                    : 'スクリプトなし';
+
+                el.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="font-medium text-sm text-slate-800 flex items-center gap-2">
+                            <span class="bg-slate-200 text-slate-600 text-xs px-1.5 py-0.5 rounded font-mono">${index + 1}</span>
+                            ${escapeHtml(scene.title)}
+                        </div>
+                        <button class="delete-btn text-slate-400 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity" title="削除">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </div>
+                    <div class="text-xs text-slate-500 truncate mt-1">
+                        ${escapeHtml(scriptPreview)}
+                    </div>
+                `;
+
+                // 削除ボタンのイベント (バブリング防止)
+                const deleteBtn = el.querySelector('.delete-btn');
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteScene(scene.id);
+                };
+
+                listContainer.appendChild(el);
+            });
+        }
+
+        function renderEditor() {
+            const container = document.getElementById('editor-container');
+            
+            if (!state.activeSceneId) {
+                container.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-slate-400 mt-20">
+                        <svg class="w-16 h-16 mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        <p>左側のメニューからシーンを選択するか、新しく追加してください。</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const scene = state.scenes.find(s => s.id === state.activeSceneId);
+            if (!scene) return;
+
+            // ボイスタイプのオプション生成
+            const voiceOptionsHtml = appData.voiceTypes.map(v => 
+                `<option value="${v.id}" ${scene.voiceType === v.id ? 'selected' : ''}>${escapeHtml(v.name)}</option>`
+            ).join('');
+
+            container.innerHTML = `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center gap-3">
+                        <div class="w-2 h-6 bg-indigo-500 rounded-full"></div>
+                        <input type="text" id="edit-title" value="${escapeHtml(scene.title)}" 
+                            class="text-xl font-bold bg-transparent border-none outline-none focus:ring-0 w-full text-slate-800 placeholder-slate-400"
+                            placeholder="シーンタイトル">
+                    </div>
+                    
+                    <div class="p-6 space-y-6">
+                        <!-- 映像アセットプロンプト -->
+                        <div>
+                            <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
+                                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                映像プロンプト (Video Asset)
+                            </label>
+                            <textarea id="edit-prompt" rows="3" 
+                                class="w-full rounded-lg border-slate-300 border p-3 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none resize-y transition-colors" 
+                                placeholder="例: A futuristic city at sunset, cinematic lighting, 4k resolution...">${escapeHtml(scene.videoPrompt)}</textarea>
+                        </div>
+
+                        <!-- 音声設定 -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
+                                    <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                                    ボイスタイプ
+                                </label>
+                                <select id="edit-voice" class="w-full rounded-lg border-slate-300 border p-3 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none bg-white">
+                                    ${voiceOptionsHtml}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- スクリプト/テキスト -->
+                        <div>
+                            <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
+                                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                読み上げスクリプト (Script)
+                            </label>
+                            <textarea id="edit-script" rows="6" 
+                                class="w-full rounded-lg border-slate-300 border p-3 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none resize-y transition-colors leading-relaxed" 
+                                placeholder="音声合成で読み上げさせるテキストをここに入力してください...">${escapeHtml(scene.script)}</textarea>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // リアルタイム反映＆自動保存用のイベントリスナー設定
+            document.getElementById('edit-title').addEventListener('input', (e) => updateSceneField('title', e.target.value));
+            document.getElementById('edit-prompt').addEventListener('input', (e) => updateSceneField('videoPrompt', e.target.value));
+            document.getElementById('edit-voice').addEventListener('change', (e) => updateSceneField('voiceType', e.target.value));
+            document.getElementById('edit-script').addEventListener('input', (e) => updateSceneField('script', e.target.value));
+            
+            // 入力が落ち着いたタイミング（Blurなど）で確実に保存するようにもできるが
+            // 要件に従い、編集時に都度保存をトリガーするかは調整。今回は手動保存ボタンがメインだが、
+            // 利便性のため変更時にデータを更新しておく（localStorageには手動 or 定期保存）
+            
+            // 自動保存（簡易デバウンス実装）
+            const inputs = ['edit-title', 'edit-prompt', 'edit-voice', 'edit-script'];
+            inputs.forEach(id => {
+                document.getElementById(id).addEventListener('change', saveLocalData);
+            });
+        }
+
+        /**
+         * アクション機能
+         */
+        function addScene() {
+            const num = state.scenes.length + 1;
+            const prefix = appData.appSettings?.defaultScenePrefix || "Scene";
+            const defaultVoice = appData.voiceTypes[0]?.id || "male_neutral";
+
+            const newScene = {
+                id: generateId(),
+                title: `${prefix} ${num}`,
+                videoPrompt: "",
+                voiceType: defaultVoice,
+                script: ""
+            };
+            
+            state.scenes.push(newScene);
+            state.activeSceneId = newScene.id;
+            
+            saveLocalData();
+            renderSceneList();
+            renderEditor();
+        }
+
+        function deleteScene(id) {
+            if (!confirm('このシーンを削除してよろしいですか？')) return;
+            
+            state.scenes = state.scenes.filter(s => s.id !== id);
+            
+            if (state.activeSceneId === id) {
+                state.activeSceneId = state.scenes.length > 0 ? state.scenes[0].id : null;
+            }
+            
+            saveLocalData();
+            renderSceneList();
+            renderEditor();
+        }
+
+        function selectScene(id) {
+            state.activeSceneId = id;
+            renderSceneList(); // アクティブ状態のハイライト更新用
+            renderEditor();
+        }
+
+        function updateSceneField(field, value) {
+            if (!state.activeSceneId) return;
+            const scene = state.scenes.find(s => s.id === state.activeSceneId);
+            if (scene) {
+                scene[field] = value;
+                if (field === 'title' || field === 'script') {
+                    // タイトルやスクリプト変更時はリスト側も更新（タイピングごとの全再描画は重いため調整余地ありだが、今回はシンプルに）
+                    renderSceneList();
+                }
+            }
+        }
+
+        // HTMLエスケープ処理
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        /**
+         * 初期化処理
+         */
+        async function init() {
+            // 1. イベントリスナー登録
+            document.getElementById('add-scene-btn').addEventListener('click', addScene);
+            document.getElementById('manual-save-btn').addEventListener('click', saveLocalData);
+
+            // 2. 外部データの読み込み
+            await initDataConfig();
+
+            // 3. ローカルデータの復元
+            loadLocalData();
+
+            // 4. 初回描画
+            if (state.scenes.length > 0 && !state.activeSceneId) {
+                state.activeSceneId = state.scenes[0].id;
+            }
+            renderSceneList();
+            renderEditor();
+        }
+
+        // アプリ起動
+        window.addEventListener('DOMContentLoaded', init);
+
+    </script>
+</body>
+</html>

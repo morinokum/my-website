@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="portfolio" content="AI-GAME-PORTFOLIO">
+  <title>レトロフューチャーアドベンチャー: Cassette Orbit 1989 | AI-GAME-PORTFOLIO</title>
+
+  <!-- AI-DEV-HANDOFF-START
+  タイトル: レトロフューチャーアドベンチャー: Cassette Orbit 1989
+  バージョン: 1.0.0
+  概要・ルール: 1980年代後半のSFアニメ・レトロPCゲーム（PC-98/MSX風）の雰囲気を再現したコマンド選択＆端末ハッキング型レトロフューチャー・アドベンチャーゲーム。プレイヤーは宇宙都市「ネオ・キョウト2089」の探偵となり、失われた「ルーン・カセット」の謎と都市のAI「AURA」の失踪事件を追う。
+  主要な構造（関数・状態管理・画面遷移）: 
+  - `gameState`: プレイヤーの位置、フラグ、所持アイテム、ログ、調査状況などの状態管理。
+  - `initGame()` / `loadExternalData()`: 外部マスタデータ `window.RUNE_GAME_DATA` の読み込みとフォールバック初期化。
+  - `renderScene()`: HTML5 Canvasによるレトロフューチャー描画（CRT走査線、ベクター/ドット絵風グラフィック、ノイズエフェクト）。
+  - `commandHandler()`: 移動、調べる、話す、使う、ハッキング等のコマンド処理とフラグ更新。
+  - `SoundEngine`: Web Audio APIを用いた8ビット/FM音源風レトロBGM・SE生成。
+  セーブデータのキー: `RETRO_FUTURE_ADV_SAVE_DATA_v1`
+  実装済み機能: 外部マスタデータ読み込み＆フォールバック、CRTスキャンライン切り替え、マルチロケーション探索、対話システム、インベントリ・合言葉合成パズル、ターミナルハッキング・ミニゲーム、スロット付きローカルストレージセーブ＆ロード、Web Audioシンセサイザー。
+  未実装・TODO: エピソード2追加、隠しエンディング分岐の拡張、カスタムBGM作曲機能。
+  設計上のこだわり・注意点: レトロフューチャーなSF世界観（カセットテープ、アンバー/サイアン蛍光色、CRT走査線、レトロPC風コマンドUI）を表現。外部データ非依存でも完全に遊べるフォールバック機構を内蔵。
+  AI-DEV-HANDOFF-END -->
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts for Retro Vibe -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&family=DotGothic16&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            retro: {
+              bg: '#0a0d14',
+              panel: '#121824',
+              border: '#00ffcc',
+              amber: '#ffb000',
+              cyan: '#00f3ff',
+              magenta: '#ff0055',
+              darkgreen: '#002211',
+              green: '#33ff33'
+            }
+          },
+          fontFamily: {
+            mono: ['"Share Tech Mono"', '"DotGothic16"', 'monospace'],
+            vt: ['"VT323"', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom CRT Effect Styles */
+    body {
+      background-color: #05070a;
+      color: #00f3ff;
+      font-family: 'DotGothic16', 'Share Tech Mono', monospace;
+      overflow-x: hidden;
+      user-select: none;
+    }
+
+    .crt-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%, 
+        rgba(0, 0, 0, 0.35) 50%
+      ), linear-gradient(
+        90deg,
+        rgba(255, 0, 0, 0.03),
+        rgba(0, 255, 0, 0.01),
+        rgba(0, 0, 255, 0.03)
+      );
+      background-size: 100% 3px, 6px 100%;
+      pointer-events: none;
+      z-index: 99;
+      opacity: 0.85;
+    }
+
+    .crt-flicker {
+      animation: flicker 0.15s infinite;
+    }
+
+    @keyframes flicker {
+      0% { opacity: 0.97; }
+      50% { opacity: 1; }
+      100% { opacity: 0.98; }
+    }
+
+    .retro-box {
+      border: 2px solid #00f3ff;
+      box-shadow: 0 0 10px rgba(0, 243, 255, 0.3), inset 0 0 10px rgba(0, 243, 255, 0.1);
+      background: rgba(18, 24, 36, 0.85);
+    }
+
+    .retro-box-amber {
+      border: 2px solid #ffb000;
+      box-shadow: 0 0 10px rgba(255, 176, 0, 0.3), inset 0 0 10px rgba(255, 176, 0, 0.1);
+      background: rgba(24, 18, 10, 0.85);
+      color: #ffb000;
+    }
+
+    .retro-btn {
+      transition: all 0.15s ease-in-out;
+      border: 1px solid #00f3ff;
+      background: rgba(0, 243, 255, 0.05);
+    }
+    .retro-btn:hover {
+      background: #00f3ff;
+      color: #05070a;
+      box-shadow: 0 0 12px #00f3ff;
+    }
+    .retro-btn:active {
+      transform: scale(0.97);
+    }
+
+    .retro-btn-amber {
+      border: 1px solid #ffb000;
+      background: rgba(255, 176, 0, 0.05);
+      color: #ffb000;
+    }
+    .retro-btn-amber:hover {
+      background: #ffb000;
+      color: #05070a;
+      box-shadow: 0 0 12px #ffb000;
+    }
+
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0a0d14;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #00f3ff;
+      border-radius: 3px;
+    }
+
+    .glow-text {
+      text-shadow: 0 0 8px currentColor;
+    }
+  </style>
+
+  <!-- Dynamic External Master Data Script Tag -->
+  <script src="https://morinokum.github.io/my-website/game-data.js" onerror="window.externalDataLoadFailed=true;"></script>
+</head>
+<body class="min-h-screen flex flex-col relative select-none crt-flicker" id="app-body">
+
+  <!-- CRT Overlay Layer -->
+  <div id="crt-layer" class="crt-overlay"></div>
+
+  <!-- Main Container -->
+  <div class="max-w-6xl w-full mx-auto p-2 md:p-4 flex-1 flex flex-col gap-3 z-10">
+
+    <!-- Header / Bar -->
+    <header class="retro-box p-3 rounded-lg flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-3">
+        <div class="w-3 h-3 rounded-full bg-cyan-400 animate-pulse glow-text"></div>
+        <h1 class="text-lg md:text-xl font-bold tracking-wider text-retro-cyan glow-text font-vt">
+          CASSETTE ORBIT 1989 <span class="text-xs text-retro-amber border border-retro-amber px-1 rounded ml-2">AI-GAME-PORTFOLIO</span>
+        </h1>
+      </div>
+
+      <div class="flex items-center gap-2 text-xs font-mono">
+        <!-- Status Indicator -->
+        <span id="external-data-badge" class="px-2 py-0.5 rounded border border-emerald-500 text-emerald-400 bg-emerald-950/50">
+          DATA: LOADED
+        </span>
+        <!-- CRT Toggle -->
+        <button id="btn-crt-toggle" class="retro-btn px-2 py-1 rounded text-xs flex items-center gap-1">
+          CRT: <span id="crt-status-text" class="text-retro-cyan">ON</span>
+        </button>
+        <!-- Audio Switch -->
+        <button id="btn-audio-toggle" class="retro-btn px-2 py-1 rounded text-xs flex items-center gap-1">
+          🔊 BGM/SE: <span id="audio-status-text" class="text-retro-magenta">OFF</span>
+        </button>
+        <!-- Save/Load Modal Trigger -->
+        <button id="btn-system-modal" class="retro-btn-amber px-3 py-1 rounded font-bold">
+          💾 SYSTEM
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation / Mode Tabs -->
+    <nav class="flex gap-2">
+      <button id="tab-adv" class="retro-btn flex-1 py-1.5 px-3 rounded text-sm md:text-base font-bold text-center bg-retro-cyan text-black">
+        [F1] ADV SCENE (シナリオ)
+      </button>
+      <button id="tab-terminal" class="retro-btn flex-1 py-1.5 px-3 rounded text-sm md:text-base font-bold text-center">
+        [F2] TERMINAL HACK (端末解析)
+      </button>
+      <button id="tab-deck" class="retro-btn flex-1 py-1.5 px-3 rounded text-sm md:text-base font-bold text-center">
+        [F3] RUNE CASSETTE DECK (合成)
+      </button>
+    </nav>
+
+    <!-- MAIN GAME AREA (3 Viewports) -->
+    <main class="flex-1 flex flex-col gap-3 min-h-[480px]">
+
+      <!-- MODE 1: ADV SCENE VIEW -->
+      <section id="view-adv" class="flex-1 flex flex-col lg:flex-row gap-3">
+        <!-- Visual Screen & Dialogue Log -->
+        <div class="flex-1 flex flex-col gap-3 lg:w-2/3">
+          <!-- Canvas Visual Port -->
+          <div class="relative retro-box rounded-lg overflow-hidden h-64 md:h-80 w-full flex items-center justify-center bg-black">
+            <canvas id="game-canvas" width="640" height="360" class="w-full h-full object-contain"></canvas>
+            
+            <!-- Location Overlay Tag -->
+            <div class="absolute top-2 left-2 bg-black/80 border border-retro-cyan px-2 py-1 rounded text-xs font-mono text-retro-cyan glow-text">
+              LOC: <span id="location-title">NEO-KYOTO CYBER BAY</span>
+            </div>
+            
+            <!-- Time / Stardate -->
+            <div class="absolute top-2 right-2 bg-black/80 border border-retro-amber px-2 py-1 rounded text-xs font-mono text-retro-amber">
+              STARDATE: <span id="stardate-val">2089.10.27</span>
+            </div>
+          </div>
+
+          <!-- Narrative Text / Dialogue Display Box -->
+          <div class="retro-box p-3 md:p-4 rounded-lg flex-1 min-h-[130px] flex flex-col justify-between relative">
+            <div class="flex justify-between border-b border-retro-cyan/30 pb-1 mb-2 text-xs text-retro-amber font-mono">
+              <span id="speaker-name">>>> SYSTEM DETECTED</span>
+              <span class="animate-pulse">PRESS COMMAND TO ACTION</span>
+            </div>
+            <div id="dialogue-text" class="text-sm md:text-base text-retro-cyan leading-relaxed font-mono flex-1 whitespace-pre-wrap">
+              ネオ・キョウト2089。ネオン雨の降る宇宙港ドック。都市AI「AURA」の突然の失踪により、サイバーネットワークは沈黙した。手がかりは「ルーン・カセット」と呼ばれる80年代規格の磁気テープだけだ。
+            </div>
+            <div class="mt-2 text-right">
+              <button id="btn-text-skip" class="text-xs text-gray-400 hover:text-white underline hidden">▶ Skip Text</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Command Controller Panel -->
+        <div class="lg:w-1/3 flex flex-col gap-3">
+          <!-- Main Commands -->
+          <div class="retro-box p-3 rounded-lg flex flex-col gap-2">
+            <div class="text-xs text-retro-amber border-b border-retro-amber/40 pb-1 font-bold">
+              ■ COMMAND MENU (操作コマンド)
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <button class="retro-btn py-2 px-3 rounded text-xs md:text-sm font-bold text-left" onclick="handleCommand('LOOK')">
+                👁 調べる (LOOK)
+              </button>
+              <button class="retro-btn py-2 px-3 rounded text-xs md:text-sm font-bold text-left" onclick="handleCommand('TALK')">
+                💬 話す (TALK)
+              </button>
+              <button class="retro-btn py-2 px-3 rounded text-xs md:text-sm font-bold text-left" onclick="handleCommand('MOVE')">
+                🚀 移動 (MOVE)
+              </button>
+              <button class="retro-btn py-2 px-3 rounded text-xs md:text-sm font-bold text-left" onclick="handleCommand('USE_ITEM')">
+                🎒 持ち物 (ITEMS)
+              </button>
+              <button class="retro-btn-amber py-2 px-3 rounded text-xs md:text-sm font-bold text-left col-span-2" onclick="switchToTab('terminal')">
+                💻 端末ハック (TERMINAL)
+              </button>
+            </div>
+          </div>
+
+          <!-- Dynamic Action / Sub-Command List -->
+          <div class="retro-box p-3 rounded-lg flex-1 flex flex-col gap-2">
+            <div class="text-xs text-retro-cyan border-b border-retro-cyan/40 pb-1 font-bold flex justify-between">
+              <span>■ ACTION TARGETS</span>
+              <span id="sub-menu-type" class="text-retro-amber">[NONE]</span>
+            </div>
+            <div id="sub-command-list" class="flex flex-col gap-1.5 overflow-y-auto max-h-48 pr-1 text-xs md:text-sm">
+              <div class="text-gray-500 italic p-2">コマンドを選択してください。</div>
+            </div>
+          </div>
+
+          <!-- Quick Inventory Preview -->
+          <div class="retro-box p-2.5 rounded-lg flex items-center justify-between text-xs font-mono">
+            <span class="text-retro-amber">ルーンカセット所持数:</span>
+            <span id="inventory-count-badge" class="px-2 py-0.5 bg-retro-cyan/20 border border-retro-cyan text-retro-cyan rounded font-bold">0 / 4</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- MODE 2: TERMINAL HACK VIEW -->
+      <section id="view-terminal" class="hidden flex-1 retro-box-amber p-4 rounded-lg flex flex-col gap-3 font-mono">
+        <div class="flex justify-between items-center border-b border-retro-amber/40 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 bg-retro-amber rounded-full animate-ping"></span>
+            <h2 class="text-lg font-bold glow-text">AURA SECURITY TERMINAL v2.89</h2>
+          </div>
+          <div class="text-xs">
+            STATUS: <span id="hack-status-label" class="text-red-400">ENCRYPTED</span>
+          </div>
+        </div>
+
+        <div class="flex-1 bg-black/90 border border-retro-amber/30 p-3 rounded flex flex-col justify-between overflow-hidden">
+          <!-- Terminal CLI Log Area -->
+          <div id="terminal-log" class="text-xs md:text-sm space-y-1 overflow-y-auto max-h-60 pr-2 text-retro-amber">
+            <div>[AURA OS] System Access Prompt initialized...</div>
+            <div>[WARNING] Direct access restricted. Rune encryption active.</div>
+            <div>[HINT] Try command 'HELP' or 'DECRYPT' to bypass locks.</div>
+          </div>
+
+          <!-- Mini Terminal Code Breaker Interactive Widget -->
+          <div id="hack-puzzle-area" class="mt-3 p-2 bg-retro-amber/10 border border-retro-amber/40 rounded flex flex-col gap-2">
+            <div class="text-xs font-bold text-retro-amber flex justify-between">
+              <span>SECURITY HACK PUZZLE: <span id="puzzle-title">CYBER LOCK A</span></span>
+              <span>ATTEMPTS: <span id="hack-attempts">3</span></span>
+            </div>
+            <div class="flex gap-2">
+              <input type="text" id="terminal-input" placeholder="Enter command or code (e.g. HELP, DECRYPT, 1989)..." 
+                     class="flex-1 bg-black border border-retro-amber px-3 py-1.5 rounded text-sm text-retro-amber focus:outline-none focus:border-white">
+              <button id="btn-terminal-submit" class="retro-btn-amber px-4 py-1.5 rounded text-xs font-bold">
+                RUN
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-between text-xs text-gray-400">
+          <span>Commands: HELP | CLEAR | SCAN | DECRYPT [code] | BYPASS</span>
+          <button onclick="switchToTab('adv')" class="underline hover:text-retro-amber">◀ ADV画面に戻る</button>
+        </div>
+      </section>
+
+      <!-- MODE 3: RUNE CASSETTE DECK (CRAFTING / INVENTORY) -->
+      <section id="view-deck" class="hidden flex-1 retro-box p-4 rounded-lg flex flex-col gap-4">
+        <div class="border-b border-retro-cyan/40 pb-2 flex justify-between items-center">
+          <h2 class="text-lg font-bold text-retro-cyan glow-text">📼 RUNE CASSETTE SYNTHESIS DECK</h2>
+          <span class="text-xs text-retro-amber">カセットテープとルーンコードの結合器</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
+          <!-- Inventory Cassettes Slot List -->
+          <div class="flex flex-col gap-2 border border-retro-cyan/30 p-3 rounded bg-black/40">
+            <h3 class="text-xs font-bold text-retro-amber border-b border-retro-amber/30 pb-1">■ 所持しているカセット・ルーン</h3>
+            <div id="inventory-list" class="flex-1 flex flex-col gap-2 overflow-y-auto max-h-60 pr-1 text-xs">
+              <!-- Dynamic Items -->
+            </div>
+          </div>
+
+          <!-- Cassette Deck Synthesizer Panel -->
+          <div class="flex flex-col gap-3 border border-retro-cyan/30 p-3 rounded bg-black/60 justify-between">
+            <div>
+              <h3 class="text-xs font-bold text-retro-cyan border-b border-retro-cyan/30 pb-1 mb-3">■ ルーンカセット合成スロット</h3>
+              <div class="flex items-center justify-center gap-3 my-4">
+                <div id="slot-1" class="w-24 h-16 border-2 border-dashed border-retro-cyan/50 rounded flex items-center justify-center text-xs text-center p-1 text-gray-400">
+                  SLOT A
+                </div>
+                <span class="text-xl text-retro-amber font-bold">+</span>
+                <div id="slot-2" class="w-24 h-16 border-2 border-dashed border-retro-cyan/50 rounded flex items-center justify-center text-xs text-center p-1 text-gray-400">
+                  SLOT B
+                </div>
+              </div>
+              <div id="synthesis-result-preview" class="text-xs text-center text-retro-amber min-h-[2rem]">
+                素材を選択して合成を実行してください。
+              </div>
+            </div>
+
+            <div class="flex gap-2">
+              <button id="btn-clear-slots" class="retro-btn flex-1 py-2 rounded text-xs font-bold">
+                CLEAR
+              </button>
+              <button id="btn-synthesize" class="retro-btn-amber flex-1 py-2 rounded text-xs font-bold glow-text">
+                ⚡ SYNTHESIZE (合成)
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer Status / Dev Info -->
+    <footer class="retro-box p-2 rounded-lg flex flex-wrap justify-between items-center text-xs font-mono text-gray-400">
+      <div>RETRO-FUTURE ENGINE v1.0.0 | CYBER PUNK ADV</div>
+      <div id="footer-status-log" class="text-retro-cyan">READY.</div>
+    </footer>
+
+  </div>
+
+  <!-- SYSTEM MODAL (SAVE / LOAD / DEV INFO) -->
+  <div id="system-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
+    <div class="retro-box-amber max-w-lg w-full p-5 rounded-lg flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-retro-amber/40 pb-2">
+        <h3 class="text-lg font-bold text-retro-amber glow-text">💾 SYSTEM & SAVE DATA MANAGEMENT</h3>
+        <button id="btn-close-modal" class="text-retro-amber hover:text-white text-lg font-bold">✕</button>
+      </div>
+
+      <!-- Save Slots -->
+      <div class="space-y-2">
+        <div class="text-xs font-bold text-retro-amber">■ セーブスロットを選択:</div>
+        
+        <!-- Slot 1 -->
+        <div class="border border-retro-amber/40 p-2 rounded flex justify-between items-center bg-black/40">
+          <div>
+            <div class="text-xs font-bold text-retro-amber">SLOT 1</div>
+            <div id="slot-1-info" class="text-xs text-gray-400">No Data</div>
+          </div>
+          <div class="flex gap-1">
+            <button onclick="saveGame(1)" class="retro-btn-amber px-2 py-1 text-xs">SAVE</button>
+            <button onclick="loadGame(1)" class="retro-btn px-2 py-1 text-xs">LOAD</button>
+          </div>
+        </div>
+
+        <!-- Slot 2 -->
+        <div class="border border-retro-amber/40 p-2 rounded flex justify-between items-center bg-black/40">
+          <div>
+            <div class="text-xs font-bold text-retro-amber">SLOT 2</div>
+            <div id="slot-2-info" class="text-xs text-gray-400">No Data</div>
+          </div>
+          <div class="flex gap-1">
+            <button onclick="saveGame(2)" class="retro-btn-amber px-2 py-1 text-xs">SAVE</button>
+            <button onclick="loadGame(2)" class="retro-btn px-2 py-1 text-xs">LOAD</button>
+          </div>
+        </div>
+
+        <!-- Slot 3 -->
+        <div class="border border-retro-amber/40 p-2 rounded flex justify-between items-center bg-black/40">
+          <div>
+            <div class="text-xs font-bold text-retro-amber">SLOT 3</div>
+            <div id="slot-3-info" class="text-xs text-gray-400">No Data</div>
+          </div>
+          <div class="flex gap-1">
+            <button onclick="saveGame(3)" class="retro-btn-amber px-2 py-1 text-xs">SAVE</button>
+            <button onclick="loadGame(3)" class="retro-btn px-2 py-1 text-xs">LOAD</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-t border-retro-amber/30 pt-3 flex flex-col gap-2">
+        <button onclick="resetGameProgress()" class="bg-red-900/60 hover:bg-red-800 text-red-200 border border-red-500 py-1.5 rounded text-xs">
+          ⚠️ 最初からやり直す (Progress Reset)
+        </button>
+      </div>
+
+      <!-- Dev Handoff Display inside Modal -->
+      <div class="border-t border-retro-amber/30 pt-2 text-[10px] text-gray-400 font-mono space-y-1">
+        <div class="text-retro-amber font-bold">AI-DEV-HANDOFF RECORD:</div>
+        <div>KEY: RETRO_FUTURE_ADV_SAVE_DATA_v1</div>
+        <div>MASTER DATA FALLBACK: ENABLED</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    /* ===================================================================
+     * 1. FALLBACK MASTER DATA (外部データ取得失敗時＆初期化用の補完データ)
+     * =================================================================== */
+    const FALLBACK_GAME_DATA = {
+      title: "レトロフューチャーアドベンチャー: Cassette Orbit 1989",
+      version: "1.0.0",
+      locations: {
+        cyber_bay: {
+          id: "cyber_bay",
+          name: "ネオ・キョウト サイバーベイ (Cyber Bay)",
+          description: "ネオン雨の降る宇宙港ドック。冷たい煙幕の中に宇宙船の影が浮かぶ。廃棄された端末が点滅している。",
+          targets: [
+            { id: "term_01", name: "廃棄端末 Terminal-01", type: "LOOK" },
+            { id: "npc_jack", name: "バーテンダー・ジャック", type: "TALK" },
+            { id: "dock_gate", name: "軌道ドックへのゲート", type: "LOOK" }
+          ]
+        },
+        retro_bar: {
+          id: "retro_bar",
+          name: "レトロバー「カセット」 (Bar Cassette)",
+          description: "アナログレコードとサイバーネオンが交差する薄暗いバー。FMシンセのBGMが静かに響く。",
+          targets: [
+            { id: "jukebox", name: "旧式ジュークボックス", type: "LOOK" },
+            { id: "npc_layla", name: "情報屋レイラ", type: "TALK" },
+            { id: "counter", name: "カウンターの影", type: "LOOK" }
+          ]
+        },
+        aura_mainframe: {
+          id: "aura_mainframe",
+          name: "AURAメインフレーム端末 (Mainframe)",
+          description: "都市管理AI「AURA」の中枢。モニタには巨大なノイズと「カセットコード要求」の文字が明滅している。",
+          targets: [
+            { id: "aura_screen", name: "AURAメインモニター", type: "LOOK" },
+            { id: "hack_console", name: "セキュリティハック用コンソール", type: "TERMINAL" },
+            { id: "cable_rack", name: "光ファイバーの束", type: "LOOK" }
+          ]
+        },
+        rune_lab: {
+          id: "rune_lab",
+          name: "廃墟となったルーン研究所 (Abandoned Rune Lab)",
+          description: "かつて古代ルーン文字とデジタル磁気カセットの融合研究が行われていた密室。実験器具が散乱している。",
+          targets: [
+            { id: "cleaner_bot", name: "お掃除ロボット09", type: "TALK" },
+            { id: "rune_safe", name: "磁気金庫", type: "LOOK" },
+            { id: "lab_desk", name: "主任研究員のデスク", type: "LOOK" }
+          ]
+        },
+        orbital_dock: {
+          id: "orbital_dock",
+          name: "軌道ドック最上階 (Orbital Docks)",
+          description: "ネオ・キョウト全景を見下ろす軌道カプセル。AURAのコアがここに眠っているはずだ。",
+          targets: [
+            { id: "aura_core_pod", name: "AURAコア固定装置", type: "LOOK" },
+            { id: "master_terminal", name: "マスターターミナル", type: "TERMINAL" }
+          ]
+        }
+      },
+      items: {
+        cassette_alpha: {
+          id: "cassette_alpha",
+          name: "ルーン・カセット[ALPHA]",
+          desc: "『ルーンの記憶：破片1』が記録されたカセットテープ。"
+        },
+        cassette_beta: {
+          id: "cassette_beta",
+          name: "ルーン・カセット[BETA]",
+          desc: "『ルーンの記憶：破片2』が記録されたカセットテープ。"
+        },
+        freq_code: {
+          id: "freq_code",
+          name: "周波数データコード [1989-HZ]",
+          desc: "ジュークボックスから入手したレトロ周波数パラメータ。"
+        },
+        master_tape_1989: {
+          id: "master_tape_1989",
+          name: "MASTER RUNE TAPE 1989",
+          desc: "ALPHA + BETA + 周波数コードを結合した伝説のマスターカセット！"
+        }
+      }
+    };
+
+    // マスターデータの読み込み・初期化
+    let MASTER_DATA = FALLBACK_GAME_DATA;
+    function initMasterData() {
+      if (window.RUNE_GAME_DATA && typeof window.RUNE_GAME_DATA === 'object') {
+        MASTER_DATA = Object.assign({}, FALLBACK_GAME_DATA, window.RUNE_GAME_DATA);
+        document.getElementById('external-data-badge').innerText = 'DATA: EXTERNAL LOADED';
+      } else {
+        document.getElementById('external-data-badge').innerText = 'DATA: FALLBACK ACTIVE';
+        document.getElementById('external-data-badge').className = "px-2 py-0.5 rounded border border-amber-500 text-amber-400 bg-amber-950/50";
+      }
+    }
+
+    /* ===================================================================
+     * 2. STATE MANAGEMENT (ゲーム状態管理 & LocalStorage Key)
+     * =================================================================== */
+    const SAVE_KEY = 'RETRO_FUTURE_ADV_SAVE_DATA_v1';
+
+    let gameState = {
+      location: 'cyber_bay',
+      inventory: [],
+      selectedCraftSlots: [null, null],
+      flags: {
+        term_01_inspected: false,
+        layla_talked: false,
+        jukebox_inspected: false,
+        cleaner_helped: false,
+        lab_unlocked: false,
+        mainframe_hacked: false,
+        master_tape_created: false,
+        aura_saved: false
+      },
+      terminal: {
+        log: ["[AURA OS v2.89 Initialized]", "Enter 'HELP' for command list."],
+        attempts: 5,
+        solvedLevel1: false,
+        solvedLevel2: false
+      },
+      currentCommand: null
+    };
+
+    /* ===================================================================
+     * 3. WEB AUDIO SYNTHESIZER ENGINE (FM / Chiptune レトロ音源)
+     * =================================================================== */
+    class RetroSoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.isMuted = true;
+        this.bgmTimer = null;
+        this.step = 0;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playTone(freq, type = 'square', duration = 0.1, vol = 0.1) {
+        if (this.isMuted) return;
+        this.init();
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          
+          gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch(e) {}
+      }
+
+      // Sound Effects
+      playSeText() {
+        this.playTone(800 + Math.random() * 200, 'square', 0.03, 0.02);
+      }
+
+      playSeSelect() {
+        this.playTone(440, 'triangle', 0.08, 0.08);
+        setTimeout(() => this.playTone(880, 'square', 0.08, 0.08), 80);
+      }
+
+      playSeSuccess() {
+        this.playTone(523.25, 'sine', 0.1, 0.1); // C5
+        setTimeout(() => this.playTone(659.25, 'sine', 0.1, 0.1), 100); // E5
+        setTimeout(() => this.playTone(783.99, 'sine', 0.2, 0.1), 200); // G5
+      }
+
+      playSeError() {
+        this.playTone(150, 'sawtooth', 0.2, 0.12);
+      }
+
+      // Simple Synthwave BGM Generator
+      startBgm() {
+        if (this.bgmTimer) return;
+        const notes = [110, 110, 130.81, 110, 146.83, 130.81, 110, 98.00]; // Bassline
+        this.bgmTimer = setInterval(() => {
+          if (!this.isMuted) {
+            const freq = notes[this.step % notes.length];
+            this.playTone(freq, 'sawtooth', 0.15, 0.04);
+            
+            // Arpeggio overlay
+            if (this.step % 2 === 0) {
+              this.playTone(freq * 4, 'sine', 0.08, 0.02);
+            }
+            this.step++;
+          }
+        }, 220);
+      }
+
+      stopBgm() {
+        if (this.bgmTimer) {
+          clearInterval(this.bgmTimer);
+          this.bgmTimer = null;
+        }
+      }
+
+      toggleAudio() {
+        this.isMuted = !this.isMuted;
+        const statusText = document.getElementById('audio-status-text');
+        if (this.isMuted) {
+          statusText.innerText = 'OFF';
+          statusText.className = 'text-retro-magenta';
+          this.stopBgm();
+        } else {
+          this.init();
+          statusText.innerText = 'ON';
+          statusText.className = 'text-retro-cyan glow-text';
+          this.startBgm();
+          this.playSeSuccess();
+        }
+      }
+    }
+
+    const sound = new RetroSoundEngine();
+
+    /* ===================================================================
+     * 4. CANVAS VISUAL RENDERER (ベクター＆ドット風サイバーグラフィック)
+     * =================================================================== */
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    let animFrameId = null;
+    let animTime = 0;
+
+    function drawScene() {
+      animTime += 0.05;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Background Base Gradient
+      const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      grad.addColorStop(0, '#050a14');
+      grad.addColorStop(1, '#101828');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Render graphics per location
+      switch (gameState.location) {
+        case 'cyber_bay':
+          drawCyberBayScene();
+          break;
+        case 'retro_bar':
+          drawBarScene();
+          break;
+        case 'aura_mainframe':
+          drawMainframeScene();
+          break;
+        case 'rune_lab':
+          drawLabScene();
+          break;
+        case 'orbital_dock':
+          drawOrbitalDockScene();
+          break;
+      }
+
+      // Atmospheric Grid & Particles Effect
+      drawCyberGrid();
+
+      animFrameId = requestAnimationFrame(drawScene);
+    }
+
+    // Grid Floor Overlay
+    function drawCyberGrid() {
+      ctx.strokeStyle = 'rgba(0, 243, 255, 0.15)';
+      ctx.lineWidth = 1;
+
+      // Horizon line
+      const horizon = canvas.height * 0.65;
+      
+      // Moving Perspective Grid
+      for (let x = -canvas.width; x < canvas.width * 2; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, canvas.height);
+        ctx.lineTo(canvas.width / 2 + (x - canvas.width / 2) * 0.1, horizon);
+        ctx.stroke();
+      }
+
+      // Horizontal Lines
+      for (let y = horizon; y < canvas.height; y += 12) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+    }
+
+    // Scene 1: Cyber Bay
+    function drawCyberBayScene() {
+      // Stars & Neon Rain
+      ctx.fillStyle = '#00f3ff';
+      for (let i = 0; i < 30; i++) {
+        let x = (i * 37 + animTime * 50) % canvas.width;
+        let y = (i * 23 + animTime * 80) % (canvas.height * 0.65);
+        ctx.fillRect(x, y, 1.5, 6);
+      }
+
+      // Distant Cyber Buildings
+      ctx.fillStyle = '#0a1220';
+      ctx.fillRect(50, 80, 80, 160);
+      ctx.fillRect(150, 50, 100, 190);
+      ctx.fillRect(400, 90, 120, 150);
+
+      // Neon Lights on Buildings
+      ctx.fillStyle = (Math.sin(animTime * 3) > 0) ? '#ff0055' : '#00f3ff';
+      ctx.fillRect(170, 70, 10, 10);
+      ctx.fillRect(190, 90, 10, 10);
+
+      // Terminal 01 Box
+      ctx.strokeStyle = '#00f3ff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(480, 180, 50, 70);
+      ctx.fillStyle = '#ffb000';
+      ctx.fillText("TERM-01", 482, 175);
+    }
+
+    // Scene 2: Retro Bar
+    function drawBarScene() {
+      // Bar Counter
+      ctx.fillStyle = '#1c120c';
+      ctx.fillRect(0, 200, canvas.width, 100);
+
+      // Neon Sign "CASSETTE"
+      ctx.font = '24px "VT323", monospace';
+      ctx.fillStyle = (Math.sin(animTime * 5) > 0) ? '#ff0055' : '#ffb000';
+      ctx.shadowColor = '#ff0055';
+      ctx.shadowBlur = 10;
+      ctx.fillText("★ BAR CASSETTE 1989 ★", 180, 60);
+      ctx.shadowBlur = 0;
+
+      // Jukebox Silhouette
+      ctx.strokeStyle = '#00f3ff';
+      ctx.strokeRect(60, 120, 60, 100);
+      ctx.fillStyle = 'rgba(0,243,255,0.2)';
+      ctx.fillRect(65, 130, 50, 40);
+    }
+
+    // Scene 3: Mainframe
+    function drawMainframeScene() {
+      // Giant Glowing Monitor
+      ctx.strokeStyle = '#ffb000';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(180, 40, 280, 160);
+
+      ctx.fillStyle = 'rgba(255,176,0,0.05)';
+      ctx.fillRect(180, 40, 280, 160);
+
+      // Noise Lines
+      ctx.fillStyle = '#ffb000';
+      ctx.font = '14px monospace';
+      ctx.fillText("SYSTEM LOCK: AURA CORE", 210, 80);
+      
+      // Sine wave graphics
+      ctx.beginPath();
+      ctx.strokeStyle = '#ff0055';
+      for (let x = 0; x < 240; x += 5) {
+        let y = 120 + Math.sin(x * 0.05 + animTime * 4) * 20;
+        if (x === 0) ctx.moveTo(190 + x, y);
+        else ctx.lineTo(190 + x, y);
+      }
+      ctx.stroke();
+    }
+
+    // Scene 4: Rune Lab
+    function drawLabScene() {
+      // Lab Desk
+      ctx.fillStyle = '#111b24';
+      ctx.fillRect(100, 180, 440, 80);
+
+      // Rune Safe Glowing
+      ctx.strokeStyle = gameState.flags.lab_unlocked ? '#00ff66' : '#ff0055';
+      ctx.strokeRect(400, 120, 70, 70);
+      ctx.fillStyle = '#00f3ff';
+      ctx.fillText("RUNE SAFE", 405, 115);
+
+      // Floating Hologram Cassette
+      ctx.save();
+      ctx.translate(220, 130 + Math.sin(animTime * 2) * 5);
+      ctx.strokeStyle = '#00f3ff';
+      ctx.strokeRect(-25, -15, 50, 30);
+      ctx.beginPath();
+      ctx.arc(-10, 0, 5, 0, Math.PI * 2);
+      ctx.arc(10, 0, 5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Scene 5: Orbital Dock
+    function drawOrbitalDockScene() {
+      // Earth View Window Frame
+      ctx.strokeStyle = '#00f3ff';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2, canvas.height / 2, 140, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Earth Planet Silhouette inside
+      ctx.fillStyle = '#003366';
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2 + 20, canvas.height / 2 + 30, 100, 0, Math.PI * 2);
+      ctx.fill();
+
+      // AURA Core Pod Center
+      ctx.fillStyle = gameState.flags.aura_saved ? '#00ff66' : '#ff0055';
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.shadowBlur = 15;
+      ctx.fillRect(canvas.width / 2 - 15, canvas.height / 2 - 25, 30, 50);
+      ctx.shadowBlur = 0;
+    }
+
+    /* ===================================================================
+     * 5. COMMAND & STORY LOGIC ENGINE
+     * =================================================================== */
+    
+    // Typewriter effect variables
+    let typewriterTimer = null;
+
+    function setDialogue(speaker, text) {
+      document.getElementById('speaker-name').innerText = `>>> ${speaker}`;
+      const target = document.getElementById('dialogue-text');
+      target.innerText = '';
+      
+      let index = 0;
+      if (typewriterTimer) clearInterval(typewriterTimer);
+
+      typewriterTimer = setInterval(() => {
+        if (index < text.length) {
+          target.innerText += text.charAt(index);
+          if (index % 3 === 0) sound.playSeText();
+          index++;
+        } else {
+          clearInterval(typewriterTimer);
+          typewriterTimer = null;
+        }
+      }, 25);
+    }
+
+    function renderLocationInfo() {
+      const locData = MASTER_DATA.locations[gameState.location];
+      if (!locData) return;
+
+      document.getElementById('location-title').innerText = locData.name.toUpperCase();
+      setDialogue('SYSTEM LOG', locData.description);
+      
+      // Update Action Sub-Menu List
+      clearSubMenu();
+    }
+
+    function clearSubMenu() {
+      const container = document.getElementById('sub-command-list');
+      container.innerHTML = '<div class="text-gray-500 italic p-2">コマンド（調べる/話す/移動）を選択してください。</div>';
+      document.getElementById('sub-menu-type').innerText = '[READY]';
+      gameState.currentCommand = null;
+    }
+
+    function handleCommand(cmdType) {
+      sound.playSeSelect();
+      gameState.currentCommand = cmdType;
+      document.getElementById('sub-menu-type').innerText = `[${cmdType}]`;
+
+      const container = document.getElementById('sub-command-list');
+      container.innerHTML = '';
+
+      const locData = MASTER_DATA.locations[gameState.location];
+
+      if (cmdType === 'MOVE') {
+        // Render available destinations
+        Object.keys(MASTER_DATA.locations).forEach(locKey => {
+          if (locKey !== gameState.location) {
+            const btn = document.createElement('button');
+            btn.className = 'retro-btn p-2 rounded text-left font-bold border-retro-cyan hover:bg-retro-cyan hover:text-black';
+            btn.innerText = `➔ ${MASTER_DATA.locations[locKey].name}`;
+            btn.onclick = () => changeLocation(locKey);
+            container.appendChild(btn);
+          }
+        });
+      } else if (cmdType === 'LOOK' || cmdType === 'TALK') {
+        // Filter targets
+        const filtered = locData.targets.filter(t => t.type === cmdType || t.type === 'LOOK');
+        if (filtered.length === 0) {
+          container.innerHTML = '<div class="text-gray-500 p-2">対象が見当たりません。</div>';
+          return;
+        }
+
+        filtered.forEach(target => {
+          const btn = document.createElement('button');
+          btn.className = 'retro-btn p-2 rounded text-left font-bold';
+          btn.innerText = `• ${target.name}`;
+          btn.onclick = () => executeTargetAction(target.id, cmdType);
+          container.appendChild(btn);
+        });
+      } else if (cmdType === 'USE_ITEM') {
+        if (gameState.inventory.length === 0) {
+          container.innerHTML = '<div class="text-gray-500 p-2">アイテムを所持していません。</div>';
+          return;
+        }
+        gameState.inventory.forEach(itemKey => {
+          const item = MASTER_DATA.items[itemKey];
+          if (item) {
+            const btn = document.createElement('button');
+            btn.className = 'retro-btn-amber p-2 rounded text-left font-bold';
+            btn.innerText = `📼 ${item.name}`;
+            btn.onclick = () => {
+              setDialogue('ITEM INSPECT', item.desc);
+              sound.playSeSelect();
+            };
+            container.appendChild(btn);
+          }
+        });
+      }
+    }
+
+    function changeLocation(newLocKey) {
+      sound.playSeSelect();
+      gameState.location = newLocKey;
+      renderLocationInfo();
+      checkAutoSave();
+    }
+
+    // Scenario interactions dispatcher
+    function executeTargetAction(targetId, cmdType) {
+      sound.playSeSelect();
+
+      // Cyber Bay Interactions
+      if (targetId === 'term_01') {
+        if (!gameState.flags.term_01_inspected) {
+          gameState.flags.term_01_inspected = true;
+          addItemToInventory('cassette_alpha');
+          setDialogue('TERM-01', "廃棄端末からノイズと共に『ルーン・カセット[ALPHA]』を取り出した！");
+        } else {
+          setDialogue('TERM-01', "端末は静まり返っている。これ以上使えるパーツはない。");
+        }
+      } 
+      else if (targetId === 'npc_jack') {
+        setDialogue('JACK', "「オイオイ、探偵さんかい？ AURAが止まったせいで自動バーテンも全滅さ。噂じゃあ『カセット』に昔のルーンコードを合成すればAIが復旧できるらしいぜ」");
+      }
+      else if (targetId === 'dock_gate') {
+        setDialogue('GATE', "「軌道ドックへのゲートだ。AURAの中枢ハッキングを完了しないとロックは解除されない。」");
+      }
+
+      // Bar Interactions
+      else if (targetId === 'npc_layla') {
+        gameState.flags.layla_talked = true;
+        setDialogue('LAYLA', "「探偵？ 探してるカセットの破片[BETA]なら、廃墟になった【ルーン研究所】の金庫に眠ってるわ。ターミナルコマンド『1989』を試してみて。」");
+      }
+      else if (targetId === 'jukebox') {
+        if (!gameState.flags.jukebox_inspected) {
+          gameState.flags.jukebox_inspected = true;
+          addItemToInventory('freq_code');
+          setDialogue('JUKEBOX', "ジュークボックスの裏蓋から『周波数データコード [1989-HZ]』を発見した！");
+        } else {
+          setDialogue('JUKEBOX', "80年代のシンセポップが静かに流れ続けている。");
+        }
+      }
+
+      // Mainframe & Lab Interactions
+      else if (targetId === 'hack_console') {
+        switchToTab('terminal');
+        setDialogue('AURA TERMINAL', "ハッキングターミナル画面へ移行しました。コード解析を実行してください。");
+      }
+      else if (targetId === 'cleaner_bot') {
+        setDialogue('BOT-09', "「ビビッ……ルーン・カセット[ALPHA]ト[BETA]ト[1989-HZ]ヲ カセットデッキデ ゴウセイ セヨ……」");
+      }
+      else if (targetId === 'rune_safe') {
+        if (!gameState.inventory.includes('cassette_beta')) {
+          addItemToInventory('cassette_beta');
+          gameState.flags.lab_unlocked = true;
+          setDialogue('RUNE SAFE', "金庫の解除に成功！『ルーン・カセット[BETA]』を手に入れた！");
+        } else {
+          setDialogue('RUNE SAFE', "金庫は空だ。");
+        }
+      }
+
+      // Orbital Dock Final Interaction
+      else if (targetId === 'aura_core_pod' || targetId === 'master_terminal') {
+        if (gameState.inventory.includes('master_tape_1989')) {
+          gameState.flags.aura_saved = true;
+          sound.playSeSuccess();
+          setDialogue('AURA CORE', "【TRUE ENDING】\n「MASTER RUNE TAPE 1989」を挿入！\nAURAのコアが再起動し、ネオ・キョウトに光と音楽が戻った！\n\n- CONGRATULATIONS! GAME COMPLETED -");
+        } else {
+          sound.playSeError();
+          setDialogue('AURA CORE', "【アクセス拒否】\nコアの再起動には合成アイテム『MASTER RUNE TAPE 1989』が必要です。デッキでカセットを合成してください。");
+        }
+      }
+
+      checkAutoSave();
+    }
+
+    /* ===================================================================
+     * 6. INVENTORY & CASSETTE SYNTHESIS (合成パズル)
+     * =================================================================== */
+    function addItemToInventory(itemKey) {
+      if (!gameState.inventory.includes(itemKey)) {
+        gameState.inventory.push(itemKey);
+        sound.playSeSuccess();
+        updateInventoryUI();
+      }
+    }
+
+    function updateInventoryUI() {
+      // Badge Count
+      document.getElementById('inventory-count-badge').innerText = `${gameState.inventory.length} / 4`;
+
+      const listContainer = document.getElementById('inventory-list');
+      listContainer.innerHTML = '';
+
+      if (gameState.inventory.length === 0) {
+        listContainer.innerHTML = '<div class="text-gray-500 italic p-2">所持アイテムなし</div>';
+        return;
+      }
+
+      gameState.inventory.forEach(itemKey => {
+        const item = MASTER_DATA.items[itemKey];
+        if (!item) return;
+
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'flex justify-between items-center p-2 bg-retro-panel border border-retro-cyan/40 rounded';
+        
+        itemDiv.innerHTML = `
+          <div>
+            <div class="font-bold text-retro-cyan">📼 ${item.name}</div>
+            <div class="text-[10px] text-gray-400">${item.desc}</div>
+          </div>
+          <button class="retro-btn px-2 py-1 text-[10px] bg-retro-cyan/20">セット</button>
+        `;
+
+        itemDiv.querySelector('button').onclick = () => selectItemForSynthesis(itemKey);
+        listContainer.appendChild(itemDiv);
+      });
+    }
+
+    function selectItemForSynthesis(itemKey) {
+      sound.playSeSelect();
+      const slots = gameState.selectedCraftSlots;
+
+      if (!slots[0]) {
+        slots[0] = itemKey;
+        document.getElementById('slot-1').innerText = MASTER_DATA.items[itemKey].name;
+        document.getElementById('slot-1').className = 'w-24 h-16 border-2 border-retro-amber rounded flex items-center justify-center text-xs text-center p-1 text-retro-amber font-bold bg-retro-amber/10';
+      } else if (!slots[1] && slots[0] !== itemKey) {
+        slots[1] = itemKey;
+        document.getElementById('slot-2').innerText = MASTER_DATA.items[itemKey].name;
+        document.getElementById('slot-2').className = 'w-24 h-16 border-2 border-retro-amber rounded flex items-center justify-center text-xs text-center p-1 text-retro-amber font-bold bg-retro-amber/10';
+      }
+    }
+
+    function clearCraftSlots() {
+      gameState.selectedCraftSlots = [null, null];
+      document.getElementById('slot-1').innerText = 'SLOT A';
+      document.getElementById('slot-1').className = 'w-24 h-16 border-2 border-dashed border-retro-cyan/50 rounded flex items-center justify-center text-xs text-center p-1 text-gray-400';
+      document.getElementById('slot-2').innerText = 'SLOT B';
+      document.getElementById('slot-2').className = 'w-24 h-16 border-2 border-dashed border-retro-cyan/50 rounded flex items-center justify-center text-xs text-center p-1 text-gray-400';
+      document.getElementById('synthesis-result-preview').innerText = 'スロットをリセットしました。';
+    }
+
+    function synthesizeCassettes() {
+      const [a, b] = gameState.selectedCraftSlots;
+
+      if (!a || !b) {
+        sound.playSeError();
+        document.getElementById('synthesis-result-preview').innerText = '⚠️ 2つの素材を選択してください。';
+        return;
+      }
+
+      // Check combination logic
+      const isRecipeValid = 
+        (a === 'cassette_alpha' && b === 'cassette_beta') ||
+        (a === 'cassette_beta' && b === 'cassette_alpha') ||
+        (a === 'freq_code' && (b === 'cassette_alpha' || b === 'cassette_beta'));
+
+      if (isRecipeValid && gameState.inventory.includes('freq_code') && gameState.inventory.includes('cassette_alpha') && gameState.inventory.includes('cassette_beta')) {
+        // Success Recipe -> Master Tape
+        sound.playSeSuccess();
+        addItemToInventory('master_tape_1989');
+        gameState.flags.master_tape_created = true;
+        
+        document.getElementById('synthesis-result-preview').innerHTML = '<span class="text-green-400 font-bold">✨ 合成成功！「MASTER RUNE TAPE 1989」が完成しました！</span>';
+        clearCraftSlots();
+      } else {
+        sound.playSeError();
+        document.getElementById('synthesis-result-preview').innerText = '❌ 合成失敗。組み合わせか周波数コードが不足しています。';
+      }
+    }
+
+    /* ===================================================================
+     * 7. TERMINAL HACK MINI-GAME ENGINE
+     * =================================================================== */
+    function handleTerminalInput() {
+      const inputEl = document.getElementById('terminal-input');
+      const val = inputEl.value.trim().toUpperCase();
+      if (!val) return;
+
+      appendTerminalLog(`> ${val}`);
+      inputEl.value = '';
+
+      if (val === 'HELP') {
+        appendTerminalLog("COMMANDS: HELP, SCAN, DECRYPT [CODE], CLEAR, BYPASS");
+      } else if (val === 'SCAN') {
+        appendTerminalLog("[SCANNING...] 1 Security Vulnerability found: 'CYBER-1989'");
+      } else if (val === 'CLEAR') {
+        document.getElementById('terminal-log').innerHTML = '';
+      } else if (val === '1989' || val === 'DECRYPT 1989' || val === 'CYBER-1989') {
+        sound.playSeSuccess();
+        gameState.terminal.solvedLevel1 = true;
+        document.getElementById('hack-status-label').innerText = 'DECRYPTED / ACCESS GRANTED';
+        document.getElementById('hack-status-label').className = 'text-emerald-400 font-bold';
+        appendTerminalLog("SUCCESS: Security Level 1 Bypassed! Orbital Dock Access granted.");
+      } else {
+        sound.playSeError();
+        gameState.terminal.attempts--;
+        document.getElementById('hack-attempts').innerText = gameState.terminal.attempts;
+        appendTerminalLog(`ERROR: Invalid Security Hash. Remaining attempts: ${gameState.terminal.attempts}`);
+        
+        if (gameState.terminal.attempts <= 0) {
+          appendTerminalLog("SYSTEM LOCKOUT! Resetting terminal attempts...");
+          gameState.terminal.attempts = 5;
+        }
+      }
+    }
+
+    function appendTerminalLog(msg) {
+      const logBox = document.getElementById('terminal-log');
+      const div = document.createElement('div');
+      div.innerText = msg;
+      logBox.appendChild(div);
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    /* ===================================================================
+     * 8. SAVE / LOAD & LOCALSTORAGE MANAGER
+     * =================================================================== */
+    function checkAutoSave() {
+      try {
+        const autoData = {
+          gameState,
+          timestamp: new Date().toLocaleString('ja-JP')
+        };
+        localStorage.setItem(`${SAVE_KEY}_AUTO`, JSON.stringify(autoData));
+      } catch(e) {}
+    }
+
+    function saveGame(slot) {
+      try {
+        const saveData = {
+          gameState,
+          timestamp: new Date().toLocaleString('ja-JP')
+        };
+        localStorage.setItem(`${SAVE_KEY}_SLOT_${slot}`, JSON.stringify(saveData));
+        sound.playSeSuccess();
+        updateSaveSlotUI();
+        alert(`スロット ${slot} にセーブしました。`);
+      } catch(e) {
+        alert("セーブの保存に失敗しました。");
+      }
+    }
+
+    function loadGame(slot) {
+      try {
+        const raw = localStorage.getItem(`${SAVE_KEY}_SLOT_${slot}`);
+        if (!raw) {
+          alert("データが存在しません。");
+          return;
+        }
+        const data = JSON.parse(raw);
+        gameState = data.gameState;
+        sound.playSeSuccess();
+        
+        // Refresh UI
+        renderLocationInfo();
+        updateInventoryUI();
+        updateSaveSlotUI();
+        closeModal();
+        alert(`スロット ${slot} からロードしました。`);
+      } catch(e) {
+        alert("ロードに失敗しました。");
+      }
+    }
+
+    function updateSaveSlotUI() {
+      for (let i = 1; i <= 3; i++) {
+        const raw = localStorage.getItem(`${SAVE_KEY}_SLOT_${i}`);
+        const infoEl = document.getElementById(`slot-${i}-info`);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          infoEl.innerText = `${parsed.timestamp} - ${MASTER_DATA.locations[parsed.gameState.location]?.name || 'Unknown'}`;
+          infoEl.className = 'text-xs text-retro-cyan';
+        } else {
+          infoEl.innerText = 'No Data';
+          infoEl.className = 'text-xs text-gray-500';
+        }
+      }
+    }
+
+    function resetGameProgress() {
+      if (confirm("本当に最初からやり直しますか？")) {
+        gameState = {
+          location: 'cyber_bay',
+          inventory: [],
+          selectedCraftSlots: [null, null],
+          flags: {},
+          terminal: { log: [], attempts: 5, solvedLevel1: false },
+          currentCommand: null
+        };
+        renderLocationInfo();
+        updateInventoryUI();
+        closeModal();
+      }
+    }
+
+    /* ===================================================================
+     * 9. TAB SWITCHING & UI EVENT LISTENERS
+     * =================================================================== */
+    function switchToTab(tabName) {
+      sound.playSeSelect();
+
+      document.getElementById('view-adv').classList.add('hidden');
+      document.getElementById('view-terminal').classList.add('hidden');
+      document.getElementById('view-deck').classList.add('hidden');
+
+      document.getElementById('tab-adv').className = 'retro-btn flex-1 py-1.5 px-3 rounded text-sm md:text-base font-bold text-center';
+      document.getElementById('tab-terminal').className = 'retro-btn flex-1 py-1.5 px-3 rounded text-sm md:text-base font-bold text-center';
+      document.getElementById('tab-deck').className = 'retro-btn flex-1 py-1.5 px-3 rounded text-sm md:text-base font-bold text-center';
+
+      if (tabName === 'adv') {
+        document.getElementById('view-adv').classList.remove('hidden');
+        document.getElementById('tab-adv').className += ' bg-retro-cyan text-black';
+      } else if (tabName === 'terminal') {
+        document.getElementById('view-terminal').classList.remove('hidden');
+        document.getElementById('tab-terminal').className += ' bg-retro-amber text-black';
+      } else if (tabName === 'deck') {
+        document.getElementById('view-deck').classList.remove('hidden');
+        document.getElementById('tab-deck').className += ' bg-retro-cyan text-black';
+        updateInventoryUI();
+      }
+    }
+
+    function openModal() {
+      sound.playSeSelect();
+      updateSaveSlotUI();
+      document.getElementById('system-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      sound.playSeSelect();
+      document.getElementById('system-modal').classList.add('hidden');
+    }
+
+    /* ===================================================================
+     * 10. INITIALIZATION
+     * =================================================================== */
+    window.onload = function() {
+      initMasterData();
+      
+      // Setup CRT Overlay Toggle
+      document.getElementById('btn-crt-toggle').onclick = () => {
+        const crt = document.getElementById('crt-layer');
+        const txt = document.getElementById('crt-status-text');
+        if (crt.style.display === 'none') {
+          crt.style.display = 'block';
+          txt.innerText = 'ON';
+        } else {
+          crt.style.display = 'none';
+          txt.innerText = 'OFF';
+        }
+      };
+
+      // Audio Toggle
+      document.getElementById('btn-audio-toggle').onclick = () => sound.toggleAudio();
+
+      // System Modal
+      document.getElementById('btn-system-modal').onclick = openModal;
+      document.getElementById('btn-close-modal').onclick = closeModal;
+
+      // Navigation Tabs
+      document.getElementById('tab-adv').onclick = () => switchToTab('adv');
+      document.getElementById('tab-terminal').onclick = () => switchToTab('terminal');
+      document.getElementById('tab-deck').onclick = () => switchToTab('deck');
+
+      // Terminal Submit
+      document.getElementById('btn-terminal-submit').onclick = handleTerminalInput;
+      document.getElementById('terminal-input').onkeydown = (e) => {
+        if (e.key === 'Enter') handleTerminalInput();
+      };
+
+      // Crafting Deck Controls
+      document.getElementById('btn-clear-slots').onclick = clearCraftSlots;
+      document.getElementById('btn-synthesize').onclick = synthesizeCassettes;
+
+      // Start Visual Canvas Loop
+      drawScene();
+
+      // Initialize Game View
+      renderLocationInfo();
+      updateInventoryUI();
+    };
+  </script>
+</body>
+</html>

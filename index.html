@@ -37,6 +37,14 @@
     <span id="count" style="color: #ccc; font-weight: bold;"></span>
   </div>
   <div class="grid" id="grid">
+      <div class="card" data-text="レトロフューチャーアドベンチャー: Cassette Orbit 1989 | AI-GAME-PORTFOLIO 概要はまだ記載されていません。">
+        <h3>レトロフューチャーアドベンチャー: Cassette Orbit 1989 | AI-GAME-PORTFOLIO</h3>
+        <div class="desc">概要はまだ記載されていません。</div>
+        <div class="buttons">
+          <a href="games/cassette_orbit_1989.html" class="btn" target="_blank">▶ Open</a>
+          <button class="btn copy" onclick="copyCode('cassette_orbit_1989.html')">📋 Code</button>
+        </div>
+      </div>
       <div class="card" data-text="STEEL HORIZON - 荒野の機械化戦線 Web Audio APIによるBGMおよび各アクションのSE（効果音）機能を統合したスタンドアロン型RPG。既存セーブデータ互換(steel_horizon_save_v1)を保持。">
         <h3>STEEL HORIZON - 荒野の機械化戦線</h3>
         <div class="desc">Web Audio APIによるBGMおよび各アクションのSE（効果音）機能を統合したスタンドアロン型RPG。既存セーブデータ互換(steel_horizon_save_v1)を保持。</div>
@@ -360,7 +368,7 @@
   </div>
   <div id="toast">コピーしました！</div>
   <script>
-    document.getElementById('count').textContent = "全 40 作品";
+    document.getElementById('count').textContent = "全 41 作品";
     function search() {
       const q = document.getElementById('search').value.toLowerCase();
       document.querySelectorAll('.card').forEach(c => {

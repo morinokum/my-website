@@ -37,6 +37,14 @@
     <span id="count" style="color: #ccc; font-weight: bold;"></span>
   </div>
   <div class="grid" id="grid">
+      <div class="card" data-text="Diverge &amp; Converge Canvas 「アイデアを出す（発散）」と「整理する（収束）」という相反する認知プロセスをUIで物理的に分離し、思考のフリーズ（認知負荷）を防ぐためのサポートツール。">
+        <h3>Diverge &amp; Converge Canvas</h3>
+        <div class="desc">「アイデアを出す（発散）」と「整理する（収束）」という相反する認知プロセスをUIで物理的に分離し、思考のフリーズ（認知負荷）を防ぐためのサポートツール。</div>
+        <div class="buttons">
+          <a href="apps/gemini-code-1793051127840.html" class="btn" target="_blank">▶ Open</a>
+          <button class="btn copy" onclick="copyCode('gemini-code-1793051127840.html')">📋 Code</button>
+        </div>
+      </div>
       <div class="card" data-text="認知負荷バランサー 単なるタスク管理ではなく、各タスクが脳に与える「認知負荷（疲れやすさ）」を数値化し、1日の許容量（キャパシティ）を超えないようにスケジュールを組むためのツール。">
         <h3>認知負荷バランサー</h3>
         <div class="desc">単なるタスク管理ではなく、各タスクが脳に与える「認知負荷（疲れやすさ）」を数値化し、1日の許容量（キャパシティ）を超えないようにスケジュールを組むためのツール。</div>
@@ -56,7 +64,7 @@
   </div>
   <div id="toast">コピーしました！</div>
   <script>
-    document.getElementById('count').textContent = "全 2 ツール";
+    document.getElementById('count').textContent = "全 3 ツール";
     function search() {
       const q = document.getElementById('search').value.toLowerCase();
       document.querySelectorAll('.card').forEach(c => {

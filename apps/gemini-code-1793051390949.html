@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- AI-APP-PORTFOLIO -->
+    <title>Diverge & Converge Canvas</title>
+    
+    <!-- スタイル・アイコン用CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body { transition: background-color 0.5s ease; }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+
+    <!-- 外部共通設定データのフォールバックと読み込み -->
+    <script>
+        // 外部ファイルが取得できなかった場合のフォールバックデータ
+        window.APP_SHARED_DATA = window.APP_SHARED_DATA || {
+            appName: "Diverge & Converge Canvas (Fallback)",
+            version: "1.1.0",
+            notice: "外部データの取得に失敗したため、ローカルデフォルト設定を使用しています。"
+        };
+    </script>
+    <script src="https://morinokum.github.io/my-website/app-data.js" onerror="console.warn('外部URLからのapp-data.js読み込みに失敗しました。フォールバックを適用します。')"></script>
+</head>
+<body class="bg-orange-50 min-h-screen text-gray-800 font-sans flex flex-col" id="app-container">
+
+    <!-- Header -->
+    <header class="px-6 py-4 flex flex-wrap justify-between items-center shadow-sm bg-white/60 backdrop-blur-md sticky top-0 z-20">
+        <div class="mb-2 sm:mb-0">
+            <h1 class="text-2xl font-bold tracking-tight text-gray-800" id="app-title">Diverge & Converge Canvas</h1>
+            <p class="text-xs text-gray-500 mt-1">アイデアの発散と収束を物理的に分離する思考サポートツール</p>
+        </div>
+        <div class="flex items-center space-x-1 bg-gray-200/80 p-1 rounded-full border border-gray-200 shadow-inner">
+            <button id="btn-diverge" onclick="setMode('diverge')" class="px-6 py-2 rounded-full font-bold text-sm transition-all duration-300 bg-orange-400 text-white shadow">
+                <i class="fa-solid fa-lightbulb mr-1"></i> 発散モード
+            </button>
+            <button id="btn-converge" onclick="setMode('converge')" class="px-6 py-2 rounded-full font-bold text-sm transition-all duration-300 text-gray-600 hover:text-gray-800 hover:bg-gray-300/50">
+                <i class="fa-solid fa-filter mr-1"></i> 収束モード
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow p-6 flex flex-col items-center w-full max-w-6xl mx-auto">
+        
+        <!-- ▼ 発散モード (Diverge Mode) ▼ -->
+        <div id="view-diverge" class="w-full max-w-2xl flex flex-col items-center mt-12 fade-in">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-extrabold text-orange-600 mb-3 tracking-wide">とにかく出す。</h2>
+                <p class="text-gray-600">評価・整理は後回し。頭に浮かんだことをひたすら入力しましょう。</p>
+            </div>
+            
+            <div class="w-full relative shadow-2xl rounded-2xl">
+                <input type="text" id="idea-input" 
+                    class="w-full text-2xl p-6 pr-24 rounded-2xl border-2 border-orange-200 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 focus:outline-none transition-all placeholder-gray-300 bg-white" 
+                    placeholder="アイデアを入力して Enter..." 
+                    onkeypress="handleInput(event)">
+                <div class="absolute right-6 top-1/2 transform -translate-y-1/2 text-orange-300 font-bold text-sm pointer-events-none">
+                    Enter ↵
+                </div>
+            </div>
+            
+            <div class="mt-12 w-full">
+                <h3 class="text-xs font-bold text-orange-300/80 mb-4 uppercase tracking-widest text-center">直近の出力 (最大5件)</h3>
+                <ul id="recent-ideas-list" class="space-y-3 opacity-80">
+                    <!-- JSが動的に直近のアイデアを挿入 -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- ▼ 収束モード (Converge Mode) ▼ -->
+        <div id="view-converge" class="w-full hidden fade-in mt-4">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+                <div>
+                    <h2 class="text-3xl font-extrabold text-blue-600 mb-3 tracking-wide">整理し、見極める。</h2>
+                    <p class="text-gray-600">
+                        出したアイデアを俯瞰し、「重要度」や「<strong class="text-green-600">金儲け（収益化）ポテンシャル</strong>」を評価します。
+                    </p>
+                </div>
+                
+                <!-- フィルタリングボタン群 -->
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="toggleFilter('profitable')" id="filter-profit" class="px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm text-sm hover:bg-green-50 hover:border-green-300 transition-colors font-semibold text-gray-600">
+                        <i class="fa-solid fa-yen-sign text-green-500 mr-1"></i> 金儲け候補
+                    </button>
+                    <button onclick="toggleFilter('starred')" id="filter-star" class="px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm text-sm hover:bg-yellow-50 hover:border-yellow-300 transition-colors font-semibold text-gray-600">
+                        <i class="fa-solid fa-star text-yellow-400 mr-1"></i> 重要（スター）
+                    </button>
+                    <button onclick="toggleFilter('all')" id="filter-all" class="px-4 py-2 bg-blue-100 border border-blue-300 text-blue-700 rounded-lg shadow-sm text-sm transition-colors font-semibold">
+                        すべて表示
+                    </button>
+                </div>
+            </div>
+
+            <div id="converge-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                <!-- JSが動的にカードを挿入 -->
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // === 状態管理 ===
+        const STORAGE_KEY = 'dc_canvas_ideas';
+        let ideas = [];
+        let currentMode = 'diverge';
+        let currentFilter = 'all'; // 'all', 'starred', 'profitable'
+
+        // === 初期化とデータ読み込み ===
+        function loadData() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    ideas = JSON.parse(stored);
+                    
+                    // 【後方互換性担保】古いセーブデータに新しいプロパティを安全に付与
+                    ideas = ideas.map(idea => ({
+                        ...idea,
+                        isStarred: idea.isStarred || false,
+                        isProfitable: idea.isProfitable || false // 新規追加: 金儲け判定用フラグ
+                    }));
+                }
+            } catch (e) {
+                console.error("データの読み込みに失敗しました", e);
+                ideas = [];
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(ideas));
+            render();
+        }
+
+        // === アクション関数 ===
+        function handleInput(event) {
+            if (event.key === 'Enter' && !event.isComposing) { // IME確定時のEnterを回避
+                const input = event.target;
+                const text = input.value.trim();
+                if (text) {
+                    // 最新のものを配列の先頭に追加
+                    ideas.unshift({
+                        id: Date.now().toString(),
+                        text: text,
+                        isStarred: false,
+                        isProfitable: false,
+                        createdAt: new Date().toISOString()
+                    });
+                    input.value = '';
+                    saveData();
+                }
+            }
+        }
+
+        function toggleStar(id) {
+            const idea = ideas.find(i => i.id === id);
+            if (idea) {
+                idea.isStarred = !idea.isStarred;
+                saveData();
+            }
+        }
+
+        function toggleProfit(id) {
+            const idea = ideas.find(i => i.id === id);
+            if (idea) {
+                idea.isProfitable = !idea.isProfitable;
+                saveData();
+            }
+        }
+
+        function deleteIdea(id) {
+            if(confirm("このアイデアを削除しますか？")) {
+                ideas = ideas.filter(i => i.id !== id);
+                saveData();
+            }
+        }
+
+        function toggleFilter(filterType) {
+            currentFilter = filterType;
+            
+            // ボタンのUI状態更新
+            const resetClass = "px-4 py-2 border rounded-lg shadow-sm text-sm transition-colors font-semibold ";
+            
+            document.getElementById('filter-all').className = resetClass + (filterType === 'all' 
+                ? 'bg-blue-100 border-blue-300 text-blue-700' 
+                : 'bg-white border-gray-200 text-gray-600 hover:bg-blue-50');
+                
+            document.getElementById('filter-star').className = resetClass + (filterType === 'starred' 
+                ? 'bg-yellow-100 border-yellow-300 text-yellow-800' 
+                : 'bg-white border-gray-200 text-gray-600 hover:bg-yellow-50');
+                
+            document.getElementById('filter-profit').className = resetClass + (filterType === 'profitable' 
+                ? 'bg-green-100 border-green-300 text-green-800' 
+                : 'bg-white border-gray-200 text-gray-600 hover:bg-green-50');
+            
+            render();
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            const container = document.getElementById('app-container');
+            const viewDiverge = document.getElementById('view-diverge');
+            const viewConverge = document.getElementById('view-converge');
+            const btnDiverge = document.getElementById('btn-diverge');
+            const btnConverge = document.getElementById('btn-converge');
+
+            if (mode === 'diverge') {
+                container.classList.remove('bg-slate-100');
+                container.classList.add('bg-orange-50');
+                
+                viewDiverge.classList.remove('hidden');
+                viewConverge.classList.add('hidden');
+                
+                btnDiverge.className = "px-6 py-2 rounded-full font-bold text-sm transition-all duration-300 bg-orange-400 text-white shadow scale-105";
+                btnConverge.className = "px-6 py-2 rounded-full font-bold text-sm transition-all duration-300 text-gray-600 hover:bg-gray-300/50";
+                
+                // 切り替え時に自動フォーカス
+                setTimeout(() => document.getElementById('idea-input').focus(), 100);
+            } else {
+                container.classList.remove('bg-orange-50');
+                container.classList.add('bg-slate-100');
+                
+                viewDiverge.classList.add('hidden');
+                viewConverge.classList.remove('hidden');
+                
+                btnConverge.className = "px-6 py-2 rounded-full font-bold text-sm transition-all duration-300 bg-blue-500 text-white shadow scale-105";
+                btnDiverge.className = "px-6 py-2 rounded-full font-bold text-sm transition-all duration-300 text-gray-600 hover:bg-gray-300/50";
+            }
+            render();
+        }
+
+        // === 描画処理 ===
+        function render() {
+            if (currentMode === 'diverge') {
+                const list = document.getElementById('recent-ideas-list');
+                list.innerHTML = '';
+                
+                // 発散モードでは認知負荷を下げるため直近5件だけを淡く表示する
+                ideas.slice(0, 5).forEach(idea => {
+                    const li = document.createElement('li');
+                    li.className = 'bg-white/50 px-5 py-4 rounded-xl shadow-sm text-gray-700 text-lg border border-orange-100/50 truncate';
+                    li.textContent = idea.text;
+                    list.appendChild(li);
+                });
+            } else {
+                const grid = document.getElementById('converge-grid');
+                grid.innerHTML = '';
+                
+                // フィルタリング適用
+                let filteredIdeas = ideas;
+                if (currentFilter === 'starred') {
+                    filteredIdeas = ideas.filter(i => i.isStarred);
+                } else if (currentFilter === 'profitable') {
+                    filteredIdeas = ideas.filter(i => i.isProfitable);
+                }
+
+                if (filteredIdeas.length === 0) {
+                    grid.innerHTML = `<div class="col-span-full text-center text-gray-400 py-16 font-semibold bg-white/40 rounded-2xl border border-dashed border-gray-300">表示できるアイデアがありません。<br>発散モードでどんどん追加してください。</div>`;
+                }
+
+                filteredIdeas.forEach(idea => {
+                    const card = document.createElement('div');
+                    // 状態に応じて左のボーダー色を変更
+                    let borderClass = 'border-gray-200';
+                    if (idea.isProfitable && idea.isStarred) borderClass = 'border-l-green-400 border-r-yellow-400 border-x-4';
+                    else if (idea.isProfitable) borderClass = 'border-l-green-400 border-l-4';
+                    else if (idea.isStarred) borderClass = 'border-l-yellow-400 border-l-4';
+                    
+                    card.className = `bg-white p-5 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between h-40 ${borderClass}`;
+                    
+                    const textDiv = document.createElement('div');
+                    textDiv.className = 'text-gray-800 font-medium overflow-hidden line-clamp-3 leading-relaxed';
+                    textDiv.textContent = idea.text;
+                    
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.className = 'flex justify-between items-center border-t border-gray-100 pt-3 mt-3';
+                    
+                    const leftActions = document.createElement('div');
+                    leftActions.className = 'flex space-x-2';
+                    
+                    // スター（重要）ボタン
+                    const starBtn = document.createElement('button');
+                    starBtn.onclick = () => toggleStar(idea.id);
+                    starBtn.className = `p-2 rounded-full transition-colors flex items-center justify-center w-8 h-8 ${idea.isStarred ? 'text-yellow-500 bg-yellow-50' : 'text-gray-300 hover:text-yellow-500 hover:bg-gray-50'}`;
+                    starBtn.innerHTML = '<i class="fa-solid fa-star text-sm"></i>';
+                    starBtn.title = "重要マーク";
+                    
+                    // 金儲け（収益化）ボタン
+                    const profitBtn = document.createElement('button');
+                    profitBtn.onclick = () => toggleProfit(idea.id);
+                    profitBtn.className = `p-2 rounded-full transition-colors flex items-center justify-center w-8 h-8 ${idea.isProfitable ? 'text-green-600 bg-green-50' : 'text-gray-300 hover:text-green-600 hover:bg-gray-50'}`;
+                    profitBtn.innerHTML = '<i class="fa-solid fa-yen-sign text-sm"></i>';
+                    profitBtn.title = "金儲け（収益化）のポテンシャル";
+                    
+                    leftActions.appendChild(starBtn);
+                    leftActions.appendChild(profitBtn);
+                    
+                    // 削除ボタン
+                    const delBtn = document.createElement('button');
+                    delBtn.onclick = () => deleteIdea(idea.id);
+                    delBtn.className = 'p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors flex items-center justify-center w-8 h-8';
+                    delBtn.innerHTML = '<i class="fa-solid fa-trash text-sm"></i>';
+                    delBtn.title = "削除";
+                    
+                    actionsDiv.appendChild(leftActions);
+                    actionsDiv.appendChild(delBtn);
+                    
+                    card.appendChild(textDiv);
+                    card.appendChild(actionsDiv);
+                    grid.appendChild(card);
+                });
+            }
+        }
+
+        // === 起動時の処理 ===
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            
+            // 外部ファイル（app-data.js）の内容が取得できていればログ出力またはUI反映を行う
+            if (window.APP_SHARED_DATA) {
+                console.log("外部データがロードされました:", window.APP_SHARED_DATA);
+                // タイトルの上書き設定がある場合は反映（要件に応じた例）
+                if(window.APP_SHARED_DATA.appName && window.APP_SHARED_DATA.appName !== "Diverge & Converge Canvas (Fallback)") {
+                    const titleEl = document.getElementById('app-title');
+                    if (titleEl) titleEl.textContent = window.APP_SHARED_DATA.appName;
+                }
+            }
+            
+            setMode(currentMode); // 描画開始
+        });
+    </script>
+    
+    <!-- AI-DEV-HANDOFF-START
+    タイトル: Diverge & Converge Canvas (発散・収束キャンバス)
+    バージョン: 1.1.0
+    目的・概要: 「アイデアを出す（発散）」と「整理する（収束）」という相反する認知プロセスをUIで物理的に分離し、思考のフリーズ（認知負荷）を防ぐためのサポートツール。新たに「金儲け・収益化」視点での評価・抽出機能を追加。
+    主要な機能・UI構成: 
+      - 発散モード: 暖色系UI。入力を止めないよう、Enterキーで即座に追加可能。修正や削除のUIを極力見せない。
+      - 収束モード: 寒色系UI。全体を見渡し、重要度のマーキングや不要なものの削除を行う。新たに「金儲け（収益化）」のポテンシャルを評価する機能を追加。
+    データ構造・保存キー: ローカルストレージキー 'dc_canvas_ideas' (Array of Object: {id, text, isStarred, isProfitable, createdAt})
+    実装済み機能: モード切り替え、アイデアの追加・削除・スター付け・金儲け（収益化）マーキングと絞り込み、外部共有データ(app-data.js)の動的読み込みとフォールバック、ローカルストレージへの自動保存
+    未実装・TODO: ドラッグ＆ドロップによるアイデアのグループ化機能、マークダウン形式での一括エクスポート機能
+    設計上のこだわり・注意点: 認知負荷を下げるため、現在どちらの思考モードにいるのかが視覚的にすぐわかるよう背景色を動的に変更している点。以前のセーブデータ構造を壊さないよう、ロード時に未定義の新しいプロパティ(isProfitable)を初期化し後方互換性を担保している。
+    AI-DEV-HANDOFF-END -->
+
+</body>
+</html>

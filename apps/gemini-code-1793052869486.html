@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="app-identifier" content="AI-APP-PORTFOLIO">
+  <title>ゆっくり・ずんだもん動画生成Webツール</title>
+  
+  <!-- Tailwind CSS & Lucide Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Shared Data Script -->
+  <script src="https://morinokum.github.io/my-website/app-data.js" onerror="window.APP_SHARED_DATA_FAILED=true;"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            zunda: {
+              50: '#f0fdf4',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+            },
+            reimu: '#ef4444',
+            marisa: '#eab308',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800;900&family=Inter:wght@400;600;700&display=swap');
+    
+    body {
+      font-family: 'Inter', 'M PLUS Rounded 1c', sans-serif;
+      user-select: none;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .canvas-container {
+      aspect-ratio: 16 / 9;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col overflow-x-hidden">
+
+  <!-- Modal / Toast Notification Container -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Custom Modal Dialog -->
+  <div id="modal-backdrop" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
+      <h3 id="modal-title" class="text-lg font-bold text-slate-100">通知</h3>
+      <p id="modal-message" class="text-sm text-slate-300 whitespace-pre-line"></p>
+      <div class="flex justify-end gap-2 pt-2" id="modal-actions">
+        <button id="modal-ok-btn" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AREA A: Header & Toolbar -->
+  <header class="bg-slate-900 border-b border-slate-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-40">
+    <!-- Brand / Title -->
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-950/50">
+        <i data-lucide="video" class="w-5 h-5 text-white"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <input type="text" id="project-title-input" class="bg-transparent text-base font-bold text-slate-100 focus:bg-slate-800 px-2 py-0.5 rounded border border-transparent focus:border-slate-700 outline-none transition" value="ゆっくり＆ずんだもん解説動画">
+          <span class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-medium">v1.0</span>
+        </div>
+        <p class="text-xs text-slate-400 px-2">ブラウザ完結型 動画生成スタジオ</p>
+      </div>
+    </div>
+
+    <!-- Toolbar Buttons -->
+    <div class="flex items-center flex-wrap gap-2">
+      <!-- File Management -->
+      <div class="flex items-center bg-slate-800/80 p-1 rounded-lg border border-slate-700/60">
+        <button id="btn-new-proj" class="px-2.5 py-1.5 hover:bg-slate-700 text-slate-300 hover:text-white rounded text-xs flex items-center gap-1.5 transition" title="新規プロジェクト">
+          <i data-lucide="file-plus" class="w-3.5 h-3.5"></i> 新規
+        </button>
+        <button id="btn-save-local" class="px-2.5 py-1.5 hover:bg-slate-700 text-slate-300 hover:text-white rounded text-xs flex items-center gap-1.5 transition" title="ブラウザに保存">
+          <i data-lucide="save" class="w-3.5 h-3.5"></i> 保存
+        </button>
+        <button id="btn-export-json" class="px-2.5 py-1.5 hover:bg-slate-700 text-slate-300 hover:text-white rounded text-xs flex items-center gap-1.5 transition" title="JSONエクスポート">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i> JSON出力
+        </button>
+        <label class="px-2.5 py-1.5 hover:bg-slate-700 text-slate-300 hover:text-white rounded text-xs flex items-center gap-1.5 cursor-pointer transition" title="JSONインポート">
+          <i data-lucide="upload" class="w-3.5 h-3.5"></i> 読込
+          <input type="file" id="file-import-json" accept=".json" class="hidden">
+        </label>
+      </div>
+
+      <!-- Play & Render Actions -->
+      <div class="flex items-center gap-2">
+        <button id="btn-play-all" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-emerald-950 transition">
+          <i data-lucide="play" class="w-4 h-4 fill-current"></i> 全編再生
+        </button>
+        <button id="btn-export-video" class="px-4 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-indigo-950 transition">
+          <i data-lucide="film" class="w-4 h-4"></i> 動画出力 (.webm)
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Video Export Progress Overlay -->
+  <div id="export-progress-banner" class="hidden bg-indigo-950/90 border-b border-indigo-800 px-4 py-2 flex items-center justify-between gap-4 text-xs">
+    <div class="flex items-center gap-3 flex-1">
+      <i data-lucide="loader-2" class="w-4 h-4 text-indigo-400 animate-spin"></i>
+      <span class="font-semibold text-indigo-200">動画レンダリング中... 画面を閉じないでください</span>
+      <div class="flex-1 bg-indigo-900/60 rounded-full h-2 overflow-hidden max-w-md">
+        <div id="export-progress-bar" class="bg-indigo-400 h-full w-0 transition-all duration-200"></div>
+      </div>
+      <span id="export-progress-text" class="text-indigo-300 font-mono">0%</span>
+    </div>
+    <button id="btn-cancel-export" class="text-indigo-300 hover:text-white underline">キャンセル</button>
+  </div>
+
+  <!-- Main Content Grid Layout -->
+  <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 overflow-hidden max-w-[1920px] mx-auto w-full">
+
+    <!-- AREA C: Left Sidebar - Assets & Settings (3 cols) -->
+    <aside class="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-xl flex flex-col overflow-hidden h-[500px] lg:h-auto">
+      <!-- Sidebar Tabs Header -->
+      <div class="flex border-b border-slate-800 bg-slate-950/50">
+        <button data-tab="tab-chars" class="tab-btn flex-1 py-2.5 text-xs font-semibold text-emerald-400 border-b-2 border-emerald-500 flex items-center justify-center gap-1.5 transition">
+          <i data-lucide="users" class="w-3.5 h-3.5"></i> キャラクター
+        </button>
+        <button data-tab="tab-media" class="tab-btn flex-1 py-2.5 text-xs font-semibold text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center justify-center gap-1.5 transition">
+          <i data-lucide="image" class="w-3.5 h-3.5"></i> 背景・BGM
+        </button>
+        <button data-tab="tab-settings" class="tab-btn flex-1 py-2.5 text-xs font-semibold text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center justify-center gap-1.5 transition">
+          <i data-lucide="settings" class="w-3.5 h-3.5"></i> 音声設定
+        </button>
+      </div>
+
+      <!-- Tab Contents Container -->
+      <div class="flex-1 overflow-y-auto p-3 space-y-4">
+
+        <!-- Tab 1: Characters -->
+        <div id="tab-chars" class="tab-content space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">登録キャラクター</span>
+            <button id="btn-add-char" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded border border-slate-700 flex items-center gap-1">
+              <i data-lucide="plus" class="w-3 h-3"></i> 追加
+            </button>
+          </div>
+          <div id="character-list" class="space-y-2">
+            <!-- Dynamically Rendered Characters -->
+          </div>
+        </div>
+
+        <!-- Tab 2: Media & Background -->
+        <div id="tab-media" class="tab-content hidden space-y-4">
+          <!-- Background Selector -->
+          <div class="space-y-2">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">背景設定</span>
+            <div class="grid grid-cols-2 gap-2">
+              <button data-bg-type="preset" data-bg-val="classroom" class="bg-option bg-slate-800 hover:bg-slate-700 p-2 rounded-lg border border-slate-700 text-left transition">
+                <div class="h-12 bg-indigo-900/40 rounded flex items-center justify-center text-xs text-indigo-300 font-bold border border-indigo-500/20 mb-1">🏫 教室</div>
+                <div class="text-[11px] text-slate-300 font-medium">教室（アニメ風）</div>
+              </button>
+              <button data-bg-type="preset" data-bg-val="living" class="bg-option bg-slate-800 hover:bg-slate-700 p-2 rounded-lg border border-slate-700 text-left transition">
+                <div class="h-12 bg-amber-900/40 rounded flex items-center justify-center text-xs text-amber-300 font-bold border border-amber-500/20 mb-1">🏠 部屋</div>
+                <div class="text-[11px] text-slate-300 font-medium">和室・リビング</div>
+              </button>
+              <button data-bg-type="preset" data-bg-val="dark_gradient" class="bg-option bg-slate-800 hover:bg-slate-700 p-2 rounded-lg border border-slate-700 text-left transition">
+                <div class="h-12 bg-gradient-to-br from-slate-900 to-indigo-950 rounded flex items-center justify-center text-xs text-slate-400 font-bold mb-1">🌌 ダークグラデ</div>
+                <div class="text-[11px] text-slate-300 font-medium">モダン・シック</div>
+              </button>
+              <button data-bg-type="preset" data-bg-val="green_screen" class="bg-option bg-slate-800 hover:bg-slate-700 p-2 rounded-lg border border-slate-700 text-left transition">
+                <div class="h-12 bg-emerald-500 rounded flex items-center justify-center text-xs text-slate-950 font-bold mb-1">🟩 BB (クロマキー)</div>
+                <div class="text-[11px] text-slate-300 font-medium">グリーンバック</div>
+              </button>
+            </div>
+            <label class="block cursor-pointer">
+              <span class="text-xs text-slate-400">カスタム背景画像をアップロード:</span>
+              <input type="file" id="bg-upload-input" accept="image/*" class="block w-full text-xs text-slate-400 mt-1 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700">
+            </label>
+          </div>
+
+          <!-- BGM Settings -->
+          <div class="space-y-2 pt-3 border-t border-slate-800">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">BGM トラック</span>
+            <div class="space-y-2">
+              <label class="block">
+                <span class="text-xs text-slate-400">BGMファイル (MP3/WAV):</span>
+                <input type="file" id="bgm-upload-input" accept="audio/*" class="block w-full text-xs text-slate-400 mt-1 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700">
+              </label>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-400 w-16">音量:</span>
+                <input type="range" id="bgm-volume-slider" min="0" max="1" step="0.05" value="0.2" class="flex-1 accent-emerald-500 h-1 bg-slate-800 rounded">
+                <span id="bgm-volume-label" class="text-xs text-slate-300 font-mono w-8">20%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Audio Synthesis Settings -->
+        <div id="tab-settings" class="tab-content hidden space-y-4">
+          <div class="space-y-3">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">音声合成エンジン設定</span>
+            
+            <div class="space-y-2">
+              <label class="block text-xs text-slate-300">プライマリ合成エンジン:</label>
+              <select id="setting-voice-engine" class="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+                <option value="voicevox">VOICEVOX API (ローカル/外部)</option>
+                <option value="webspeech" selected>Web Speech API (ブラウザ標準)</option>
+              </select>
+            </div>
+
+            <div id="voicevox-settings-box" class="space-y-2 p-3 bg-slate-950/60 rounded-lg border border-slate-800">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-semibold text-slate-300">VOICEVOX URL:</label>
+                <span id="voicevox-status-badge" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">未接続</span>
+              </div>
+              <input type="text" id="setting-voicevox-url" value="http://localhost:50021" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-mono">
+              <button id="btn-test-voicevox" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-1 rounded text-xs border border-slate-700 transition">
+                接続テスト
+              </button>
+            </div>
+
+            <p class="text-[11px] text-slate-400 leading-relaxed bg-slate-950/40 p-2.5 rounded border border-slate-800/80">
+              💡 <strong class="text-slate-300">VOICEVOX連携について:</strong><br>
+              VOICEVOXアプリを起動し `http://localhost:50021` でAPI接続を許可すると、ずんだもんや四国めたんの高音質音声が自動適用されます。未起動時はブラウザ組み込みのWeb Speech APIに自動フォールバックします。
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- AREA B: Center Canvas Preview & Controls (5 cols) -->
+    <main class="lg:col-span-5 flex flex-col gap-3">
+      <!-- 16:9 Responsive Canvas Container -->
+      <div class="relative w-full bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex flex-col justify-center items-center group">
+        <div class="canvas-container w-full relative bg-slate-950" id="canvas-wrapper">
+          <canvas id="preview-canvas" width="1280" height="720" class="w-full h-full object-contain block"></canvas>
+
+          <!-- Watermark / Status Tag -->
+          <div class="absolute top-3 left-3 bg-slate-950/70 backdrop-blur border border-slate-800/80 text-slate-300 text-[10px] px-2 py-1 rounded-md flex items-center gap-1.5 pointer-events-none z-10">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            1280x720 (16:9) プレビュー
+          </div>
+        </div>
+      </div>
+
+      <!-- Playback Controls Toolbar -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
+        <!-- Seek Slider & Time -->
+        <div class="flex items-center gap-3">
+          <span id="time-current" class="text-xs font-mono text-slate-400 w-12 text-right">00:00</span>
+          <input type="range" id="seek-slider" min="0" max="100" value="0" step="0.1" class="flex-1 accent-emerald-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+          <span id="time-total" class="text-xs font-mono text-slate-400 w-12">00:00</span>
+        </div>
+
+        <!-- Buttons Row -->
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5">
+            <button id="btn-stop" class="p-2 hover:bg-slate-800 text-slate-300 rounded-lg transition" title="停止・最初に戻る">
+              <i data-lucide="square" class="w-4 h-4"></i>
+            </button>
+            <button id="btn-play-pause" class="p-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow transition" title="再生 / 一時停止">
+              <!-- JSで動的に変更されます -->
+              <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span id="status-dialogue-count" class="text-xs text-slate-400">全 0 行の台本</span>
+            <button id="btn-fullscreen" class="p-2 hover:bg-slate-800 text-slate-300 rounded-lg transition" title="全画面プレビュー">
+              <i data-lucide="maximize-2" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- AREA D: Right/Bottom Timeline & Script Editor (4 cols) -->
+    <section class="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-xl flex flex-col overflow-hidden h-[600px] lg:h-auto">
+      <!-- Header -->
+      <div class="px-4 py-3 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="message-square-text" class="w-4 h-4 text-emerald-400"></i>
+          <h2 class="text-xs font-bold text-slate-200 uppercase tracking-wider">台本エディタ・タイムライン</h2>
+        </div>
+        <button id="btn-add-line" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium flex items-center gap-1 shadow transition">
+          <i data-lucide="plus" class="w-3.5 h-3.5"></i> セリフ追加
+        </button>
+      </div>
+
+      <!-- Script List (Scrollable Area) -->
+      <div id="script-container" class="flex-1 overflow-y-auto p-3 space-y-3">
+        <!-- Dialogue Cards Loaded Dynamically -->
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Application Logic -->
+  <script>
+    /* ===================================================================
+       1. INITIAL DATA & PRESETS (SVG Generation & App Shared Data)
+       =================================================================== */
+
+    // Generate Standalone SVG Asset Data URLs for Characters
+    function createCharacterSVG(type, emotion, mouthOpen = false, eyeClosed = false) {
+      let bgSkin = "#ffeedd";
+      let eyeColor = "#333333";
+      let hairColor = "#333";
+      let mouthPath = mouthOpen 
+        ? '<ellipse cx="100" cy="125" rx="12" ry="16" fill="#e11d48" />' 
+        : '<path d="M 88 122 Q 100 130 112 122" stroke="#444" stroke-width="3" fill="none" stroke-linecap="round" />';
+
+      let eyes = eyeClosed
+        ? '<path d="M 75 95 Q 85 100 95 95 M 105 95 Q 115 100 125 95" stroke="#333" stroke-width="3" fill="none" />'
+        : `<circle cx="85" cy="95" r="8" fill="${eyeColor}" /><circle cx="115" cy="95" r="8" fill="${eyeColor}" /><circle cx="87" cy="92" r="3" fill="#fff" /><circle cx="117" cy="92" r="3" fill="#fff" />`;
+
+      if (emotion === 'happy') {
+        eyes = '<path d="M 75 98 Q 85 88 95 98 M 105 98 Q 115 88 125 98" stroke="#333" stroke-width="3.5" fill="none" stroke-linecap="round" />';
+        if (!mouthOpen) mouthPath = '<path d="M 85 118 Q 100 135 115 118 Z" fill="#e11d48" />';
+      } else if (emotion === 'angry') {
+        eyes = eyeClosed 
+          ? '<path d="M 75 95 L 95 100 M 125 95 L 105 100" stroke="#333" stroke-width="3" />'
+          : `<circle cx="85" cy="95" r="7" fill="${eyeColor}" /><circle cx="115" cy="95" r="7" fill="${eyeColor}" /><path d="M 75 85 L 95 92 M 125 85 L 105 92" stroke="#333" stroke-width="3.5" />`;
+        if (!mouthOpen) mouthPath = '<path d="M 88 128 Q 100 120 112 128" stroke="#444" stroke-width="3" fill="none" stroke-linecap="round" />';
+      } else if (emotion === 'sad') {
+        eyes = `<circle cx="85" cy="95" r="7" fill="${eyeColor}" /><circle cx="115" cy="95" r="7" fill="${eyeColor}" /><path d="M 75 90 L 95 85 M 125 90 L 105 85" stroke="#333" stroke-width="3" />`;
+        if (!mouthOpen) mouthPath = '<path d="M 90 128 Q 100 120 110 128" stroke="#444" stroke-width="3" fill="none" />';
+      }
+
+      let extraFeature = "";
+
+      if (type === 'zundamon') {
+        hairColor = "#84cc16"; 
+        extraFeature = `
+          <!-- Zunda Mochi Ears -->
+          <g>
+            <path d="M 40 60 Q 15 30 30 10 Q 55 15 55 50 Z" fill="#65a30d" stroke="#3f6212" stroke-width="2" />
+            <circle cx="33" cy="28" r="5" fill="#a3e635" />
+            <path d="M 160 60 Q 185 30 170 10 Q 145 15 145 50 Z" fill="#65a30d" stroke="#3f6212" stroke-width="2" />
+            <circle cx="167" cy="28" r="5" fill="#a3e635" />
+          </g>
+          <!-- Outfit -->
+          <path d="M 60 150 L 140 150 L 150 200 L 50 200 Z" fill="#f8fafc" stroke="#e2e8f0" />
+          <path d="M 85 150 L 100 170 L 115 150 Z" fill="#65a30d" />
+        `;
+      } else if (type === 'reimu') {
+        hairColor = "#451a03"; 
+        extraFeature = `
+          <!-- Reimu Red Big Ribbon -->
+          <path d="M 40 40 Q 100 60 100 35 Q 100 60 160 40 Q 180 80 100 60 Z" fill="#dc2626" />
+          <circle cx="100" cy="45" r="8" fill="#991b1b" />
+          <!-- Outfit -->
+          <path d="M 50 150 L 150 150 L 160 200 L 40 200 Z" fill="#dc2626" />
+          <path d="M 80 150 L 100 180 L 120 150 Z" fill="#ffffff" />
+        `;
+      } else if (type === 'marisa') {
+        hairColor = "#facc15"; 
+        extraFeature = `
+          <!-- Marisa Witch Hat -->
+          <path d="M 20 65 Q 100 50 180 65 Q 150 60 140 10 Q 100 0 60 10 Q 50 60 20 65 Z" fill="#1e293b" />
+          <path d="M 45 60 Q 100 50 155 60 L 150 50 Q 100 42 50 50 Z" fill="#f8fafc" />
+          <!-- Outfit -->
+          <path d="M 50 150 L 150 150 L 160 200 L 40 200 Z" fill="#0f172a" />
+          <path d="M 70 150 L 130 150 L 135 200 L 65 200 Z" fill="#ffffff" />
+        `;
+      }
+
+      const svgString = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="400" height="400">
+          ${extraFeature}
+          <!-- Base Face -->
+          <circle cx="100" cy="105" r="48" fill="${bgSkin}" />
+          <!-- Hair Base -->
+          <path d="M 52 100 Q 50 55 100 55 Q 150 55 148 100 Q 135 70 100 70 Q 65 70 52 100 Z" fill="${hairColor}" />
+          <!-- Side Hair Bangs -->
+          <path d="M 50 90 Q 40 120 48 140 Q 58 120 56 95 Z" fill="${hairColor}" />
+          <path d="M 150 90 Q 160 120 152 140 Q 142 120 144 95 Z" fill="${hairColor}" />
+          <!-- Eyes & Mouth -->
+          <line x1="0" y1="0" x2="0" y2="0" />
+          ${eyes}
+          ${mouthPath}
+        </svg>
+      `.trim();
+
+      return "data:image/svg+xml;utf8," + encodeURIComponent(svgString);
+    }
+
+    // Preset Default Data Structure
+    const DEFAULT_PROJECT = {
+      projectInfo: {
+        title: "ゆっくり＆ずんだもん解説動画",
+        resolution: { width: 1280, height: 720 },
+        fps: 30
+      },
+      settings: {
+        bgType: "preset",
+        bgValue: "classroom",
+        bgCustomUrl: "",
+        bgmUrl: "",
+        bgmVolume: 0.2,
+        voiceEngine: "webspeech",
+        voicevoxUrl: "http://localhost:50021"
+      },
+      characters: [
+        {
+          id: "char_zundamon",
+          name: "ずんだもん",
+          speakerId: 3,
+          voiceType: "zundamon",
+          styleColor: "#22c55e",
+          defaultSpeed: 1.15,
+          defaultPitch: 1.35,
+          assets: {
+            normal: createCharacterSVG('zundamon', 'normal', false),
+            normal_open: createCharacterSVG('zundamon', 'normal', true),
+            happy: createCharacterSVG('zundamon', 'happy', false),
+            happy_open: createCharacterSVG('zundamon', 'happy', true),
+            angry: createCharacterSVG('zundamon', 'angry', false),
+            angry_open: createCharacterSVG('zundamon', 'angry', true),
+            blink: createCharacterSVG('zundamon', 'normal', false, true)
+          }
+        },
+        {
+          id: "char_reimu",
+          name: "博麗霊夢",
+          speakerId: 0,
+          voiceType: "reimu",
+          styleColor: "#ef4444",
+          defaultSpeed: 1.0,
+          defaultPitch: 1.1,
+          assets: {
+            normal: createCharacterSVG('reimu', 'normal', false),
+            normal_open: createCharacterSVG('reimu', 'normal', true),
+            happy: createCharacterSVG('reimu', 'happy', false),
+            happy_open: createCharacterSVG('reimu', 'happy', true),
+            angry: createCharacterSVG('reimu', 'angry', false),
+            angry_open: createCharacterSVG('reimu', 'angry', true),
+            blink: createCharacterSVG('reimu', 'normal', false, true)
+          }
+        },
+        {
+          id: "char_marisa",
+          name: "霧雨魔理沙",
+          speakerId: 8,
+          voiceType: "marisa",
+          styleColor: "#eab308",
+          defaultSpeed: 1.1,
+          defaultPitch: 0.9,
+          assets: {
+            normal: createCharacterSVG('marisa', 'normal', false),
+            normal_open: createCharacterSVG('marisa', 'normal', true),
+            happy: createCharacterSVG('marisa', 'happy', false),
+            happy_open: createCharacterSVG('marisa', 'happy', true),
+            angry: createCharacterSVG('marisa', 'angry', false),
+            angry_open: createCharacterSVG('marisa', 'angry', true),
+            blink: createCharacterSVG('marisa', 'normal', false, true)
+          }
+        }
+      ],
+      dialogues: [
+        {
+          id: "line_1",
+          characterId: "char_zundamon",
+          emotion: "happy",
+          position: "right",
+          text: "のだ！今日もゆっくり解説を始めるのだ！",
+          speed: 1.15,
+          pitch: 1.35,
+          duration: 3.2
+        },
+        {
+          id: "line_2",
+          characterId: "char_reimu",
+          emotion: "normal",
+          position: "left",
+          text: "ゆっくりしていってね！今回はWebブラウザだけで動画を作るわよ。",
+          speed: 1.0,
+          pitch: 1.1,
+          duration: 4.0
+        },
+        {
+          id: "line_3",
+          characterId: "char_marisa",
+          emotion: "happy",
+          position: "center",
+          text: "インストール不要で簡単に出力できるんだぜ！",
+          speed: 1.1,
+          pitch: 0.9,
+          duration: 3.0
+        }
+      ]
+    };
+
+    /* ===================================================================
+       2. GLOBAL APP STATE
+       =================================================================== */
+    let project = JSON.parse(JSON.stringify(DEFAULT_PROJECT));
+    let isPlaying = false;
+    let currentPlaybackTime = 0;
+    let totalDuration = 0;
+    let activeDialogueIndex = -1;
+    let lastPlayedDialogueIndex = -1; // 二重再生防止用バグ修正
+    let animationFrameId = null;
+    let loadedImageCache = {};
+    let bgmAudioNode = null;
+
+    // Web Audio Context for Synthesis / Audio Recording
+    let audioCtx = null;
+    let audioDestination = null;
+
+    /* ===================================================================
+       3. DOM ELEMENTS
+       =================================================================== */
+    const canvas = document.getElementById('preview-canvas');
+    const ctx = canvas.getContext('2d');
+    const projectTitleInput = document.getElementById('project-title-input');
+    const scriptContainer = document.getElementById('script-container');
+    const characterList = document.getElementById('character-list');
+    const timeCurrent = document.getElementById('time-current');
+    const timeTotal = document.getElementById('time-total');
+    const seekSlider = document.getElementById('seek-slider');
+    const btnPlayPause = document.getElementById('btn-play-pause');
+    const btnStop = document.getElementById('btn-stop');
+    const btnPlayAll = document.getElementById('btn-play-all');
+    const statusDialogueCount = document.getElementById('status-dialogue-count');
+
+    /* ===================================================================
+       4. INITIALIZATION & STORAGE
+       =================================================================== */
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+
+      // Load shared data or localStorage if available
+      loadSavedProject();
+
+      // Setup Event Listeners
+      setupUIEventListeners();
+
+      // Calculate Timeline & Render First Frame
+      recalculateTimelineDurations();
+      preloadAllAssets();
+      // フォントロード対策として少し遅らせて初回描画
+      setTimeout(() => renderFrame(), 100);
+    });
+
+    function loadSavedProject() {
+      const localData = localStorage.getItem('yukkuri_zunda_studio_project_v1');
+      if (localData) {
+        try {
+          project = JSON.parse(localData);
+        } catch(e) {
+          console.error("LocalStorage load error", e);
+        }
+      } else if (window.APP_SHARED_DATA && window.APP_SHARED_DATA.project) {
+        project = Object.assign({}, DEFAULT_PROJECT, window.APP_SHARED_DATA.project);
+      }
+
+      projectTitleInput.value = project.projectInfo.title || "ゆっくり＆ずんだもん解説動画";
+      renderScriptList();
+      renderCharacterList();
+    }
+
+    function saveProjectToLocalStorage() {
+      project.projectInfo.title = projectTitleInput.value;
+      localStorage.setItem('yukkuri_zunda_studio_project_v1', JSON.stringify(project));
+      showToast("プロジェクトを保存しました", "success");
+    }
+
+    /* ===================================================================
+       5. ASSET PRELOADER & IMAGE CACHE
+       =================================================================== */
+    function preloadAllAssets() {
+      project.characters.forEach(char => {
+        if (char.assets) {
+          Object.keys(char.assets).forEach(key => {
+            const url = char.assets[key];
+            if (url && !loadedImageCache[url]) {
+              const img = new Image();
+              img.src = url;
+              loadedImageCache[url] = img;
+            }
+          });
+        }
+      });
+    }
+
+    /* ===================================================================
+       6. CANVAS RENDERER ENGINE
+       =================================================================== */
+    function renderFrame() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBackground();
+
+      let currentAccTime = 0;
+      activeDialogueIndex = -1;
+
+      for (let i = 0; i < project.dialogues.length; i++) {
+        const d = project.dialogues[i];
+        if (currentPlaybackTime >= currentAccTime && currentPlaybackTime <= currentAccTime + d.duration) {
+          activeDialogueIndex = i;
+          break;
+        }
+        currentAccTime += d.duration;
+      }
+
+      updateActiveScriptCardUI();
+
+      if (activeDialogueIndex !== -1) {
+        const currentDialogue = project.dialogues[activeDialogueIndex];
+        const speaker = project.characters.find(c => c.id === currentDialogue.characterId);
+        const dialogueStartTime = getDialogueStartTime(activeDialogueIndex);
+        const timeInDialogue = currentPlaybackTime - dialogueStartTime;
+        const isSpeaking = isPlaying && timeInDialogue < currentDialogue.duration;
+        const isMouthOpen = isSpeaking && (Math.sin(timeInDialogue * 18) > 0);
+        const isBlinking = (Math.floor(currentPlaybackTime * 2) % 7 === 0) && (Math.floor(currentPlaybackTime * 10) % 3 === 0);
+
+        if (speaker) {
+          drawCharacter(speaker, currentDialogue.emotion, currentDialogue.position, isMouthOpen, isBlinking);
+        }
+        drawSubtitle(speaker, currentDialogue.text);
+      } else {
+        const defaultSpeaker = project.characters[0];
+        if (defaultSpeaker) {
+          drawCharacter(defaultSpeaker, 'normal', 'center', false, false);
+        }
+      }
+
+      timeCurrent.textContent = formatTime(currentPlaybackTime);
+      timeTotal.textContent = formatTime(totalDuration);
+      if (totalDuration > 0) {
+        seekSlider.value = (currentPlaybackTime / totalDuration) * 100;
+      }
+    }
+
+    function drawBackground() {
+      const bgType = project.settings.bgType || "preset";
+      const bgVal = project.settings.bgValue || "classroom";
+
+      if (bgType === "custom" && project.settings.bgCustomUrl) {
+        const img = loadedImageCache[project.settings.bgCustomUrl];
+        if (img && img.complete) {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          return;
+        }
+      }
+
+      if (bgVal === "classroom") {
+        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0, "#1e1b4b");
+        grad.addColorStop(0.6, "#312e81");
+        grad.addColorStop(1, "#0f172a");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+        ctx.fillRect(0, 480, canvas.width, 240);
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, 480);
+        ctx.lineTo(canvas.width, 480);
+        ctx.stroke();
+      } else if (bgVal === "living") {
+        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0, "#451a03");
+        grad.addColorStop(0.7, "#78350f");
+        grad.addColorStop(1, "#1c1917");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      } else if (bgVal === "green_screen") {
+        ctx.fillStyle = "#00ff00";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      } else {
+        const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        grad.addColorStop(0, "#0f172a");
+        grad.addColorStop(1, "#020617");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    function drawCharacter(speaker, emotion, position, isMouthOpen, isBlinking) {
+      let assetKey = emotion || 'normal';
+      if (isBlinking && speaker.assets['blink']) {
+        assetKey = 'blink';
+      } else if (isMouthOpen && speaker.assets[assetKey + '_open']) {
+        assetKey = assetKey + '_open';
+      }
+
+      const assetUrl = speaker.assets[assetKey] || speaker.assets['normal'];
+      let img = loadedImageCache[assetUrl];
+
+      if (!img) {
+        img = new Image();
+        img.src = assetUrl;
+        loadedImageCache[assetUrl] = img;
+      }
+
+      let posX = 640 - 200;
+      if (position === 'left') posX = 200;
+      if (position === 'right') posX = 1280 - 400 - 200;
+
+      const posY = 180;
+      const charWidth = 400;
+      const charHeight = 400;
+
+      if (img.complete && img.naturalWidth !== 0) {
+        ctx.drawImage(img, posX, posY, charWidth, charHeight);
+      }
+    }
+
+    function drawSubtitle(speaker, text) {
+      if (!text) return;
+
+      const boxX = 80;
+      const boxY = 540;
+      const boxWidth = 1280 - 160;
+      const boxHeight = 140;
+
+      ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 16);
+      ctx.fill();
+      ctx.stroke();
+
+      if (speaker) {
+        const tagX = boxX + 24;
+        const tagY = boxY - 20;
+        const tagWidth = 180;
+        const tagHeight = 40;
+
+        ctx.fillStyle = speaker.styleColor || "#22c55e";
+        ctx.beginPath();
+        ctx.roundRect(tagX, tagY, tagWidth, tagHeight, 10);
+        ctx.fill();
+
+        ctx.font = "bold 20px 'M PLUS Rounded 1c', sans-serif";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(speaker.name, tagX + (tagWidth / 2), tagY + (tagHeight / 2));
+      }
+
+      ctx.font = "bold 32px 'M PLUS Rounded 1c', sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const textX = 1280 / 2;
+      const textY = boxY + (boxHeight / 2) + 5;
+
+      ctx.strokeStyle = speaker ? speaker.styleColor : "#000000";
+      ctx.lineWidth = 8;
+      ctx.strokeText(text, textX, textY);
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 4;
+      ctx.strokeText(text, textX, textY);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(text, textX, textY);
+    }
+
+    /* ===================================================================
+       7. TIMELINE & SYNTHESIS SPEECH ENGINE
+       =================================================================== */
+    function recalculateTimelineDurations() {
+      totalDuration = project.dialogues.reduce((sum, d) => sum + (d.duration || 3.0), 0);
+      statusDialogueCount.textContent = `全 ${project.dialogues.length} 行の台本`;
+    }
+
+    function getDialogueStartTime(index) {
+      let t = 0;
+      for (let i = 0; i < index; i++) {
+        t += project.dialogues[i].duration || 3.0;
+      }
+      return t;
+    }
+
+    async function speakDialogue(dialogue) {
+      const char = project.characters.find(c => c.id === dialogue.characterId);
+      if (!char) return;
+
+      const engine = project.settings.voiceEngine || 'webspeech';
+
+      // 1. VOICEVOX Attempt
+      if (engine === 'voicevox' && project.settings.voicevoxUrl) {
+        try {
+          const queryRes = await fetch(`${project.settings.voicevoxUrl}/audio_query?text=${encodeURIComponent(dialogue.text)}&speaker=${char.speakerId}`, { method: 'POST' });
+          if (queryRes.ok) {
+            const queryData = await queryRes.json();
+            const synthRes = await fetch(`${project.settings.voicevoxUrl}/synthesis?speaker=${char.speakerId}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(queryData)
+            });
+            if (synthRes.ok) {
+              const blob = await synthRes.blob();
+              const audio = new Audio(URL.createObjectURL(blob));
+              
+              // 録画ストリームへのオーディオルート作成 (修正箇所)
+              if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+              if (!audioDestination) audioDestination = audioCtx.createMediaStreamAudioDestination();
+              
+              const source = audioCtx.createMediaElementSource(audio);
+              source.connect(audioCtx.destination); // 実際のスピーカー出力
+              source.connect(audioDestination); // 録画用ストリーム出力
+              
+              audio.play();
+              return;
+            }
+          }
+        } catch(e) {
+          console.warn("VOICEVOX API connection error, falling back to Web Speech");
+        }
+      }
+
+      // 2. Web Speech API (ブラウザ標準)
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(dialogue.text);
+        utterance.lang = 'ja-JP';
+        utterance.rate = dialogue.speed || char.defaultSpeed || 1.0;
+        utterance.pitch = dialogue.pitch || char.defaultPitch || 1.0;
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    /* ===================================================================
+       8. PLAYBACK CONTROLLER & LOOP
+       =================================================================== */
+    let lastTimestamp = null;
+
+    // アイコン更新のバグを修正した関数
+    function updatePlayPauseIcon(playing) {
+      if (playing) {
+        btnPlayPause.innerHTML = '<i data-lucide="pause" class="w-4 h-4 fill-current"></i>';
+      } else {
+        btnPlayPause.innerHTML = '<i data-lucide="play" class="w-4 h-4 fill-current"></i>';
+      }
+      lucide.createIcons({ root: btnPlayPause });
+    }
+
+    function playAll() {
+      if (project.dialogues.length === 0) return;
+      currentPlaybackTime = 0;
+      lastPlayedDialogueIndex = -1; // 修正箇所: 最初から再生時に履歴リセット
+      startPlayback();
+    }
+
+    function startPlayback() {
+      if (isPlaying) return;
+      isPlaying = true;
+      lastTimestamp = performance.now();
+      updatePlayPauseIcon(true);
+      animationLoop();
+    }
+
+    function pausePlayback() {
+      isPlaying = false;
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      updatePlayPauseIcon(false);
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    }
+
+    function stopPlayback() {
+      pausePlayback();
+      currentPlaybackTime = 0;
+      activeDialogueIndex = -1;
+      lastPlayedDialogueIndex = -1;
+      renderFrame();
+    }
+
+    function animationLoop(timestamp) {
+      if (!isPlaying) return;
+
+      if (timestamp && lastTimestamp) {
+        const delta = (timestamp - lastTimestamp) / 1000;
+        currentPlaybackTime += delta;
+
+        if (currentPlaybackTime >= totalDuration) {
+          currentPlaybackTime = totalDuration;
+          renderFrame();
+          pausePlayback();
+          return;
+        }
+
+        renderFrame();
+
+        // 修正箇所: 二重再生を防ぐために前回のインデックスと比較
+        if (activeDialogueIndex !== lastPlayedDialogueIndex && activeDialogueIndex >= 0) {
+          lastPlayedDialogueIndex = activeDialogueIndex;
+          speakDialogue(project.dialogues[activeDialogueIndex]);
+        }
+      }
+
+      lastTimestamp = timestamp || performance.now();
+      animationFrameId = requestAnimationFrame(animationLoop);
+    }
+
+    /* ===================================================================
+       9. VIDEO EXPORT (MEDIARECORDER + WEB AUDIO)
+       =================================================================== */
+    async function exportVideoWebM() {
+      if (project.dialogues.length === 0) {
+        showModal("出力エラー", "台本がありません。セリフを追加してください。");
+        return;
+      }
+
+      stopPlayback();
+
+      // Web Speech APIの場合は動画に音声が入らない仕様である旨を通知
+      if (project.settings.voiceEngine === 'webspeech') {
+        showToast("Web Speech APIは録画対象外のため音声は含まれません", "info");
+      }
+
+      const progressBanner = document.getElementById('export-progress-banner');
+      const progressBar = document.getElementById('export-progress-bar');
+      const progressText = document.getElementById('export-progress-text');
+      progressBanner.classList.remove('hidden');
+
+      // 1. Setup Canvas Stream
+      let canvasStream;
+      try {
+        canvasStream = canvas.captureStream(30);
+      } catch (e) {
+        showModal("エラー", "お使いのブラウザは動画出力（captureStream）に対応していません。");
+        progressBanner.classList.add('hidden');
+        return;
+      }
+
+      // 2. Setup Audio Recording Stream
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (!audioDestination) audioDestination = audioCtx.createMediaStreamAudioDestination();
+
+      const combinedTracks = [
+        ...canvasStream.getVideoTracks(),
+        ...audioDestination.stream.getAudioTracks() // Web Audio(VOICEVOX等)の音声
+      ];
+      const combinedStream = new MediaStream(combinedTracks);
+
+      let mediaRecorder;
+      const chunks = [];
+
+      try {
+        mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm;codecs=vp9,opus' });
+      } catch (e) {
+        mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm' });
+      }
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        if (chunks.length > 0) {
+          const blob = new Blob(chunks, { type: 'video/webm' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${project.projectInfo.title || 'video'}.webm`;
+          a.click();
+          showToast("動画（.webm）の出力が完了しました！", "success");
+        }
+        progressBanner.classList.add('hidden');
+      };
+
+      mediaRecorder.start();
+      currentPlaybackTime = 0;
+      isPlaying = true;
+      lastTimestamp = performance.now();
+      lastPlayedDialogueIndex = -1;
+
+      // 動画出力用キャンセルフラグ
+      let exportCanceled = false;
+      document.getElementById('btn-cancel-export').onclick = () => {
+        exportCanceled = true;
+        if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
+        stopPlayback();
+        showToast("動画出力をキャンセルしました", "info");
+      };
+
+      function exportStep(timestamp) {
+        // 中断処理のエラー修正
+        if (!isPlaying || exportCanceled) {
+          if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
+          return;
+        }
+
+        const delta = (timestamp - lastTimestamp) / 1000;
+        currentPlaybackTime += delta;
+        lastTimestamp = timestamp;
+
+        const progressPercent = Math.min(100, Math.floor((currentPlaybackTime / totalDuration) * 100));
+        progressBar.style.width = `${progressPercent}%`;
+        progressText.textContent = `${progressPercent}%`;
+
+        renderFrame();
+
+        // 録画時も音声をトリガー (修正箇所)
+        if (activeDialogueIndex !== lastPlayedDialogueIndex && activeDialogueIndex >= 0) {
+          lastPlayedDialogueIndex = activeDialogueIndex;
+          speakDialogue(project.dialogues[activeDialogueIndex]);
+        }
+
+        if (currentPlaybackTime < totalDuration) {
+          requestAnimationFrame(exportStep);
+        } else {
+          isPlaying = false;
+          if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
+        }
+      }
+
+      requestAnimationFrame(exportStep);
+    }
+
+    /* ===================================================================
+       10. UI BUILDERS & RENDERERS
+       =================================================================== */
+    function renderScriptList() {
+      scriptContainer.innerHTML = '';
+      project.dialogues.forEach((dialogue, index) => {
+        const card = document.createElement('div');
+        card.className = `script-card p-3 rounded-xl border bg-slate-950/70 border-slate-800 transition space-y-2.5`;
+        card.dataset.index = index;
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 flex-1">
+              <span class="text-xs font-mono text-slate-500 font-bold w-4">#${index + 1}</span>
+              <select class="select-speaker bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-bold focus:border-emerald-500">
+                ${project.characters.map(c => `<option value="${c.id}" ${c.id === dialogue.characterId ? 'selected' : ''}>${c.name}</option>`).join('')}
+              </select>
+              <select class="select-emotion bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300">
+                <option value="normal" ${dialogue.emotion === 'normal' ? 'selected' : ''}>通常</option>
+                <option value="happy" ${dialogue.emotion === 'happy' ? 'selected' : ''}>笑顔</option>
+                <option value="angry" ${dialogue.emotion === 'angry' ? 'selected' : ''}>怒り</option>
+                <option value="sad" ${dialogue.emotion === 'sad' ? 'selected' : ''}>困り/悲しい</option>
+              </select>
+              <select class="select-position bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300">
+                <option value="left" ${dialogue.position === 'left' ? 'selected' : ''}>左配置</option>
+                <option value="center" ${dialogue.position === 'center' ? 'selected' : ''}>中央配置</option>
+                <option value="right" ${dialogue.position === 'right' ? 'selected' : ''}>右配置</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-1">
+              <button class="btn-play-line p-1 hover:bg-slate-800 text-emerald-400 rounded transition" title="単体再生"><i data-lucide="volume-2" class="w-4 h-4"></i></button>
+              <button class="btn-move-up p-1 hover:bg-slate-800 text-slate-400 hover:text-slate-200 rounded transition" title="上へ移動"><i data-lucide="arrow-up" class="w-3.5 h-3.5"></i></button>
+              <button class="btn-move-down p-1 hover:bg-slate-800 text-slate-400 hover:text-slate-200 rounded transition" title="下へ移動"><i data-lucide="arrow-down" class="w-3.5 h-3.5"></i></button>
+              <button class="btn-delete-line p-1 hover:bg-red-950/50 text-slate-400 hover:text-red-400 rounded transition" title="削除"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+            </div>
+          </div>
+          <textarea class="input-text w-full bg-slate-900 border border-slate-700/80 rounded-lg p-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 resize-none h-14" placeholder="セリフテキストを入力...">${dialogue.text}</textarea>
+          <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+            <div class="flex items-center gap-3">
+              <label class="flex items-center gap-1"><span>速度:</span><input type="number" step="0.1" min="0.5" max="2.0" value="${dialogue.speed || 1.0}" class="input-speed w-12 bg-slate-900 border border-slate-700 rounded px-1 text-center text-slate-200"></label>
+              <label class="flex items-center gap-1"><span>秒数:</span><input type="number" step="0.1" min="0.5" max="30" value="${dialogue.duration || 3.0}" class="input-duration w-12 bg-slate-900 border border-slate-700 rounded px-1 text-center text-slate-200"></label>
+            </div>
+          </div>
+        `;
+
+        card.querySelector('.select-speaker').addEventListener('change', (e) => { dialogue.characterId = e.target.value; renderScriptList(); renderFrame(); });
+        card.querySelector('.select-emotion').addEventListener('change', (e) => { dialogue.emotion = e.target.value; renderFrame(); });
+        card.querySelector('.select-position').addEventListener('change', (e) => { dialogue.position = e.target.value; renderFrame(); });
+        card.querySelector('.input-text').addEventListener('input', (e) => {
+          dialogue.text = e.target.value;
+          dialogue.duration = Math.max(1.5, Math.round((e.target.value.length * 0.22) * 10) / 10);
+          card.querySelector('.input-duration').value = dialogue.duration;
+          recalculateTimelineDurations();
+          renderFrame();
+        });
+        card.querySelector('.input-speed').addEventListener('change', (e) => { dialogue.speed = parseFloat(e.target.value); });
+        card.querySelector('.input-duration').addEventListener('change', (e) => {
+          dialogue.duration = parseFloat(e.target.value);
+          recalculateTimelineDurations();
+          renderFrame();
+        });
+        card.querySelector('.btn-play-line').addEventListener('click', () => speakDialogue(dialogue));
+        card.querySelector('.btn-move-up').addEventListener('click', () => {
+          if (index > 0) {
+            const temp = project.dialogues[index];
+            project.dialogues[index] = project.dialogues[index - 1];
+            project.dialogues[index - 1] = temp;
+            renderScriptList();
+            recalculateTimelineDurations();
+            renderFrame();
+          }
+        });
+        card.querySelector('.btn-move-down').addEventListener('click', () => {
+          if (index < project.dialogues.length - 1) {
+            const temp = project.dialogues[index];
+            project.dialogues[index] = project.dialogues[index + 1];
+            project.dialogues[index + 1] = temp;
+            renderScriptList();
+            recalculateTimelineDurations();
+            renderFrame();
+          }
+        });
+        card.querySelector('.btn-delete-line').addEventListener('click', () => {
+          project.dialogues.splice(index, 1);
+          renderScriptList();
+          recalculateTimelineDurations();
+          renderFrame();
+        });
+
+        scriptContainer.appendChild(card);
+      });
+      lucide.createIcons({ root: scriptContainer });
+    }
+
+    function renderCharacterList() {
+      characterList.innerHTML = '';
+      project.characters.forEach((char) => {
+        const div = document.createElement('div');
+        div.className = "p-2.5 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between gap-3";
+        div.innerHTML = `
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center border text-xs font-bold text-white shadow" style="background-color: ${char.styleColor}">${char.name.charAt(0)}</div>
+            <div>
+              <div class="text-xs font-bold text-slate-200">${char.name}</div>
+              <div class="text-[10px] text-slate-400">VOICEVOX ID: ${char.speakerId}</div>
+            </div>
+          </div>
+          <input type="color" value="${char.styleColor}" class="color-picker w-6 h-6 rounded cursor-pointer bg-transparent border-0">
+        `;
+        div.querySelector('.color-picker').addEventListener('change', (e) => {
+          char.styleColor = e.target.value;
+          renderScriptList();
+          renderFrame();
+        });
+        characterList.appendChild(div);
+      });
+    }
+
+    function updateActiveScriptCardUI() {
+      const cards = scriptContainer.querySelectorAll('.script-card');
+      cards.forEach((card, idx) => {
+        if (idx === activeDialogueIndex) {
+          card.classList.add('border-emerald-500', 'bg-emerald-950/20');
+          card.classList.remove('border-slate-800', 'bg-slate-950/70');
+        } else {
+          card.classList.remove('border-emerald-500', 'bg-emerald-950/20');
+          card.classList.add('border-slate-800', 'bg-slate-950/70');
+        }
+      });
+    }
+
+    /* ===================================================================
+       11. EVENT LISTENERS SETUP
+       =================================================================== */
+    function setupUIEventListeners() {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('text-emerald-400', 'border-emerald-500');
+            b.classList.add('text-slate-400', 'border-transparent');
+          });
+          btn.classList.add('text-emerald-400', 'border-emerald-500');
+          btn.classList.remove('text-slate-400', 'border-transparent');
+          const tabId = btn.dataset.tab;
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+          document.getElementById(tabId).classList.remove('hidden');
+        });
+      });
+
+      document.querySelectorAll('.bg-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+          project.settings.bgType = "preset";
+          project.settings.bgValue = btn.dataset.bgVal;
+          renderFrame();
+          showToast("背景を変更しました", "info");
+        });
+      });
+
+      document.getElementById('bg-upload-input').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            project.settings.bgType = "custom";
+            project.settings.bgCustomUrl = evt.target.result;
+            const img = new Image();
+            img.src = evt.target.result;
+            loadedImageCache[evt.target.result] = img;
+            img.onload = () => renderFrame();
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      // 修正箇所: BGMイベント等の未実装部分を追加
+      document.getElementById('bgm-upload-input').addEventListener('change', (e) => {
+        showToast("BGM機能は今後のアップデートで実装予定です", "info");
+      });
+      document.getElementById('bgm-volume-slider').addEventListener('input', (e) => {
+        document.getElementById('bgm-volume-label').textContent = Math.round(e.target.value * 100) + "%";
+      });
+
+      document.getElementById('btn-add-line').addEventListener('click', () => {
+        const newLine = {
+          id: "line_" + Date.now(),
+          characterId: project.characters[0].id,
+          emotion: "normal",
+          position: "right",
+          text: "新しいセリフなのだ！",
+          speed: 1.0,
+          pitch: 1.0,
+          duration: 2.5
+        };
+        project.dialogues.push(newLine);
+        recalculateTimelineDurations();
+        renderScriptList();
+        renderFrame();
+      });
+
+      // 修正箇所: キャラクタ追加とフルスクリーンのイベントを追加
+      document.getElementById('btn-add-char').addEventListener('click', () => {
+        showToast("カスタムキャラクターの追加機能は今後のアップデートをお待ちください。", "info");
+      });
+      
+      document.getElementById('btn-fullscreen').addEventListener('click', () => {
+        const wrap = document.getElementById('canvas-wrapper');
+        if (!document.fullscreenElement) {
+          wrap.requestFullscreen().catch(err => {
+            showToast("全画面表示に失敗しました", "info");
+          });
+        } else {
+          document.exitFullscreen();
+        }
+      });
+
+      btnPlayPause.addEventListener('click', () => {
+        if (isPlaying) pausePlayback();
+        else startPlayback();
+      });
+      btnStop.addEventListener('click', stopPlayback);
+      btnPlayAll.addEventListener('click', playAll);
+
+      seekSlider.addEventListener('input', (e) => {
+        const percent = parseFloat(e.target.value);
+        currentPlaybackTime = (percent / 100) * totalDuration;
+        renderFrame();
+      });
+
+      document.getElementById('btn-save-local').addEventListener('click', saveProjectToLocalStorage);
+      document.getElementById('btn-new-proj').addEventListener('click', () => {
+        project = JSON.parse(JSON.stringify(DEFAULT_PROJECT));
+        recalculateTimelineDurations();
+        renderScriptList();
+        renderCharacterList();
+        renderFrame();
+        showToast("新規プロジェクトを作成しました", "info");
+      });
+      document.getElementById('btn-export-json').addEventListener('click', () => {
+        project.projectInfo.title = projectTitleInput.value;
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(project, null, 2));
+        const a = document.createElement('a');
+        a.href = dataStr;
+        a.download = `${project.projectInfo.title}.json`;
+        a.click();
+      });
+      document.getElementById('file-import-json').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            try {
+              project = JSON.parse(evt.target.result);
+              projectTitleInput.value = project.projectInfo.title || "プロジェクト";
+              recalculateTimelineDurations();
+              renderScriptList();
+              renderCharacterList();
+              preloadAllAssets();
+              renderFrame();
+              showToast("JSONプロジェクトを読み込みました", "success");
+            } catch(err) {
+              showModal("エラー", "無効なJSONファイルです。");
+            }
+          };
+          reader.readAsText(file);
+        }
+      });
+
+      document.getElementById('btn-export-video').addEventListener('click', exportVideoWebM);
+
+      document.getElementById('setting-voice-engine').addEventListener('change', (e) => {
+        project.settings.voiceEngine = e.target.value;
+      });
+
+      document.getElementById('btn-test-voicevox').addEventListener('click', async () => {
+        const url = document.getElementById('setting-voicevox-url').value;
+        const badge = document.getElementById('voicevox-status-badge');
+        badge.textContent = "接続確認中...";
+        try {
+          const res = await fetch(`${url}/version`);
+          if (res.ok) {
+            const ver = await res.text();
+            badge.textContent = `接続完了 (v${ver.replace(/"/g, '')})`;
+            badge.className = "text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 font-bold";
+            project.settings.voicevoxUrl = url;
+            showToast("VOICEVOXに接続成功しました！", "success");
+          } else {
+            throw new Error();
+          }
+        } catch(e) {
+          badge.textContent = "接続失敗";
+          badge.className = "text-[10px] px-1.5 py-0.5 rounded bg-red-950 text-red-400 font-bold";
+          showToast("VOICEVOXが見つかりません。Web Speech APIを使用します。", "info");
+        }
+      });
+    }
+
+    /* ===================================================================
+       12. HELPER UTILITIES (Toasts, Modals, Formatters)
+       =================================================================== */
+    function formatTime(seconds) {
+      if (isNaN(seconds)) return "00:00";
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function showToast(message, type = "info") {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      let bg = "bg-slate-900 border-slate-700 text-slate-200";
+      if (type === "success") bg = "bg-emerald-950 border-emerald-800 text-emerald-200";
+      toast.className = `px-4 py-2.5 rounded-lg border shadow-xl text-xs flex items-center gap-2 pointer-events-auto transition duration-300 transform translate-x-4 opacity-0 ${bg}`;
+      toast.innerHTML = `<i data-lucide="info" class="w-4 h-4"></i> ${message}`;
+      container.appendChild(toast);
+      lucide.createIcons({ root: toast });
+
+      setTimeout(() => toast.classList.remove('translate-x-4', 'opacity-0'), 10);
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-x-4');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    function showModal(title, message) {
+      const backdrop = document.getElementById('modal-backdrop');
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-message').textContent = message;
+      backdrop.classList.remove('hidden');
+      document.getElementById('modal-ok-btn').onclick = () => backdrop.classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

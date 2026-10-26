@@ -37,6 +37,14 @@
     <span id="count" style="color: #ccc; font-weight: bold;"></span>
   </div>
   <div class="grid" id="grid">
+      <div class="card" data-text="ゆっくり・ずんだもん動画生成Webツール 概要はまだ記載されていません。">
+        <h3>ゆっくり・ずんだもん動画生成Webツール</h3>
+        <div class="desc">概要はまだ記載されていません。</div>
+        <div class="buttons">
+          <a href="apps/web.html" class="btn" target="_blank">▶ Open</a>
+          <button class="btn copy" onclick="copyCode('web.html')">📋 Code</button>
+        </div>
+      </div>
       <div class="card" data-text="自動動画開発 ヴォイスボックス ほか 動画のシーン構成と音声(Voicebox)・映像プロンプトを一元管理・計画するツール">
         <h3>自動動画開発 ヴォイスボックス ほか</h3>
         <div class="desc">動画のシーン構成と音声(Voicebox)・映像プロンプトを一元管理・計画するツール</div>
@@ -72,7 +80,7 @@
   </div>
   <div id="toast">コピーしました！</div>
   <script>
-    document.getElementById('count').textContent = "全 4 ツール";
+    document.getElementById('count').textContent = "全 5 ツール";
     function search() {
       const q = document.getElementById('search').value.toLowerCase();
       document.querySelectorAll('.card').forEach(c => {

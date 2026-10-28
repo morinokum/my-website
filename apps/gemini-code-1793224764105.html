@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 必須条件: 識別用メタタグ -->
+    <meta name="identifier" content="AI-APP-PORTFOLIO">
+    <title>Thought Prism - 思考リフレーミングツール</title>
+    
+    <!-- 外部CDN: Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 外部CDN: FontAwesome (アイコン用) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- 必須条件: 外部共有データの読み込み（失敗時を想定し非同期にはしない、またはエラーハンドリングを行う） -->
+    <script src="https://morinokum.github.io/my-website/app-data.js" onerror="window.APP_SHARED_DATA_FAILED = true;"></script>
+
+    <style>
+        body { background-color: #f8fafc; font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; }
+        .glass-panel { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .lens-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .lens-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        /* スクロールバーの装飾 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+<!-- AI-DEV-HANDOFF-START
+タイトル: Thought Prism (思考プリズム)
+バージョン: 1.0.0
+目的・概要: ユーザーの抱える課題やアイデアを、複数の異なる視点（レンズ）から強制的にリフレーミングさせ、認知の偏りを防ぎ、新しいアプローチを発見するための発想支援Webツール。
+主要な機能・UI構成: メイン課題入力エリア（ヘッダー部）、動的に生成される視点レンズ（グリッド型カードUI）、各視点に対する思考の言語化・メモ機能、マークダウン形式でのエクスポート機能。
+データ構造・保存キー: LocalStorage key: `thought_prism_saved_state`. 構造: { topic: string, lensNotes: { [lensId]: string }, lastUpdated: number }
+実装済み機能: メイン課題入力、視点ごとのメモ自動保存（Local Storage）、外部設定（window.APP_SHARED_DATA）の読み込みとフォールバック機能、入力データのクリップボードエクスポート、データリセット。
+未実装・TODO: AI API（Gemini等）を連携し、入力した課題に対する「AIからの別視点提案」を自動生成する機能の追加。思考プロセスをノードベースで可視化するCanvasモードへの切り替え機能。
+設計上のこだわり・注意点: 「認知負荷バランサー」「Context Anchor」等との組み合わせを想定し、一時的な思考のバッファとして軽く使えるようシングルページSPAとして構築。外部データの取得失敗時もローカルのFallbackデータで完全に動作する堅牢な設計。
+AI-DEV-HANDOFF-END -->
+
+    <!-- ヘッダー -->
+    <header class="bg-indigo-600 text-white p-4 shadow-md sticky top-0 z-10">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold flex items-center gap-2">
+                <i class="fa-solid fa-prism"></i> <span id="ui-app-name">Thought Prism</span>
+            </h1>
+            <div class="flex gap-3">
+                <button id="btn-export" class="bg-indigo-500 hover:bg-indigo-400 px-4 py-2 rounded text-sm transition flex items-center gap-1">
+                    <i class="fa-solid fa-file-export"></i> エクスポート
+                </button>
+                <button id="btn-clear" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded text-sm transition flex items-center gap-1">
+                    <i class="fa-solid fa-trash-can"></i> クリア
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="flex-grow max-w-6xl mx-auto w-full p-4 md:p-6 flex flex-col gap-6">
+        
+        <!-- ステータス表示バー -->
+        <div id="status-bar" class="text-sm px-4 py-2 rounded bg-slate-200 text-slate-700 hidden">
+            <!-- 動的にメッセージを挿入 -->
+        </div>
+
+        <!-- コア課題入力セクション -->
+        <section class="glass-panel p-6 rounded-xl border border-slate-200">
+            <label for="core-topic" class="block text-lg font-bold text-indigo-900 mb-2">
+                <i class="fa-solid fa-bullseye text-indigo-500 mr-2"></i>中心となる課題・アイデア
+            </label>
+            <p class="text-sm text-slate-500 mb-3">今直面している問題や、展開したいアイデアを一つ書き出してください。</p>
+            <textarea id="core-topic" rows="2" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none text-lg" placeholder="例: 新しいWebアプリのアイデアがまとまらない..."></textarea>
+        </section>
+
+        <!-- レンズ（視点）セクション -->
+        <section>
+            <h2 class="text-xl font-bold text-slate-700 mb-4 border-l-4 border-indigo-500 pl-3">プリズムレンズによる思考の分光</h2>
+            <div id="lenses-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- JavaScriptでレンズカードを動的生成 -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- フッター -->
+    <footer class="text-center p-4 text-slate-400 text-sm mt-8 border-t border-slate-200">
+        &copy; 2026 AI-APP-PORTFOLIO - Thought Prism
+    </footer>
+
+    <!-- アプリケーションロジック -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- 1. データ定義と外部データの読み込み・フォールバック ---
+            
+            // フォールバック用のデフォルト設定（外部データが取得できなかった場合に使用）
+            const FALLBACK_DATA = {
+                appName: "Thought Prism",
+                welcomeMessage: "デフォルトの思考レンズがロードされました。",
+                lenses: [
+                    { id: 'reverse', icon: 'fa-arrow-right-arrow-left', name: '逆転のレンズ', desc: 'もしこの問題が実は「解決策」だったとしたら？逆の視点から見るとどうなる？' },
+                    { id: 'extreme', icon: 'fa-expand', name: '極端化のレンズ', desc: '予算・時間・リソースが「無限」にある場合、または「全く無い」場合はどうする？' },
+                    { id: 'alien', icon: 'fa-brands fa-space-awesome', name: '宇宙人のレンズ', desc: '地球の常識・業界の常識を全く知らない宇宙人に、この状況をどう説明する？' },
+                    { id: 'minimize', icon: 'fa-compress', name: '最小化のレンズ', desc: 'この課題を構成している「最小の要素（ボトルネック）」は具体的にどれか？' },
+                    { id: 'optimist', icon: 'fa-sun', name: '超楽天家のレンズ', desc: 'この状況から得られる「最高のメリット」や「最大のチャンス」は何か？' },
+                    { id: 'future', icon: 'fa-clock-rotate-left', name: '10年後のレンズ', desc: '10年後の未来から今のこの課題を振り返ったとき、どう評価されるだろうか？' }
+                ]
+            };
+
+            // 外部データ (window.APP_SHARED_DATA) とフォールバックの統合
+            let appConfig = FALLBACK_DATA;
+            const statusBar = document.getElementById('status-bar');
+
+            if (window.APP_SHARED_DATA_FAILED) {
+                showStatus("外部設定データ(app-data.js)の読み込みに失敗しました。ローカルのフォールバックデータで起動します。", "bg-yellow-100 text-yellow-800");
+            } else if (typeof window.APP_SHARED_DATA !== 'undefined') {
+                // 外部データが存在する場合はマージする（存在しないプロパティはフォールバックを使用）
+                appConfig = { ...FALLBACK_DATA, ...window.APP_SHARED_DATA };
+                showStatus("共有設定データ(app-data.js)を正常に読み込みました。", "bg-green-100 text-green-800");
+            } else {
+                showStatus("外部設定データが定義されていません。ローカルデータで起動します。", "bg-slate-200 text-slate-700");
+            }
+
+            // UIへの設定反映
+            document.getElementById('ui-app-name').textContent = appConfig.appName || FALLBACK_DATA.appName;
+
+            // --- 2. 状態管理とLocalStorage (自動保存) ---
+
+            const STORAGE_KEY = 'thought_prism_saved_state';
+            let appState = {
+                topic: "",
+                lensNotes: {}
+            };
+
+            // データのロード
+            function loadState() {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    try {
+                        appState = JSON.parse(saved);
+                    } catch (e) {
+                        console.error("データ復元エラー", e);
+                    }
+                }
+            }
+
+            // データのセーブ（デバウンス処理付きで入力時に自動保存）
+            let saveTimeout;
+            function saveState() {
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => {
+                    appState.lastUpdated = Date.now();
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+                    showStatus("変更を自動保存しました", "bg-indigo-50 text-indigo-700");
+                }, 1000);
+            }
+
+            // --- 3. UI構築とイベントバインディング ---
+
+            const coreTopicInput = document.getElementById('core-topic');
+            const lensesContainer = document.getElementById('lenses-container');
+
+            function renderApp() {
+                // 課題入力欄の復元
+                coreTopicInput.value = appState.topic || "";
+
+                // レンズカードの生成
+                lensesContainer.innerHTML = '';
+                const lensesToRender = appConfig.lenses || FALLBACK_DATA.lenses;
+
+                lensesToRender.forEach(lens => {
+                    // 以前の入力値があれば復元
+                    const savedNote = appState.lensNotes[lens.id] || "";
+
+                    const card = document.createElement('div');
+                    card.className = "lens-card bg-white p-5 rounded-xl border border-slate-200 flex flex-col h-full";
+                    card.innerHTML = `
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                                <i class="fa-solid ${lens.icon || 'fa-eye'}"></i>
+                            </div>
+                            <h3 class="font-bold text-slate-800">${lens.name}</h3>
+                        </div>
+                        <p class="text-xs text-slate-500 mb-4 flex-grow-0">${lens.desc}</p>
+                        <textarea data-lens-id="${lens.id}" rows="4" class="lens-input w-full flex-grow p-3 bg-slate-50 border border-slate-200 rounded text-sm focus:bg-white focus:ring-2 focus:ring-indigo-400 focus:outline-none resize-none" placeholder="このレンズを通して見えたことをメモ...">${savedNote}</textarea>
+                    `;
+                    lensesContainer.appendChild(card);
+                });
+
+                bindInputEvents();
+            }
+
+            // 入力イベントの設定
+            function bindInputEvents() {
+                // 課題入力のイベント
+                coreTopicInput.addEventListener('input', (e) => {
+                    appState.topic = e.target.value;
+                    saveState();
+                });
+
+                // 各レンズのテキストエリアのイベント
+                const lensInputs = document.querySelectorAll('.lens-input');
+                lensInputs.forEach(input => {
+                    input.addEventListener('input', (e) => {
+                        const lensId = e.target.getAttribute('data-lens-id');
+                        appState.lensNotes[lensId] = e.target.value;
+                        saveState();
+                    });
+                });
+            }
+
+            // ステータスバーの表示関数
+            function showStatus(message, classes) {
+                statusBar.textContent = message;
+                statusBar.className = `text-sm px-4 py-2 rounded mb-4 transition-opacity duration-300 ${classes}`;
+                statusBar.classList.remove('hidden');
+                
+                // 3秒後にフェードアウト
+                setTimeout(() => {
+                    statusBar.classList.add('opacity-0');
+                    setTimeout(() => {
+                        statusBar.classList.add('hidden');
+                        statusBar.classList.remove('opacity-0');
+                    }, 300);
+                }, 3000);
+            }
+
+            // --- 4. アクションボタン処理 ---
+
+            // エクスポート（クリップボードへコピー）
+            document.getElementById('btn-export').addEventListener('click', () => {
+                const lenses = appConfig.lenses || FALLBACK_DATA.lenses;
+                let exportText = `# Thought Prism: 思考リフレーミング結果\n\n`;
+                exportText += `## 中心となる課題\n${appState.topic || "未入力"}\n\n`;
+                exportText += `## 各視点からの分析\n`;
+
+                lenses.forEach(lens => {
+                    const note = appState.lensNotes[lens.id];
+                    if (note && note.trim() !== "") {
+                        exportText += `### ${lens.name}\n${note}\n\n`;
+                    }
+                });
+
+                navigator.clipboard.writeText(exportText).then(() => {
+                    alert("マークダウン形式でクリップボードにコピーしました。");
+                }).catch(err => {
+                    alert("コピーに失敗しました。");
+                    console.error(err);
+                });
+            });
+
+            // クリア機能
+            document.getElementById('btn-clear').addEventListener('click', () => {
+                if (confirm("入力したすべてのデータを消去しますか？")) {
+                    appState = { topic: "", lensNotes: {} };
+                    localStorage.removeItem(STORAGE_KEY);
+                    renderApp();
+                    showStatus("データをクリアしました", "bg-slate-200 text-slate-700");
+                }
+            });
+
+            // --- 5. アプリケーション初期化 ---
+            loadState();
+            renderApp();
+        });
+    </script>
+</body>
+</html>

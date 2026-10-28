@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serendipity Canvas - 思考結合器</title>
+    
+    <!-- 必須条件: メタタグによる識別 -->
+    <meta name="portfolio-identifier" content="AI-APP-PORTFOLIO">
+    
+    <!-- Tailwind CSS (外部CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 必須条件: 共通設定データの読み込みとフォールバック -->
+    <script>
+        // フォールバックデータ
+        window.APP_SHARED_DATA_FALLBACK = {
+            appName: "Serendipity Canvas",
+            version: "1.0.0",
+            primaryColor: "indigo",
+            maxIdeasToSpark: 2
+        };
+        // グローバル初期化
+        window.APP_SHARED_DATA = window.APP_SHARED_DATA || null;
+    </script>
+    <script src="https://morinokum.github.io/my-website/app-data.js" onerror="console.warn('外部データの読み込みに失敗しました。フォールバックを使用します。')"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+        body { font-family: 'Noto Sans JP', sans-serif; background-color: #f8fafc; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .idea-card { transition: all 0.2s; }
+        .idea-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+    </style>
+
+    <!-- AI-DEV-HANDOFF-START
+    タイトル: Serendipity Canvas (セレンディピティ・キャンバス)
+    バージョン: 1.0.0
+    目的・概要: ユーザーの既存ツール（Thought Prism, Diverge & Converge等）の系譜に連なる、アイデアの「偶然の結合（セレンディピティ）」を意図的に引き起こすためのクリエイティブ支援ツール。独立した思考の断片を記録し、ランダムに2つを掛け合わせることで、新しい視点やソリューション（フュージョン）を創出・保存する。
+    主要な機能・UI構成: 
+      - ヘッダー（外部データからのタイトル反映）
+      - アイデア入力フォーム（単一テキストボックス）
+      - Serendipity Spark（ランダム結合提案UI）
+      - 保存済みアイデアリスト（通常アイデアとフュージョンアイデアの色分けカードUI）
+    データ構造・保存キー: 
+      - ローカルストレージキー: `serendipity_canvas_data`
+      - データ形式: Array of Object `{ id: string, text: string, type: 'raw' | 'fusion', parentIds: string[], createdAt: number }`
+    実装済み機能: 外部データ(app-data.js)読み込みとフォールバック、LocalStorage永続化、アイデア追加・削除、ランダムフュージョン生成、結合アイデアの保存。
+    未実装・TODO: ノード間の関係性を視覚化するネットワークグラフ表示、ドラッグ＆ドロップによる手動結合機能、Markdown/CSVエクスポート機能。
+    設計上のこだわり・注意点: 「認知負荷バランサー」等の過去作の哲学を継承し、UIの複雑さを極力排除。強制的なランダム結合による「思考の拡散」と、それを再定義する「収束」を1画面でシームレスに行えるように設計。外部データの遅延読み込みにも対応するため、初期化ロジックはDOMContentLoadedにフック。
+    AI-DEV-HANDOFF-END -->
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- ヘッダー -->
+    <header class="bg-indigo-600 text-white shadow-md p-4 sticky top-0 z-10">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <h1 id="app-title" class="text-xl font-bold tracking-wider">Serendipity Canvas</h1>
+            <span id="app-version" class="text-indigo-200 text-sm"></span>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-4xl mx-auto w-full p-6 flex flex-col gap-8">
+        
+        <!-- アイデア入力エリア -->
+        <section class="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
+            <h2 class="text-lg font-bold mb-3 flex items-center text-slate-700">
+                <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                新しい思考の断片を追加
+            </h2>
+            <form id="idea-form" class="flex gap-3">
+                <input type="text" id="idea-input" placeholder="思いついたキーワードや課題を入力..." class="flex-grow bg-slate-50 border border-slate-300 text-slate-900 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-3 transition-colors" required>
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-sm px-6 py-3 transition-colors shadow-sm">追加</button>
+            </form>
+        </section>
+
+        <!-- Spark (フュージョン) エリア -->
+        <section class="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl shadow-sm p-6 border border-indigo-100 hidden" id="spark-section">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-indigo-900 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Serendipity Spark - 偶然の結合
+                </h2>
+                <button id="btn-reshuffle" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">再シャッフル</button>
+            </div>
+            
+            <div class="flex flex-col md:flex-row items-center gap-4 mb-6">
+                <div id="spark-item-1" class="flex-1 bg-white p-4 rounded-lg shadow-sm border border-slate-200 text-center font-medium text-slate-700 w-full min-h-[4rem] flex items-center justify-center"></div>
+                <div class="text-2xl font-bold text-slate-400">×</div>
+                <div id="spark-item-2" class="flex-1 bg-white p-4 rounded-lg shadow-sm border border-slate-200 text-center font-medium text-slate-700 w-full min-h-[4rem] flex items-center justify-center"></div>
+            </div>
+
+            <div class="bg-white p-4 rounded-lg border border-purple-200 shadow-inner">
+                <p class="text-sm text-slate-500 mb-2">この2つを組み合わせて、新しいアイデアを生成してください：</p>
+                <form id="fusion-form" class="flex gap-3">
+                    <input type="text" id="fusion-input" placeholder="2つを掛け合わせた新しいひらめき..." class="flex-grow bg-slate-50 border border-slate-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 p-3" required>
+                    <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg text-sm px-6 py-3 transition-colors shadow-sm">フュージョンを保存</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- アイデア一覧エリア -->
+        <section>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-slate-700">思考のストック</h2>
+                <button id="btn-spark" class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium rounded-full text-sm px-5 py-2 shadow-md transition-all transform hover:scale-105 flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                    スパークを実行
+                </button>
+            </div>
+            
+            <div id="ideas-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Javascriptでカードが生成されます -->
+            </div>
+            
+            <div id="empty-state" class="hidden text-center py-12 text-slate-400">
+                <svg class="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                <p>まだアイデアがありません。<br>上のフォームから思考の断片を追加してください。</p>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="mt-auto py-6 text-center text-slate-400 text-sm border-t border-slate-200">
+        <p>AI-APP-PORTFOLIO / Serendipity Canvas</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- 必須条件: 共通設定データの適用 ---
+            const config = window.APP_SHARED_DATA || window.APP_SHARED_DATA_FALLBACK;
+            document.getElementById('app-title').textContent = config.appName || "Serendipity Canvas";
+            if(config.version) document.getElementById('app-version').textContent = `v${config.version}`;
+
+            // --- 状態管理 ---
+            const STORAGE_KEY = 'serendipity_canvas_data';
+            let ideas = [];
+            let currentSparkNodes = [];
+
+            // DOM要素
+            const ideaForm = document.getElementById('idea-form');
+            const ideaInput = document.getElementById('idea-input');
+            const ideasContainer = document.getElementById('ideas-container');
+            const emptyState = document.getElementById('empty-state');
+            const btnSpark = document.getElementById('btn-spark');
+            const sparkSection = document.getElementById('spark-section');
+            const sparkItem1 = document.getElementById('spark-item-1');
+            const sparkItem2 = document.getElementById('spark-item-2');
+            const btnReshuffle = document.getElementById('btn-reshuffle');
+            const fusionForm = document.getElementById('fusion-form');
+            const fusionInput = document.getElementById('fusion-input');
+
+            // --- 必須条件: ローカルストレージ機能 ---
+            function loadData() {
+                const data = localStorage.getItem(STORAGE_KEY);
+                if (data) {
+                    try {
+                        ideas = JSON.parse(data);
+                    } catch (e) {
+                        console.error('データのパースに失敗しました', e);
+                        ideas = [];
+                    }
+                }
+            }
+
+            function saveData() {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(ideas));
+            }
+
+            // --- UIレンダリング ---
+            function renderIdeas() {
+                ideasContainer.innerHTML = '';
+                
+                if (ideas.length === 0) {
+                    emptyState.classList.remove('hidden');
+                    ideasContainer.classList.add('hidden');
+                    btnSpark.disabled = true;
+                } else {
+                    emptyState.classList.add('hidden');
+                    ideasContainer.classList.remove('hidden');
+                    btnSpark.disabled = ideas.length < 2;
+
+                    // 新しい順に表示
+                    [...ideas].reverse().forEach(idea => {
+                        const card = document.createElement('div');
+                        const isFusion = idea.type === 'fusion';
+                        
+                        card.className = `idea-card fade-in relative p-4 rounded-xl border ${
+                            isFusion 
+                            ? 'bg-gradient-to-br from-purple-50 to-white border-purple-200' 
+                            : 'bg-white border-slate-200'
+                        } flex flex-col justify-between`;
+                        
+                        card.innerHTML = `
+                            <div>
+                                ${isFusion ? '<span class="inline-block px-2 py-1 bg-purple-100 text-purple-700 text-xs font-bold rounded mb-2">フュージョン</span>' : ''}
+                                <p class="text-slate-800 text-sm leading-relaxed whitespace-pre-wrap">${escapeHTML(idea.text)}</p>
+                            </div>
+                            <div class="mt-4 flex justify-between items-center text-xs text-slate-400">
+                                <span>${new Date(idea.createdAt).toLocaleDateString()}</span>
+                                <button class="delete-btn hover:text-red-500 transition-colors p-1" data-id="${idea.id}">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                        `;
+                        
+                        // 削除イベント
+                        card.querySelector('.delete-btn').addEventListener('click', (e) => {
+                            const id = e.currentTarget.getAttribute('data-id');
+                            deleteIdea(id);
+                        });
+                        
+                        ideasContainer.appendChild(card);
+                    });
+                }
+            }
+
+            // --- アクション処理 ---
+            function addIdea(text, type = 'raw', parentIds = []) {
+                const newIdea = {
+                    id: 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                    text: text,
+                    type: type,
+                    parentIds: parentIds,
+                    createdAt: Date.now()
+                };
+                ideas.push(newIdea);
+                saveData();
+                renderIdeas();
+            }
+
+            function deleteIdea(id) {
+                if (confirm('このアイデアを削除しますか？')) {
+                    ideas = ideas.filter(idea => idea.id !== id);
+                    saveData();
+                    renderIdeas();
+                    
+                    // スパーク中のアイテムが削除された場合セクションを閉じる
+                    if (currentSparkNodes.some(n => n.id === id)) {
+                        sparkSection.classList.add('hidden');
+                    }
+                }
+            }
+
+            function doSpark() {
+                if (ideas.length < 2) return;
+                
+                // ランダムに異なる2つのアイデアを抽出
+                let shuffled = [...ideas].sort(() => 0.5 - Math.random());
+                currentSparkNodes = [shuffled[0], shuffled[1]];
+                
+                sparkItem1.textContent = currentSparkNodes[0].text;
+                sparkItem2.textContent = currentSparkNodes[1].text;
+                
+                fusionInput.value = '';
+                sparkSection.classList.remove('hidden');
+                sparkSection.classList.add('fade-in');
+                
+                // スムーズスクロール
+                sparkSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            // --- イベントリスナー ---
+            ideaForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const text = ideaInput.value.trim();
+                if (text) {
+                    addIdea(text);
+                    ideaInput.value = '';
+                }
+            });
+
+            fusionForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const text = fusionInput.value.trim();
+                if (text && currentSparkNodes.length === 2) {
+                    addIdea(text, 'fusion', [currentSparkNodes[0].id, currentSparkNodes[1].id]);
+                    sparkSection.classList.add('hidden');
+                }
+            });
+
+            btnSpark.addEventListener('click', doSpark);
+            btnReshuffle.addEventListener('click', doSpark);
+
+            // XSS対策ユーティリティ
+            function escapeHTML(str) {
+                return str.replace(/[&<>'"]/g, 
+                    tag => ({
+                        '&': '&amp;',
+                        '<': '&lt;',
+                        '>': '&gt;',
+                        "'": '&#39;',
+                        '"': '&quot;'
+                    }[tag] || tag)
+                );
+            }
+
+            // 初期化実行
+            loadData();
+            renderIdeas();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- AI-APP-PORTFOLIO -->
+    <meta name="portfolio-tag" content="AI-APP-PORTFOLIO">
+    <title>Cinematic Typist</title>
+    <style>
+        :root {
+            --neon-color: #0f3;
+            --bg-color: #050505;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--neon-color);
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+        }
+        #canvas-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        #app-container {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.8) 100%);
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--neon-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-shadow: 0 0 5px var(--neon-color);
+        }
+        .hud-group {
+            display: flex;
+            gap: 20px;
+        }
+        #intensity-bar-container {
+            width: 150px;
+            height: 10px;
+            border: 1px solid var(--neon-color);
+            margin-top: 5px;
+        }
+        #intensity-bar {
+            height: 100%;
+            width: 0%;
+            background-color: var(--neon-color);
+            box-shadow: 0 0 10px var(--neon-color);
+            transition: width 0.1s linear;
+        }
+        #editor {
+            flex-grow: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: inherit;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            outline: none;
+            resize: none;
+            text-shadow: 0 0 2px rgba(255,255,255,0.5);
+        }
+        #editor::placeholder {
+            color: rgba(0, 255, 51, 0.3);
+        }
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        .btn {
+            background: transparent;
+            color: var(--neon-color);
+            border: 2px solid var(--neon-color);
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-family: inherit;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 255, 51, 0.2), inset 0 0 15px rgba(0, 255, 51, 0.2);
+            transition: all 0.2s ease;
+            letter-spacing: 3px;
+        }
+        .btn:hover {
+            background: var(--neon-color);
+            color: #000;
+            box-shadow: 0 0 25px var(--neon-color);
+        }
+        .status-blink {
+            animation: blinker 1s linear infinite;
+        }
+        @keyframes blinker {
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="overlay">
+        <h1 style="text-shadow: 0 0 10px var(--neon-color); letter-spacing: 5px; margin-bottom: 40px;">CINEMATIC TYPIST</h1>
+        <p style="margin-bottom: 40px; color: #888; max-width: 500px; line-height: 1.8;">
+            タイピングの速度とリズムで映画音楽がリアルタイムに生成されます。<br>
+            外部音源なし・完全フロントエンドの没入型作業環境。<br>
+            ※音量にご注意ください。
+        </p>
+        <button class="btn" id="start-btn">Initialize Engine</button>
+    </div>
+
+    <canvas id="canvas-bg"></canvas>
+
+    <div id="app-container">
+        <header>
+            <div>System: <span class="status-blink">ONLINE</span></div>
+            <div class="hud-group">
+                <div>
+                    <div>BPM: <span id="bpm-display">60</span></div>
+                </div>
+                <div>
+                    <div>TENSION LEVEL</div>
+                    <div id="intensity-bar-container"><div id="intensity-bar"></div></div>
+                </div>
+            </div>
+        </header>
+        <textarea id="editor" placeholder="Type here to start the cinematic sequence..."></textarea>
+    </div>
+
+    <!-- AI-DEV-HANDOFF-START
+    タイトル: Cinematic Typist
+    バージョン: 1.0.0
+    目的・概要: タイピングの速度とリズムに応じてリアルタイムに映画音楽風のBGMを合成し、作業への没入感を高めるエディタ。
+    主要な機能・UI構成: Web Audio APIによるプロシージャルBGM生成、Canvasによるサイバーパンク風波形UI、自動保存機能。
+    データ構造・保存キー: localStorage ('cinematic_typist_save')
+    実装済み機能: 
+    - キー入力によるIntensity（テンション）算出と自動減衰
+    - Intensity連動のBGM動的変化（テンポ、アルペジオの複雑さ、ノイズドラムの追加、フィルター開閉）
+    - Web Audio APIのみを用いた完全シンセサイズ音源（Drone, Arp, Noise, Delay/Reverb効果）
+    - Canvasオーディオビジュアライザー（打鍵で波紋が広がるエフェクト）
+    - テキストのローカル保存と復元
+    未実装・TODO: 
+    - WAV形式での演奏録音・エクスポート機能
+    - テーマカラーの変更機能（現在ターミナルグリーン固定）
+    設計上のこだわり・注意点: 
+    - 外部アセット（画像・音声・CDN）を一切使用せず、HTML1ファイルで完結させています。
+    - 「共通データー方式はやめ」という以前の指示に基づき、外部app-data.jsのフェッチロジックは除外・廃止し、完全スタンドアロンで動作するアーキテクチャにしています。
+    - AIポートフォリオタグはUIに表示せず、要件に従いhead内のmetaタグ（およびコメント）として隠蔽実装しています。
+    AI-DEV-HANDOFF-END -->
+
+    <script>
+        // --- State Management ---
+        const SAVE_KEY = 'cinematic_typist_save';
+        let isRunning = false;
+        let intensity = 0.0; // 0.0 to 1.0
+        let currentBpm = 60;
+        let baseBpm = 60;
+        let maxBpm = 140;
+
+        // UI Elements
+        const editor = document.getElementById('editor');
+        const startBtn = document.getElementById('start-btn');
+        const overlay = document.getElementById('overlay');
+        const intensityBar = document.getElementById('intensity-bar');
+        const bpmDisplay = document.getElementById('bpm-display');
+        const canvas = document.getElementById('canvas-bg');
+        const ctx = canvas.getContext('2d');
+
+        // Load saved text
+        editor.value = localStorage.getItem(SAVE_KEY) || "";
+
+        // --- Web Audio API Engine ---
+        let audioCtx, masterGain, delayNode, filterNode;
+        let nextNoteTime = 0;
+        let current16thNote = 0;
+        let lookahead = 25.0; // ms
+        let scheduleAheadTime = 0.1; // s
+        let timerID;
+        
+        // C minor pentatonic / Cyberpunk scale frequencies
+        const scale = [130.81, 155.56, 174.61, 196.00, 233.08, 261.63, 311.13, 349.23, 392.00, 466.16]; 
+
+        function initAudio() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Master out
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = 0.7;
+            masterGain.connect(audioCtx.destination);
+
+            // Global Delay (Suspense Reverb Effect)
+            delayNode = audioCtx.createDelay();
+            delayNode.delayTime.value = 0.33; // Dotted 8th roughly
+            const feedback = audioCtx.createGain();
+            feedback.gain.value = 0.4;
+            delayNode.connect(feedback);
+            feedback.connect(delayNode);
+            delayNode.connect(masterGain);
+
+            // Global Filter
+            filterNode = audioCtx.createBiquadFilter();
+            filterNode.type = 'lowpass';
+            filterNode.frequency.value = 400; // Starts muffled
+            filterNode.connect(masterGain);
+            filterNode.connect(delayNode);
+
+            // Background Drone (Constant suspense)
+            const drone = audioCtx.createOscillator();
+            drone.type = 'triangle';
+            drone.frequency.value = 65.41; // C2
+            const droneGain = audioCtx.createGain();
+            droneGain.gain.value = 0.2;
+            drone.connect(droneGain);
+            droneGain.connect(filterNode);
+            drone.start();
+
+            // Store drone ref to modulate frequency on stop
+            window.droneOsc = drone;
+
+            nextNoteTime = audioCtx.currentTime + 0.1;
+            scheduler();
+        }
+
+        // Play a synth blip
+        function playSynth(time, freq, type = 'sawtooth', vol = 0.1, decay = 0.1) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = type;
+            osc.frequency.value = freq;
+            
+            osc.connect(gain);
+            gain.connect(filterNode);
+            
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(vol, time + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + decay);
+            
+            osc.start(time);
+            osc.stop(time + decay + 0.1);
+        }
+
+        // Play white noise (Hi-hat/Snare effect)
+        function playNoise(time, isAccent = false) {
+            const bufferSize = audioCtx.sampleRate * 0.1; // 100ms buffer
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            
+            const noiseFilter = audioCtx.createBiquadFilter();
+            noiseFilter.type = isAccent ? 'bandpass' : 'highpass';
+            noiseFilter.frequency.value = isAccent ? 1000 : 7000;
+            
+            const noiseGain = audioCtx.createGain();
+            const vol = isAccent ? 0.3 * intensity : 0.1 * intensity;
+            
+            noiseGain.gain.setValueAtTime(0, time);
+            noiseGain.gain.linearRampToValueAtTime(vol, time + 0.01);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, time + (isAccent ? 0.1 : 0.05));
+            
+            noise.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+            noiseGain.connect(masterGain); // Bypass global lowpass for crisp drums
+            
+            noise.start(time);
+        }
+
+        // Sequence scheduler
+        function nextNote() {
+            const secondsPerBeat = 60.0 / currentBpm;
+            nextNoteTime += 0.25 * secondsPerBeat; // 16th note
+            current16thNote++;
+            if (current16thNote === 16) {
+                current16thNote = 0;
+            }
+        }
+
+        function scheduleNote(beatNumber, time) {
+            // Dynamic sequence based on intensity
+            if (intensity > 0.1) {
+                // Arpeggio
+                if (beatNumber % 2 === 0 || intensity > 0.6) {
+                    const noteIndex = Math.floor(Math.random() * scale.length * (intensity + 0.2));
+                    const freq = scale[Math.min(noteIndex, scale.length - 1)];
+                    const vol = 0.1 + (intensity * 0.2);
+                    playSynth(time, freq, 'square', vol, 0.1 + (intensity * 0.2));
+                }
+            }
+            
+            if (intensity > 0.4) {
+                // Hi-hats
+                if (beatNumber % 2 === 0) {
+                    playNoise(time, false);
+                }
+                // Snare/Accent on 4 and 12
+                if (intensity > 0.7 && (beatNumber === 4 || beatNumber === 12)) {
+                    playNoise(time, true);
+                    playSynth(time, 130.81 / 2, 'sine', 0.5, 0.3); // Heavy Kick
+                }
+            }
+        }
+
+        function scheduler() {
+            while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
+                scheduleNote(current16thNote, nextNoteTime);
+                nextNote();
+            }
+            timerID = setTimeout(scheduler, lookahead);
+        }
+
+        // --- Interaction Logic ---
+        
+        startBtn.addEventListener('click', () => {
+            initAudio();
+            overlay.style.display = 'none';
+            editor.focus();
+            isRunning = true;
+            resizeCanvas();
+            requestAnimationFrame(drawCanvas);
+        });
+
+        // Visual effects on canvas
+        let keystrokes = [];
+
+        editor.addEventListener('input', () => {
+            if (!isRunning) return;
+            
+            // Increase intensity on type (cap at 1.0)
+            intensity = Math.min(1.0, intensity + 0.08);
+            
+            // Save text
+            localStorage.setItem(SAVE_KEY, editor.value);
+
+            // Add visual ripple
+            keystrokes.push({ x: Math.random() * canvas.width, y: canvas.height, radius: 0, alpha: 1 });
+        });
+
+        // Main Loop (Updates Audio params & UI based on intensity)
+        setInterval(() => {
+            if (!isRunning) return;
+
+            // Decay intensity slowly
+            intensity = Math.max(0.0, intensity - 0.015);
+            
+            // Update UI
+            intensityBar.style.width = `${intensity * 100}%`;
+            
+            // Modulate BPM: 60 (idle) to 140 (frantic)
+            currentBpm = baseBpm + (intensity * (maxBpm - baseBpm));
+            bpmDisplay.innerText = Math.round(currentBpm);
+
+            // Modulate Audio Effects
+            if (filterNode) {
+                // Filter opens up as intensity increases
+                const targetFreq = 400 + (intensity * 4000);
+                filterNode.frequency.setTargetAtTime(targetFreq, audioCtx.currentTime, 0.1);
+            }
+            
+            if (window.droneOsc) {
+                // Pitch down slightly when stopped for suspense
+                const targetDroneFreq = intensity < 0.05 ? 61.74 : 65.41; // Drop to B1
+                window.droneOsc.frequency.setTargetAtTime(targetDroneFreq, audioCtx.currentTime, 0.5);
+            }
+
+        }, 100); // 10fps update for params
+
+        // --- Canvas Visuals ---
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid line moving
+            ctx.strokeStyle = `rgba(0, 255, 51, ${0.1 + intensity * 0.2})`;
+            ctx.lineWidth = 1;
+            const offset = (Date.now() / 10) % 50;
+            
+            ctx.beginPath();
+            for(let y = 0; y < canvas.height; y += 50) {
+                ctx.moveTo(0, y + offset);
+                ctx.lineTo(canvas.width, y + offset);
+            }
+            ctx.stroke();
+
+            // Draw Keystroke ripples
+            for (let i = keystrokes.length - 1; i >= 0; i--) {
+                let p = keystrokes[i];
+                p.radius += 10 + (intensity * 20); // expand faster on high intensity
+                p.alpha -= 0.05;
+                
+                ctx.beginPath();
+                ctx.arc(p.x, p.y - p.radius * 0.5, p.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(0, 255, 255, ${p.alpha * 0.5})`;
+                ctx.stroke();
+                
+                if (p.alpha <= 0) {
+                    keystrokes.splice(i, 1);
+                }
+            }
+            
+            // Draw waveform style line at bottom
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height - 20);
+            for(let x = 0; x < canvas.width; x += 10) {
+                const waveHeight = (Math.random() * 50 * intensity) * Math.sin(x + Date.now()/100);
+                ctx.lineTo(x, canvas.height - 20 - waveHeight);
+            }
+            ctx.strokeStyle = `rgba(0, 255, 51, ${0.5 + intensity * 0.5})`;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            requestAnimationFrame(drawCanvas);
+        }
+    </script>
+</body>
+</html>

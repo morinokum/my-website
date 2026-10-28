@@ -37,6 +37,14 @@
     <span id="count" style="color: #ccc; font-weight: bold;"></span>
   </div>
   <div class="grid" id="grid">
+      <div class="card" data-text="Cinematic Typist 概要はまだ記載されていません。">
+        <h3>Cinematic Typist</h3>
+        <div class="desc">概要はまだ記載されていません。</div>
+        <div class="buttons">
+          <a href="apps/gemini-code-1793227682079.html" class="btn" target="_blank">▶ Open</a>
+          <button class="btn copy" onclick="copyCode('gemini-code-1793227682079.html')">📋 Code</button>
+        </div>
+      </div>
       <div class="card" data-text="Serendipity Canvas - 思考結合器 概要はまだ記載されていません。">
         <h3>Serendipity Canvas - 思考結合器</h3>
         <div class="desc">概要はまだ記載されていません。</div>
@@ -96,7 +104,7 @@
   </div>
   <div id="toast">コピーしました！</div>
   <script>
-    document.getElementById('count').textContent = "全 7 ツール";
+    document.getElementById('count').textContent = "全 8 ツール";
     function search() {
       const q = document.getElementById('search').value.toLowerCase();
       document.querySelectorAll('.card').forEach(c => {

@@ -8,6 +8,7 @@ DOWNLOAD_DIR="$HOME/Downloads"
 GAMES_DIR="games"
 APPS_DIR="apps"
 
+# 【安全対策】設定ファイルは必ずホームディレクトリに保存する
 CONFIG_FILE="$HOME/.portfolio_ai_config"
 
 GAME_COUNT=0
@@ -43,8 +44,21 @@ escape_html() {
 }
 
 # ==============================================================================
-# 3. Gemini API 連携機能
+# 3. Gemini API 連携機能 & セキュリティ対策
 # ==============================================================================
+secure_git_config() {
+  # 【安全対策】万が一作業フォルダに設定ファイルがあってもGit追跡をブロックする
+  local ignore_file=".gitignore"
+  local target="*portfolio_ai_config*"
+  
+  if [ -d ".git" ]; then
+    if [ ! -f "$ignore_file" ] || ! grep -q "$target" "$ignore_file"; then
+      echo "$target" >> "$ignore_file"
+      echo "🛡 セキュリティ対策: .gitignore を更新し、設定ファイルのGit混入を防ぎました。"
+    fi
+  fi
+}
+
 setup_api_key() {
   # 設定ファイルがあれば読み込む
   if [ -f "$CONFIG_FILE" ]; then
@@ -55,13 +69,14 @@ setup_api_key() {
     echo -e "\n🔑 Gemini APIキーが設定されていません。"
     echo "Google AI Studio (https://aistudio.google.com/) で取得したAPIキーを入力してください:"
     echo -n "👉 APIキー (後で設定する場合は空Enter): "
-    read -rs api_key
+    read -r api_key
     echo ""
     if [ -n "$api_key" ]; then
+      # ホームディレクトリに確実に保存する
       echo "GEMINI_API_KEY=\"$api_key\"" > "$CONFIG_FILE"
       chmod 600 "$CONFIG_FILE"
       export GEMINI_API_KEY="$api_key"
-      echo "✅ APIキーを保存しました ($CONFIG_FILE)"
+      echo "✅ APIキーを安全な場所（$CONFIG_FILE）に保存しました。"
     else
       echo "⚠ APIキーが入力されなかったため、AIアイデア生成機能はオフになります。"
     fi
@@ -549,6 +564,7 @@ prompt_interactive() {
 }
 
 main() {
+  secure_git_config
   setup_api_key
   setup_environment
   update_shared_data

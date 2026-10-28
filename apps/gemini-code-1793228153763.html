@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- AI-APP-PORTFOLIO -->
+    <meta name="portfolio-tag" content="AI-APP-PORTFOLIO">
+    <title>Cinematic Typist - Visual Edition</title>
+    <style>
+        :root {
+            --neon-color: #0f3;
+            --bg-color: #030303;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--neon-color);
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+        }
+        #canvas-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+        #app-container {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            background: radial-gradient(circle at center, transparent 20%, rgba(0,0,0,0.85) 100%);
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--neon-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-shadow: 0 0 8px var(--neon-color);
+            background: rgba(0,0,0,0.5);
+        }
+        .hud-group {
+            display: flex;
+            gap: 20px;
+        }
+        #intensity-bar-container {
+            width: 150px;
+            height: 10px;
+            border: 1px solid var(--neon-color);
+            margin-top: 5px;
+            box-shadow: 0 0 5px var(--neon-color);
+        }
+        #intensity-bar {
+            height: 100%;
+            width: 0%;
+            background-color: var(--neon-color);
+            box-shadow: 0 0 15px var(--neon-color);
+            transition: width 0.05s linear;
+        }
+        #editor {
+            flex-grow: 1;
+            background: rgba(0, 5, 0, 0.4);
+            border: 1px solid rgba(0, 255, 51, 0.2);
+            padding: 20px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 1.15rem;
+            line-height: 1.6;
+            outline: none;
+            resize: none;
+            box-shadow: inset 0 0 20px rgba(0,255,51,0.05);
+            text-shadow: 0 0 3px rgba(255,255,255,0.7);
+        }
+        #editor::placeholder {
+            color: rgba(0, 255, 51, 0.3);
+        }
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        .btn {
+            background: transparent;
+            color: var(--neon-color);
+            border: 2px solid var(--neon-color);
+            padding: 15px 35px;
+            font-size: 1.2rem;
+            font-family: inherit;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 255, 51, 0.2), inset 0 0 15px rgba(0, 255, 51, 0.2);
+            transition: all 0.2s ease;
+            letter-spacing: 3px;
+        }
+        .btn:hover {
+            background: var(--neon-color);
+            color: #000;
+            box-shadow: 0 0 30px var(--neon-color);
+        }
+        .status-blink {
+            animation: blinker 0.8s linear infinite;
+        }
+        @keyframes blinker {
+            50% { opacity: 0.2; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="overlay">
+        <h1 style="text-shadow: 0 0 15px var(--neon-color); letter-spacing: 6px; margin-bottom: 20px;">CINEMATIC TYPIST</h1>
+        <p style="color: var(--neon-color); letter-spacing: 2px; margin-bottom: 40px; font-size: 0.9rem;">[ VISUAL IMMERSION ENGINE ]</p>
+        <p style="margin-bottom: 40px; color: #888; max-width: 500px; line-height: 1.8; font-size: 0.95rem;">
+            音の代わりに、タイピングの速度と熱量に応じて画面全体が激しく変形・発光する、完全視覚型の没入型エディタです。
+        </p>
+        <button class="btn" id="start-btn">BOOT SYSTEM</button>
+    </div>
+
+    <canvas id="canvas-bg"></canvas>
+
+    <div id="app-container">
+        <header>
+            <div>System Core: <span class="status-blink" id="sys-status">STANDBY</span></div>
+            <div class="hud-group">
+                <div>
+                    <div>FPS / SYNC: <span id="fps-display">60</span></div>
+                </div>
+                <div>
+                    <div>TENSION INTENSITY</div>
+                    <div id="intensity-bar-container"><div id="intensity-bar"></div></div>
+                </div>
+            </div>
+        </header>
+        <textarea id="editor" placeholder="Type or code here to activate visual matrix overdrive..."></textarea>
+    </div>
+
+    <!-- AI-DEV-HANDOFF-START
+    タイトル: Cinematic Typist - Visual Edition
+    バージョン: 2.0.0
+    目的・概要: 音声出力に依存せず、タイピングの速度とリズムに応じてCanvas上のサイバーパンク演出・マトリックス雨・波形・画面の揺れがダイナミックに変化し、作業没入感を演出するビジュアル特化型エディタ。
+    主要な機能・UI構成: Canvasによる高負荷サイバー演出（マトリックスコード、ショックウェーブ、ダイナミックグロー、背景グリッド歪み）、自動保存機能。
+    データ構造・保存キー: localStorage ('cinematic_typist_visual_save')
+    実装済み機能: 
+    - キー入力によるIntensity（熱量）算出と自動減衰メカニズム
+    - テンション連動の視覚効果（高速度打鍵でグリッドが赤味を帯び、波紋が爆発的に拡散、画面が微小振動）
+    - マトリックス風のデジタルコード落下エフェクト（速度可変）
+    - テキストのローカルストレージ自動保存・復元
+    未実装・TODO: 
+    - カラーパレット切替機能（グリーン、アンバー、シアンなど）
+    - エクスポート機能
+    設計上のこだわり・注意点: 
+    - 音声APIを完全に排除し、ブラウザのセキュリティ制限や環境依存（Linuxコンテナ等）による「音が出ない問題」を根本から解消。
+    - 外部アセット一切なし、HTML1ファイルでスムーズかつ強烈なサイバー演出を実現。
+    - AIポートフォリオタグはhead内metaタグおよびハンドオフコメント内に隠蔽実装。
+    AI-DEV-HANDOFF-END -->
+
+    <script>
+        const SAVE_KEY = 'cinematic_typist_visual_save';
+        let isRunning = false;
+        let intensity = 0.0; // 0.0 to 1.0
+
+        const editor = document.getElementById('editor');
+        const startBtn = document.getElementById('start-btn');
+        const overlay = document.getElementById('overlay');
+        const intensityBar = document.getElementById('intensity-bar');
+        const sysStatus = document.getElementById('sys-status');
+        const canvas = document.getElementById('canvas-bg');
+        const ctx = canvas.getContext('2d');
+
+        editor.value = localStorage.getItem(SAVE_KEY) || "";
+
+        startBtn.addEventListener('click', () => {
+            overlay.style.display = 'none';
+            editor.focus();
+            isRunning = true;
+            sysStatus.innerText = 'ONLINE (ACTIVE)';
+            sysStatus.style.color = '#0ff';
+            resizeCanvas();
+            requestAnimationFrame(renderLoop);
+        });
+
+        // Matrix rain drops
+        let columns = [];
+        function initMatrix() {
+            columns = [];
+            const colCount = Math.floor(canvas.width / 20);
+            for(let i=0; i<colCount; i++) {
+                columns.push({
+                    x: i * 20,
+                    y: Math.random() * canvas.height,
+                    speed: 2 + Math.random() * 5,
+                    chars: '0101010101ABCDEFGHIZKLMNOPQRSTUVWXYZ<>[]/\\@#$*'
+                });
+            }
+        }
+
+        let ripples = [];
+        editor.addEventListener('input', () => {
+            if (!isRunning) return;
+            intensity = Math.min(1.0, intensity + 0.12);
+            localStorage.setItem(SAVE_KEY, editor.value);
+
+            // Add visual shockwave ripple at random position or cursor area
+            ripples.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                radius: 10,
+                alpha: 1.0,
+                maxRadius: 100 + Math.random() * 200
+            });
+        });
+
+        // Intensity decay loop
+        setInterval(() => {
+            if (!isRunning) return;
+            intensity = Math.max(0.0, intensity - 0.02);
+            intensityBar.style.width = `${intensity * 100}%`;
+
+            if (intensity > 0.7) {
+                sysStatus.innerText = 'OVERDRIVE!';
+                sysStatus.style.color = '#f03';
+            } else if (intensity > 0.3) {
+                sysStatus.innerText = 'ACTIVE';
+                sysStatus.style.color = '#0f3';
+            } else {
+                sysStatus.innerText = 'IDLE / STANDBY';
+                sysStatus.style.color = '#0f3';
+            }
+        }, 100);
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initMatrix();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        // Main Visual Render Loop
+        function renderLoop() {
+            // Screen shake effect when intensity is high
+            let shakeX = 0;
+            let shakeY = 0;
+            if (intensity > 0.5) {
+                shakeX = (Math.random() - 0.5) * intensity * 15;
+                shakeY = (Math.random() - 0.5) * intensity * 15;
+            }
+
+            ctx.save();
+            ctx.translate(shakeX, shakeY);
+
+            // Fade background to create motion trail
+            ctx.fillStyle = 'rgba(3, 3, 3, 0.25)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Draw Matrix Rain
+            const currentThemeColor = intensity > 0.7 ? '#ff0055' : (intensity > 0.3 ? '#00ffff' : '#00ff33');
+            ctx.font = '14px monospace';
+            columns.forEach(col => {
+                ctx.fillStyle = currentThemeColor;
+                const char = col.chars[Math.floor(Math.random() * col.chars.length)];
+                ctx.fillText(char, col.x, col.y);
+                
+                col.y += col.speed + (intensity * 10);
+                if (col.y > canvas.height) {
+                    col.y = 0;
+                    col.speed = 2 + Math.random() * 5;
+                }
+            });
+
+            // 2. Draw Perspective Grid / Waveform lines
+            ctx.strokeStyle = intensity > 0.7 ? 'rgba(255, 0, 85, 0.3)' : 'rgba(0, 255, 51, 0.15)';
+            ctx.lineWidth = 1;
+            const gridOffset = (Date.now() / 20) % 40;
+            ctx.beginPath();
+            for(let y = 0; y < canvas.height; y += 40) {
+                ctx.moveTo(0, y + (gridOffset * (1 + intensity)));
+                ctx.lineTo(canvas.width, y + (gridOffset * (1 + intensity)));
+            }
+            ctx.stroke();
+
+            // 3. Draw Keystroke Ripples
+            for (let i = ripples.length - 1; i >= 0; i--) {
+                let r = ripples[i];
+                r.radius += 8 + (intensity * 15);
+                r.alpha -= 0.04;
+
+                ctx.beginPath();
+                ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = intensity > 0.7 ? `rgba(255, 0, 85, ${r.alpha})` : `rgba(0, 255, 255, ${r.alpha})`;
+                ctx.lineWidth = 2 + (intensity * 3);
+                ctx.stroke();
+
+                if (r.alpha <= 0 || r.radius > r.maxRadius) {
+                    ripples.splice(i, 1);
+                }
+            }
+
+            // 4. Bottom Cyber Audio-Visualizer Spectrum Simulation
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height - 10);
+            const sliceWidth = canvas.width / 50;
+            let xPos = 0;
+            for(let i = 0; i < 50; i++) {
+                const v = Math.random() * 80 * intensity + (i % 2 === 0 ? 10 : 2);
+                const yPos = canvas.height - v;
+                if(i === 0) ctx.moveTo(xPos, yPos);
+                else ctx.lineTo(xPos, yPos);
+                xPos += sliceWidth;
+            }
+            ctx.strokeStyle = currentThemeColor;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.restore();
+            requestAnimationFrame(renderLoop);
+        }
+    </script>
+</body>
+</html>

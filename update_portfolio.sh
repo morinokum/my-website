@@ -47,7 +47,6 @@ escape_html() {
 # 3. Gemini API 連携機能 & セキュリティ対策
 # ==============================================================================
 secure_git_config() {
-  # 【安全対策】万が一作業フォルダに設定ファイルがあってもGit追跡をブロックする
   local ignore_file=".gitignore"
   local target="*portfolio_ai_config*"
   
@@ -60,7 +59,6 @@ secure_git_config() {
 }
 
 setup_api_key() {
-  # 設定ファイルがあれば読み込む
   if [ -f "$CONFIG_FILE" ]; then
     source "$CONFIG_FILE"
   fi
@@ -72,7 +70,6 @@ setup_api_key() {
     read -r api_key
     echo ""
     if [ -n "$api_key" ]; then
-      # ホームディレクトリに確実に保存する
       echo "GEMINI_API_KEY=\"$api_key\"" > "$CONFIG_FILE"
       chmod 600 "$CONFIG_FILE"
       export GEMINI_API_KEY="$api_key"
@@ -94,13 +91,37 @@ generate_idea_with_gemini() {
 
   echo -e "\n🧠 Geminiが過去の作品リストを読み込み、新しい${subject}のアイデアを考え中..."
   
+  # 【超進化ポイント】現在使える最新のAIモデルを自動的に探して設定する
+  local model_name=$(python3 -c "
+import urllib.request, json
+url = 'https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}'
+try:
+    req = urllib.request.Request(url)
+    with urllib.request.urlopen(req) as res:
+        data = json.loads(res.read().decode())
+        valid = [m['name'].replace('models/', '') for m in data.get('models', []) if 'generateContent' in m.get('supportedGenerationMethods', [])]
+        flash = [m for m in valid if 'flash' in m]
+        pro = [m for m in valid if 'pro' in m]
+        if flash: print(flash[0])
+        elif pro: print(pro[0])
+        elif valid: print(valid[0])
+except Exception:
+    pass
+" 2>/dev/null)
+
+  if [ -z "$model_name" ]; then
+    echo "⚠ 利用可能なAIモデルの取得に失敗しました。APIキーを確認してください。"
+    return 1
+  fi
+  
+  echo "🤖 使用モデル: $model_name が自動選択されました"
+
   # プロンプトの組み立て
   local system_prompt="あなたは優秀な${subject}の企画・開発者です。これまでに以下の${subject}を作成しました。\n\n${list_text}\n\nこれらと重複しない、かつ個人開発のブラウザアプリ(HTML1ファイル)として実現可能な、斬新で面白い次回作のアイデアを【1つだけ】提案してください。タイトル、概要、面白いポイントを含めて出力してください。"
 
-  # JSON用にエスケープ処理
   local escaped_prompt=$(echo "$system_prompt" | sed 's/\\/\\\\/g; s/"/\\"/g; s/	/\\t/g' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
 
-  local api_url="https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}"
+  local api_url="https://generativelanguage.googleapis.com/v1beta/models/${model_name}:generateContent?key=${GEMINI_API_KEY}"
   local payload="{\"contents\":[{\"parts\":[{\"text\":\"${escaped_prompt}\"}]}]}"
 
   # API呼び出し
@@ -118,7 +139,7 @@ except Exception:
 " 2>/dev/null)
 
   if [ -z "$idea" ]; then
-      echo "⚠ APIからの応答の取得に失敗しました。キーが間違っているか、通信エラーの可能性があります。"
+      echo "⚠ APIからの応答の取得に失敗しました。通信エラーの可能性があります。"
       return 1
   fi
   

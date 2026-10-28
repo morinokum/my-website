@@ -8,6 +8,8 @@ DOWNLOAD_DIR="$HOME/Downloads"
 GAMES_DIR="games"
 APPS_DIR="apps"
 
+CONFIG_FILE="$HOME/.portfolio_ai_config"
+
 GAME_COUNT=0
 APP_COUNT=0
 GAME_LIST_TEXT=""
@@ -41,7 +43,75 @@ escape_html() {
 }
 
 # ==============================================================================
-# 3. ファイル収集・更新
+# 3. Gemini API 連携機能
+# ==============================================================================
+setup_api_key() {
+  # 設定ファイルがあれば読み込む
+  if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+  fi
+
+  if [ -z "$GEMINI_API_KEY" ]; then
+    echo -e "\n🔑 Gemini APIキーが設定されていません。"
+    echo "Google AI Studio (https://aistudio.google.com/) で取得したAPIキーを入力してください:"
+    echo -n "👉 APIキー (後で設定する場合は空Enter): "
+    read -rs api_key
+    echo ""
+    if [ -n "$api_key" ]; then
+      echo "GEMINI_API_KEY=\"$api_key\"" > "$CONFIG_FILE"
+      chmod 600 "$CONFIG_FILE"
+      export GEMINI_API_KEY="$api_key"
+      echo "✅ APIキーを保存しました ($CONFIG_FILE)"
+    else
+      echo "⚠ APIキーが入力されなかったため、AIアイデア生成機能はオフになります。"
+    fi
+  fi
+}
+
+generate_idea_with_gemini() {
+  local subject="$1"
+  local list_text="$2"
+
+  if [ -z "$GEMINI_API_KEY" ]; then
+    echo "⚠ Gemini APIキーが設定されていないため、アイデアを生成できません。"
+    return 1
+  fi
+
+  echo -e "\n🧠 Geminiが過去の作品リストを読み込み、新しい${subject}のアイデアを考え中..."
+  
+  # プロンプトの組み立て
+  local system_prompt="あなたは優秀な${subject}の企画・開発者です。これまでに以下の${subject}を作成しました。\n\n${list_text}\n\nこれらと重複しない、かつ個人開発のブラウザアプリ(HTML1ファイル)として実現可能な、斬新で面白い次回作のアイデアを【1つだけ】提案してください。タイトル、概要、面白いポイントを含めて出力してください。"
+
+  # JSON用にエスケープ処理
+  local escaped_prompt=$(echo "$system_prompt" | sed 's/\\/\\\\/g; s/"/\\"/g; s/	/\\t/g' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
+
+  local api_url="https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}"
+  local payload="{\"contents\":[{\"parts\":[{\"text\":\"${escaped_prompt}\"}]}]}"
+
+  # API呼び出し
+  local response=$(curl -s -X POST -H "Content-Type: application/json" -d "$payload" "$api_url")
+  
+  # Pythonを使って安全にJSONをパースして結果を抽出
+  local idea=$(echo "$response" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    text = data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+    print(text.strip())
+except Exception:
+    print('')
+" 2>/dev/null)
+
+  if [ -z "$idea" ]; then
+      echo "⚠ APIからの応答の取得に失敗しました。キーが間違っているか、通信エラーの可能性があります。"
+      return 1
+  fi
+  
+  echo "$idea"
+}
+
+# ==============================================================================
+# 4. ファイル収集・更新
 # ==============================================================================
 setup_environment() {
   echo "🔍 [$DOWNLOAD_DIR] からデータを探索中..."
@@ -50,7 +120,6 @@ setup_environment() {
 }
 
 update_shared_data() {
-  # ゲームデータの更新
   local g_data
   g_data=$(find "$DOWNLOAD_DIR" -maxdepth 1 -name "*.js" -type f -exec grep -l "AI_PORTFOLIO_DATA_FILE" {} + 2>/dev/null | head -n 1)
   if [ -n "$g_data" ]; then
@@ -58,7 +127,6 @@ update_shared_data() {
     echo "📦 ゲーム共通データを更新: $(basename "$g_data") -> ./game-data.js"
   fi
 
-  # アプリデータの更新
   local a_data
   a_data=$(find "$DOWNLOAD_DIR" -maxdepth 1 -name "*.js" -type f -exec grep -l "AI_APP_DATA_FILE" {} + 2>/dev/null | head -n 1)
   if [ -n "$a_data" ]; then
@@ -78,17 +146,17 @@ collect_html_files() {
     elif grep -q "AI-APP-PORTFOLIO" "$file" 2>/dev/null; then
       if [ ! -f "$APPS_DIR/$filename" ]; then
         cp "$file" "$APPS_DIR/"
-        echo "🛠️ 新アプリを収集: $filename"
+        echo "🛠 新アプリを収集: $filename"
       fi
     fi
   done < <(find "$DOWNLOAD_DIR" -maxdepth 1 -name "*.html" -type f 2>/dev/null)
 }
 
 # ==============================================================================
-# 4. HTML生成
+# 5. HTML生成
 # ==============================================================================
 generate_html() {
-  local type="$1" # "game" or "app"
+  local type="$1"
   local index_file=""
   local title=""
   local subtitle=""
@@ -106,7 +174,7 @@ generate_html() {
     hover_color="#005999"
     dir_name="$GAMES_DIR"
     item_label="作品"
-    nav_link='<a href="apps.html" style="color: #009688; text-decoration: none; font-weight: bold; font-size: 1.1em; background: #1e1e1e; padding: 10px 20px; border-radius: 20px; border: 1px solid #009688;">🛠️ 実用アプリ・ツール一覧へ</a>'
+    nav_link='<a href="apps.html" style="color: #009688; text-decoration: none; font-weight: bold; font-size: 1.1em; background: #1e1e1e; padding: 10px 20px; border-radius: 20px; border: 1px solid #009688;">🛠 実用アプリ・ツール一覧へ</a>'
   else
     index_file="apps.html"
     title="AI App Portfolio"
@@ -237,7 +305,7 @@ EOF
 }
 
 # ==============================================================================
-# 5. Git連携
+# 6. Git連携
 # ==============================================================================
 sync_with_git() {
   if [ -d ".git" ] && [ -n "$(git status --porcelain 2>/dev/null)" ]; then
@@ -250,7 +318,7 @@ sync_with_git() {
 }
 
 # ==============================================================================
-# 6. プロンプト生成
+# 7. プロンプト生成
 # ==============================================================================
 get_game_rules() {
   cat << 'EOF'
@@ -392,7 +460,7 @@ prompt_interactive() {
   echo "🤖 AIへの発注プロンプトを作成します。"
   echo "どちらを作りますか？"
   echo "  1) 🎮 ゲーム"
-  echo "  2) 🛠️ アプリ"
+  echo "  2) 🛠 アプリ"
   echo -n "👉 選択 [1]: "
   local t_type
   read -r t_type
@@ -415,8 +483,29 @@ prompt_interactive() {
   local target=""
   
   if [ "$mode" = "1" ] || [ "$mode" = "5" ]; then
-    echo -n "👉 テーマ・目的 (空Enterでお任せ): "
+    echo -e "\n💡 ヒント: 「ai」と入力すると、Gemini APIが過去の作品リストを考慮して斬新なアイデアを自動で考えます！"
+    echo -n "👉 テーマ・目的 (空Enterでお任せ, 'ai'で自動生成): "
     read -r req
+
+    # 「ai」と入力された場合、Geminiにアイデアを生成させる
+    if [[ "$req" == "ai" || "$req" == "AI" ]]; then
+      local subj="ゲーム"
+      local list_text="$GAME_LIST_TEXT"
+      if [ "$t_type" = "2" ]; then
+        subj="Webアプリ（ツール）"
+        list_text="$APP_LIST_TEXT"
+      fi
+
+      local ai_idea=$(generate_idea_with_gemini "$subj" "$list_text")
+      
+      if [ -n "$ai_idea" ]; then
+        echo -e "\n✨ 【Geminiの提案アイデア】\n---------------------------------\n$ai_idea\n---------------------------------"
+        req="以下のアイデアを実現してください。\n\n$ai_idea"
+      else
+        req="" # APIエラー時はデフォルトにフォールバック
+      fi
+    fi
+
   elif [ "$mode" = "4" ]; then
     echo -n "👉 データセットの内容 (空Enterでお任せ): "
     read -r req
@@ -460,6 +549,7 @@ prompt_interactive() {
 }
 
 main() {
+  setup_api_key
   setup_environment
   update_shared_data
   collect_html_files

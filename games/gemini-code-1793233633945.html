@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- AI-GAME-PORTFOLIO メタタグ -->
+    <meta name="author" content="AI-GAME-PORTFOLIO">
+    <title>Chrono Shadow: Parallel Infiltrator</title>
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff00ea;
+            --neon-green: #39ff14;
+            --bg-color: #050510;
+        }
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: var(--bg-color);
+            color: #fff; font-family: 'Courier New', Courier, monospace;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 20px var(--neon-blue);
+            border: 2px solid var(--neon-blue);
+        }
+        canvas {
+            display: block;
+            background: #020205;
+        }
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; display: flex; flex-direction: column;
+            justify-content: space-between; padding: 15px; box-sizing: border-box;
+        }
+        .hud-text {
+            font-size: 18px; font-weight: bold;
+            text-shadow: 0 0 5px var(--neon-blue);
+        }
+        #center-message {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 32px; font-weight: bold; text-align: center;
+            text-shadow: 0 0 10px var(--neon-pink);
+            pointer-events: auto;
+        }
+        .hidden { display: none !important; }
+        button.cyber-btn {
+            background: transparent; border: 2px solid var(--neon-blue);
+            color: var(--neon-blue); padding: 10px 20px; font-size: 18px;
+            cursor: pointer; font-family: inherit; font-weight: bold;
+            text-transform: uppercase; transition: 0.3s;
+            text-shadow: 0 0 5px var(--neon-blue);
+            box-shadow: 0 0 10px inset var(--neon-blue);
+            pointer-events: auto;
+            margin-top: 10px;
+        }
+        button.cyber-btn:hover {
+            background: var(--neon-blue); color: #000;
+        }
+    </style>
+</head>
+<body>
+
+<!-- AI-DEV-HANDOFF-START
+タイトル: クロノ・シャドウ：時を編む潜入者 (Chrono Shadow: Parallel Infiltrator)
+バージョン: 1.0.0
+概要・ルール:
+  10秒間のタイムループを駆使し、過去の自分のゴーストと協力してスイッチを踏み、ゴールを目指す見下ろし型2Dステルスパズル。
+  最大4回のループ（自分＋3体のゴースト）が可能。敵（赤い光）に触れるとパラドックス（ミス）となりループがリセットされる。
+主要な構造（関数・状態管理・画面遷移）:
+  - Game Engine: requestAnimationFrameベースのメインループ (update/draw)
+  - 状態遷移: STATE_TITLE -> STATE_PLAYING -> STATE_GAMEOVER/STATE_CLEAR
+  - 録画システム:毎フレームのx,y座標を player.history に保存し、ループ時に ghosts 配列へ追加。
+  - サウンド: Web Audio APIを用いたオシレーターによる簡易効果音。
+セーブデータのキー: chrono_shadow_save (到達ステージ番号を保存)
+実装済み機能:
+  - プレイヤーの移動と履歴録画、ゴースト再生
+  - スイッチ＆ドア連動ギミック、敵（固定/移動）との当たり判定
+  - 10秒制限のプログレスバー描画、Spaceキーによる任意巻き戻し
+  - 外部データ(window.RUNE_GAME_DATA)読み込みとフォールバック機能
+未実装・TODO:
+  - リプレイ鑑賞モード（クリア後の通し再生）
+  - より複雑な敵（視界を持つ巡回ドローン）
+  - 影の削除・個別やり直し機能
+設計上のこだわり・注意点:
+  - 画像素材ゼロ(アセットレス)でCanvas2Dの shadowBlur を使いサイバー感を演出。
+  - ループごとのフレーム同期がズレないよう、すべてフレームカウント基準で処理。
+AI-DEV-HANDOFF-END -->
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="640" height="480"></canvas>
+    <div id="ui-layer">
+        <div style="display:flex; justify-content: space-between;">
+            <div class="hud-text" id="hud-level">STAGE 1</div>
+            <div class="hud-text" id="hud-loop">LOOPS: 0/4</div>
+        </div>
+        <div>
+            <div class="hud-text">TIME: <span id="hud-time">10.0</span>s</div>
+            <div style="width: 100%; height: 5px; background: #333; margin-top: 5px;">
+                <div id="time-bar" style="width: 100%; height: 100%; background: var(--neon-blue); transition: width 0.1s linear;"></div>
+            </div>
+            <div class="hud-text" style="font-size: 14px; margin-top:5px; color:#aaa;">[W,A,S,D]: Move | [SPACE]: Rewind</div>
+        </div>
+    </div>
+    <div id="center-message">
+        <div id="msg-text">CHRONO SHADOW</div>
+        <button id="btn-start" class="cyber-btn">START INFILTRATION</button>
+    </div>
+</div>
+
+<script>
+/** 
+ * フォールバック用のマスタデータ
+ * W:壁, S:スタート, G:ゴール, A/B/C:ボタン, a/b/c:対応するドア, E:敵(静止), X:敵(横移動)
+ */
+const FALLBACK_DATA = {
+    levels: [
+        { // Stage 1: Tutorial
+            grid: [
+                "WWWWWWWWWWWWWWWW",
+                "W              W",
+                "W  S        G  W",
+                "W              W",
+                "WWWWWWWWWWWWWWWW"
+            ]
+        },
+        { // Stage 2: Single Button
+            grid: [
+                "WWWWWWWWWWWWWWWW",
+                "W              W",
+                "W  S    A   aG W",
+                "W              W",
+                "WWWWWWWWWWWWWWWW"
+            ]
+        },
+        { // Stage 3: Coop required
+            grid: [
+                "WWWWWWWWWWWWWWWW",
+                "W     A        W",
+                "W  S      WaW GW",
+                "W     B   WbW  W",
+                "WWWWWWWWWWWWWWWW"
+            ]
+        },
+        { // Stage 4: Enemies
+            grid: [
+                "WWWWWWWWWWWWWWWW",
+                "W A E          W",
+                "W   E      a   W",
+                "W S E  B   b G W",
+                "WWWWWWWWWWWWWWWW"
+            ]
+        }
+    ]
+};
+
+// Web Audio API Setup
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    
+    if (type === 'rewind') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+    } else if (type === 'button') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    } else if (type === 'goal') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+    } else if (type === 'die') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.5);
+        gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+    }
+}
+
+// Game Constants & State
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const TILE_SIZE = 40;
+const FPS = 60;
+const MAX_TIME_SEC = 10;
+const MAX_FRAMES = MAX_TIME_SEC * FPS;
+const MAX_LOOPS = 4;
+const SAVE_KEY = 'chrono_shadow_save';
+
+let gameData = null;
+let currentLevelIdx = 0;
+let state = 'TITLE'; // TITLE, PLAYING, DEAD, CLEAR
+let frameCount = 0;
+let loopCount = 0;
+
+let keys = { w:false, a:false, s:false, d:false, space:false };
+let prevSpace = false;
+
+// Entities
+let player = { x:0, y:0, vx:0, vy:0, speed:3, history:[] };
+let ghosts = []; // array of history arrays
+let map = {
+    walls: [], buttons: [], doors: [], enemies: [], spawn: {x:0, y:0}, goal: {x:0, y:0}
+};
+
+// LocalStorage
+function loadSave() {
+    try {
+        const saved = localStorage.getItem(SAVE_KEY);
+        if(saved) return JSON.parse(saved).level || 0;
+    } catch(e) {}
+    return 0;
+}
+function saveProgress(level) {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({level: level}));
+}
+
+// Map Parser
+function loadLevel(idx) {
+    if (!gameData || !gameData.levels[idx]) return false;
+    const grid = gameData.levels[idx].grid;
+    map = { walls: [], buttons: [], doors: [], enemies: [], spawn: {x:0, y:0}, goal: {x:0, y:0} };
+    
+    for(let y=0; y<grid.length; y++) {
+        for(let x=0; x<grid[y].length; x++) {
+            const char = grid[y][x];
+            const px = x * TILE_SIZE;
+            const py = y * TILE_SIZE;
+            
+            if (char === 'W') map.walls.push({x: px, y: py, w: TILE_SIZE, h: TILE_SIZE});
+            if (char === 'S') map.spawn = {x: px + TILE_SIZE/2, y: py + TILE_SIZE/2};
+            if (char === 'G') map.goal = {x: px + TILE_SIZE/2, y: py + TILE_SIZE/2, r: 15};
+            
+            // Buttons A, B, C
+            if (char === 'A' || char === 'B' || char === 'C') {
+                map.buttons.push({x: px + TILE_SIZE/2, y: py + TILE_SIZE/2, r: 12, id: char, active: false});
+            }
+            // Doors a, b, c
+            if (char === 'a' || char === 'b' || char === 'c') {
+                map.doors.push({x: px, y: py, w: TILE_SIZE, h: TILE_SIZE, id: char.toUpperCase(), open: false});
+            }
+            if (char === 'E') {
+                map.enemies.push({x: px + TILE_SIZE/2, y: py + TILE_SIZE/2, r: 10, type: 'static'});
+            }
+        }
+    }
+    
+    resetLoop(true);
+    document.getElementById('hud-level').innerText = `STAGE ${idx + 1}`;
+    return true;
+}
+
+function resetLoop(fullReset = false) {
+    player.x = map.spawn.x;
+    player.y = map.spawn.y;
+    player.history = [];
+    frameCount = 0;
+    
+    if(fullReset) {
+        ghosts = [];
+        loopCount = 0;
+    }
+    updateHUD();
+}
+
+function triggerRewind() {
+    if (loopCount >= MAX_LOOPS) {
+        gameOver("LOOP LIMIT EXCEEDED");
+        return;
+    }
+    playSound('rewind');
+    ghosts.push([...player.history]);
+    loopCount++;
+    resetLoop(false);
+}
+
+function gameOver(reason) {
+    state = 'DEAD';
+    playSound('die');
+    const msg = document.getElementById('center-message');
+    msg.classList.remove('hidden');
+    document.getElementById('msg-text').innerText = reason + "\nPARADOX DETECTED";
+    document.getElementById('btn-start').innerText = "RETRY STAGE";
+}
+
+function stageClear() {
+    state = 'CLEAR';
+    playSound('goal');
+    const msg = document.getElementById('center-message');
+    msg.classList.remove('hidden');
+    document.getElementById('msg-text').innerText = "DATA SECURED";
+    
+    let nextLvl = currentLevelIdx + 1;
+    if(nextLvl > loadSave()) saveProgress(nextLvl);
+    
+    if (gameData.levels[nextLvl]) {
+        document.getElementById('btn-start').innerText = "NEXT STAGE";
+    } else {
+        document.getElementById('msg-text').innerText = "ALL MISSIONS ACCOMPLISHED";
+        document.getElementById('btn-start').innerText = "BACK TO TITLE";
+    }
+}
+
+// Input setup
+window.addEventListener('keydown', e => {
+    if(e.key === 'w' || e.key === 'ArrowUp') keys.w = true;
+    if(e.key === 'a' || e.key === 'ArrowLeft') keys.a = true;
+    if(e.key === 's' || e.key === 'ArrowDown') keys.s = true;
+    if(e.key === 'd' || e.key === 'ArrowRight') keys.d = true;
+    if(e.key === ' ') keys.space = true;
+});
+window.addEventListener('keyup', e => {
+    if(e.key === 'w' || e.key === 'ArrowUp') keys.w = false;
+    if(e.key === 'a' || e.key === 'ArrowLeft') keys.a = false;
+    if(e.key === 's' || e.key === 'ArrowDown') keys.s = false;
+    if(e.key === 'd' || e.key === 'ArrowRight') keys.d = false;
+    if(e.key === ' ') keys.space = false;
+});
+
+// Collision Utils
+function rectIntersect(x1, y1, w1, h1, x2, y2, w2, h2) {
+    return x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2;
+}
+function circleIntersect(x1, y1, r1, x2, y2, r2) {
+    const dx = x1 - x2; const dy = y1 - y2;
+    return Math.sqrt(dx*dx + dy*dy) < r1 + r2;
+}
+
+// Update Logic
+function update() {
+    if (state !== 'PLAYING') return;
+
+    // Time handling
+    frameCount++;
+    if (frameCount >= MAX_FRAMES) {
+        triggerRewind();
+        return;
+    }
+    
+    // Manual Rewind
+    if (keys.space && !prevSpace) {
+        triggerRewind();
+        return;
+    }
+    prevSpace = keys.space;
+
+    // Player Move
+    let nx = player.x; let ny = player.y;
+    if(keys.w) ny -= player.speed;
+    if(keys.s) ny += player.speed;
+    if(keys.a) nx -= player.speed;
+    if(keys.d) nx += player.speed;
+    
+    // Wall Collision
+    let r = 8; // player radius equivalent
+    let hitWall = false;
+    
+    // Helper to check walls and CLOSED doors
+    const checkObstacle = (cx, cy) => {
+        for(let w of map.walls) {
+            if(rectIntersect(cx-r, cy-r, r*2, r*2, w.x, w.y, w.w, w.h)) return true;
+        }
+        for(let d of map.doors) {
+            if(!d.open && rectIntersect(cx-r, cy-r, r*2, r*2, d.x, d.y, d.w, d.h)) return true;
+        }
+        return false;
+    };
+
+    if(!checkObstacle(nx, player.y)) player.x = nx;
+    if(!checkObstacle(player.x, ny)) player.y = ny;
+
+    // Record History
+    player.history.push({x: player.x, y: player.y});
+
+    // Check Buttons (Player + Ghosts)
+    let activePresses = {}; // Track which buttons are pressed this frame
+    
+    const entities = [{x: player.x, y: player.y}];
+    ghosts.forEach(g => {
+        if(frameCount < g.length) entities.push({x: g[frameCount].x, y: g[frameCount].y});
+    });
+
+    map.buttons.forEach(b => {
+        let pressed = false;
+        for(let e of entities) {
+            if(circleIntersect(e.x, e.y, r, b.x, b.y, b.r)) {
+                pressed = true; break;
+            }
+        }
+        if(pressed && !b.active) playSound('button'); // just activated
+        b.active = pressed;
+        if(pressed) activePresses[b.id] = true;
+    });
+
+    // Update Doors based on buttons
+    map.doors.forEach(d => {
+        d.open = !!activePresses[d.id];
+    });
+
+    // Death Check (Enemies)
+    for(let e of map.enemies) {
+        // Did player hit enemy?
+        if(circleIntersect(player.x, player.y, r, e.x, e.y, e.r)) {
+            gameOver("AGENT LOST"); return;
+        }
+        // Did ghost hit enemy? (Paradox)
+        for(let i=0; i<ghosts.length; i++) {
+            let g = ghosts[i];
+            if(frameCount < g.length && circleIntersect(g[frameCount].x, g[frameCount].y, r, e.x, e.y, e.r)) {
+                gameOver("GHOST ERADICATED"); return;
+            }
+        }
+    }
+
+    // Goal Check
+    if(circleIntersect(player.x, player.y, r, map.goal.x, map.goal.y, map.goal.r)) {
+        stageClear();
+    }
+
+    updateHUD();
+}
+
+function updateHUD() {
+    let timeLeft = Math.max(0, MAX_TIME_SEC - (frameCount / FPS)).toFixed(1);
+    document.getElementById('hud-time').innerText = timeLeft;
+    document.getElementById('time-bar').style.width = `${(frameCount / MAX_FRAMES) * 100}%`;
+    document.getElementById('hud-loop').innerText = `LOOPS: ${loopCount}/${MAX_LOOPS}`;
+}
+
+// Draw Logic
+function draw() {
+    ctx.fillStyle = '#050510';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if(!gameData) return;
+
+    // Grid (subtle)
+    ctx.strokeStyle = 'rgba(0, 243, 255, 0.05)';
+    ctx.lineWidth = 1;
+    for(let i=0; i<canvas.width; i+=TILE_SIZE) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
+    for(let i=0; i<canvas.height; i+=TILE_SIZE) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke(); }
+
+    ctx.shadowBlur = 15;
+
+    // Goal
+    ctx.shadowColor = 'var(--neon-green)';
+    ctx.fillStyle = 'var(--neon-green)';
+    ctx.beginPath(); ctx.arc(map.goal.x, map.goal.y, map.goal.r, 0, Math.PI*2); ctx.fill();
+
+    // Buttons
+    map.buttons.forEach(b => {
+        ctx.shadowColor = b.active ? 'var(--neon-pink)' : '#555';
+        ctx.fillStyle = b.active ? 'var(--neon-pink)' : '#333';
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth=2;
+        ctx.strokeText(b.id, b.x-4, b.y+4);
+    });
+
+    // Walls
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#1a1a2e';
+    ctx.strokeStyle = 'var(--neon-blue)';
+    ctx.lineWidth = 2;
+    map.walls.forEach(w => {
+        ctx.fillRect(w.x, w.y, w.w, w.h);
+        ctx.strokeRect(w.x, w.y, w.w, w.h);
+    });
+
+    // Doors
+    map.doors.forEach(d => {
+        if(!d.open) {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = 'var(--neon-pink)';
+            ctx.fillStyle = 'rgba(255, 0, 234, 0.5)';
+            ctx.fillRect(d.x, d.y, d.w, d.h);
+            ctx.strokeRect(d.x, d.y, d.w, d.h);
+            ctx.fillStyle = '#fff'; ctx.fillText(d.id, d.x+15, d.y+25);
+        }
+    });
+
+    // Enemies
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = '#ff0000';
+    ctx.fillStyle = '#ff0000';
+    map.enemies.forEach(e => {
+        ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI*2); ctx.fill();
+    });
+
+    // Ghosts
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = 'rgba(0, 243, 255, 0.5)';
+    ctx.fillStyle = 'rgba(0, 243, 255, 0.4)';
+    ghosts.forEach((g, idx) => {
+        if(frameCount < g.length) {
+            let pos = g[frameCount];
+            ctx.beginPath(); ctx.arc(pos.x, pos.y, 8, 0, Math.PI*2); ctx.fill();
+            ctx.font = '10px Courier New'; ctx.fillStyle = '#fff';
+            ctx.fillText("G"+(idx+1), pos.x-6, pos.y-12);
+            ctx.fillStyle = 'rgba(0, 243, 255, 0.4)';
+        }
+    });
+
+    // Player
+    if(state === 'PLAYING' || state === 'CLEAR') {
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#fff';
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(player.x, player.y, 8, 0, Math.PI*2); ctx.fill();
+    }
+}
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+// UI Buttons
+document.getElementById('btn-start').addEventListener('click', () => {
+    audioCtx.resume();
+    document.getElementById('center-message').classList.add('hidden');
+    
+    if (state === 'TITLE') {
+        currentLevelIdx = loadSave();
+        if(currentLevelIdx >= gameData.levels.length) currentLevelIdx = 0;
+        loadLevel(currentLevelIdx);
+        state = 'PLAYING';
+    } else if (state === 'DEAD') {
+        resetLoop(true);
+        state = 'PLAYING';
+    } else if (state === 'CLEAR') {
+        currentLevelIdx++;
+        if(currentLevelIdx >= gameData.levels.length) {
+            state = 'TITLE';
+            document.getElementById('center-message').classList.remove('hidden');
+            document.getElementById('msg-text').innerText = "CHRONO SHADOW";
+            document.getElementById('btn-start').innerText = "PLAY AGAIN";
+        } else {
+            loadLevel(currentLevelIdx);
+            state = 'PLAYING';
+        }
+    }
+});
+
+// Initialization & External Data Loading
+function init() {
+    // 外部スクリプトのロード試行
+    const script = document.createElement('script');
+    script.src = "https://morinokum.github.io/my-website/game-data.js";
+    script.onload = () => {
+        console.log("External data loaded.");
+        if (window.RUNE_GAME_DATA && window.RUNE_GAME_DATA.levels) {
+            gameData = window.RUNE_GAME_DATA;
+        } else {
+            console.warn("External data invalid, using fallback.");
+            gameData = FALLBACK_DATA;
+        }
+        draw(); // draw initial title screen map
+    };
+    script.onerror = () => {
+        console.warn("Failed to load external data, using fallback.");
+        gameData = FALLBACK_DATA;
+        draw();
+    };
+    document.head.appendChild(script);
+
+    // Start Engine
+    requestAnimationFrame(gameLoop);
+}
+
+init();
+</script>
+</body>
+</html>

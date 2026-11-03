@@ -13,29 +13,26 @@ GAME_LIST_TEXT=""
 # ==============================================================================
 # 2. ユーティリティ（汎用ツール）
 # ==============================================================================
-# クリップボードへの転送処理（元通り printf と各OSのコマンドを復活）
 copy_to_clipboard() {
   local content="$1"
   if command -v pbcopy >/dev/null 2>&1; then
-    printf '%s' "$content" | pbcopy; return 0        # Mac
+    printf '%s' "$content" | pbcopy; return 0         # Mac
   elif command -v clip.exe >/dev/null 2>&1; then
-    printf '%s' "$content" | clip.exe; return 0      # Windows(WSL)
+    printf '%s' "$content" | clip.exe; return 0       # Windows(WSL)
   elif command -v xclip >/dev/null 2>&1; then
     printf '%s' "$content" | xclip -selection clipboard; return 0 # Linux X11
   elif command -v xsel >/dev/null 2>&1; then
-    printf '%s' "$content" | xsel -b; return 0       # Linux X11
+    printf '%s' "$content" | xsel -b; return 0        # Linux X11
   elif command -v wl-copy >/dev/null 2>&1; then
-    printf '%s' "$content" | wl-copy; return 0       # Linux Wayland
+    printf '%s' "$content" | wl-copy; return 0        # Linux Wayland
   fi
   return 1
 }
 
-# 開発引き継ぎブロックの抽出
 extract_handoff() {
   sed -n '/AI-DEV-HANDOFF-START/,/AI-DEV-HANDOFF-END/p' "$1" 2>/dev/null
 }
 
-# HTMLエスケープ処理
 escape_html() {
   echo "$1" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g'
 }
@@ -65,6 +62,7 @@ update_game_data() {
 
 collect_html_games() {
   while IFS= read -r file; do
+    [ -n "$file" ] || continue
     local filename=$(basename "$file")
     if [ ! -f "$GAMES_DIR/$filename" ]; then
       cp "$file" "$GAMES_DIR/"
@@ -117,7 +115,7 @@ build_index_html() {
   <div class="grid" id="grid">
 EOF
 
-  declare -A seen
+  local -A seen
   GAME_COUNT=0
   GAME_LIST_TEXT=""
 
@@ -132,7 +130,7 @@ EOF
     if [ -n "${seen[$title]:-}" ]; then continue; fi
     seen[$title]=1
     
-    GAME_LIST_TEXT+="- ${title}\n"
+    GAME_LIST_TEXT+="- ${title}"$'\n'
     ((GAME_COUNT++))
 
     local summary=$(extract_handoff "$file" | grep -i "^概要・ルール:" | sed 's/^概要・ルール:[ ]*//' | head -n 1)
@@ -238,7 +236,7 @@ build_prompt() {
     fi
     PROMPT="私はこれまでに以下のHTMLブラウザゲームを作成しました。
 
-$(echo -e "$GAME_LIST_TEXT")
+${GAME_LIST_TEXT}
 
 ${req_part}
 
@@ -342,7 +340,7 @@ ${rule_text}"
 
     PROMPT="私はこれまでに以下のHTMLブラウザゲームを作成しました。
 
-$(echo -e "$GAME_LIST_TEXT")
+${GAME_LIST_TEXT}
 これらは私の「AI-GAME-PORTFOLIO」に収録されています。
 
 ${req_part}
@@ -350,7 +348,6 @@ ${req_part}
 ${rule_text}"
   fi
 
-  # プロンプトを出力
   printf "%s\n" "$PROMPT"
 }
 

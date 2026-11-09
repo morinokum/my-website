@@ -1,1 +1,5 @@
 *portfolio_ai_config*
+*.bak
+*.log
+index_backup.html
+*_backup.html

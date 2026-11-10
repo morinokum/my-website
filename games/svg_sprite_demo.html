@@ -6,10 +6,11 @@
 <title>SVGスプライト デモ - ペンギンの星集め</title>
 <style>
   body { font-family: sans-serif; background: #1e1e1e; color: #f0f0f0; margin: 0; text-align: center; }
-  header { padding: 16px 10px 4px; }
-  h1 { margin: 0; font-size: 1.3em; color: #4db2ff; }
-  .hud { display: flex; justify-content: center; gap: 24px; font-weight: bold; margin: 10px 0; font-size: 1.05em; }
-  #stage { width: min(96vw, 640px); margin: auto; display: block; background: #79c26a; border: 3px solid #3e3e42; border-radius: 10px; touch-action: none; }
+  header { padding: 10px 10px 2px; }
+  h1 { margin: 0; font-size: 1.15em; color: #4db2ff; }
+  .hud { display: flex; justify-content: center; gap: 24px; font-weight: bold; margin: 8px 0; font-size: 1.05em; }
+  #stage { width: 100vw; max-width: 980px; margin: auto; display: block; background: #79c26a; border: 3px solid #3e3e42; border-radius: 10px; touch-action: none; box-sizing: border-box; }
+  #stage:fullscreen { width: 100%; height: 100%; max-width: none; border: none; border-radius: 0; }
   button { background: #007acc; color: #fff; border: none; padding: 10px 26px; border-radius: 20px; font-weight: bold; font-size: 1em; cursor: pointer; }
   .pad { display: grid; grid-template-columns: repeat(3, 64px); gap: 6px; justify-content: center; margin: 14px auto 24px; user-select: none; -webkit-user-select: none; }
   .pad button { padding: 14px 0; font-size: 1.2em; background: #2d2d30; border: 1px solid #007acc; border-radius: 12px; }
@@ -21,6 +22,7 @@
   <h1>🐧 SVGスプライト デモ - ペンギンの星集め</h1>
   <div class="hud"><span>⭐ スコア: <span id="score">0</span></span><span>⏱ 残り: <span id="time">60</span>秒</span></div>
   <button id="startBtn">▶ スタート</button>
+  <button id="fsBtn">⛶ 全画面</button>
 </header>
 
 <!-- 描画は全部このSVGの中。キャラも星も敵もSVGの部品（要素）です -->
@@ -127,7 +129,7 @@ document.querySelectorAll('.pad button').forEach(btn => {
 function placeStar() {
   star.x = 40 + Math.random() * (W - 80);
   star.y = 40 + Math.random() * (H - 80);
-  starEl.setAttribute('transform', `translate(${star.x} ${star.y})`);
+  starEl.setAttribute('transform', `translate(${star.x} ${star.y}) scale(1.3)`);
 }
 // 四角同士の当たり判定
 function hit(ax, ay, bx, by, d) { return Math.abs(ax - bx) < d && Math.abs(ay - by) < d; }
@@ -171,19 +173,19 @@ function loop(now) {
     armL.setAttribute('transform', `rotate(${tilt * 2.2} -19 -6)`);
     armR.setAttribute('transform', `rotate(${-tilt * 2.2} 19 -6)`);
     // 主人公の配置：transformで移動＋左右反転＋体の傾き
-    playerEl.setAttribute('transform', `translate(${px + swayX} ${py + bobY})`);
+    playerEl.setAttribute('transform', `translate(${px + swayX} ${py + bobY}) scale(1.35)`);
     penguinEl.setAttribute('transform', `scale(${face} 1) rotate(${tilt})`);
 
     // スライム：主人公をゆっくり追いかける＋ぷよぷよ変形
     const vx = px - sx, vy = py - sy, vl = Math.hypot(vx, vy) || 1;
     sx += vx / vl * 55 * dt; sy += vy / vl * 55 * dt;
     const sq = 1 + Math.sin(now / 150) * 0.08;
-    slimeEl.setAttribute('transform', `translate(${sx} ${sy}) scale(1 ${sq})`);
+    slimeEl.setAttribute('transform', `translate(${sx} ${sy}) scale(1.35 ${1.35 * sq})`);
 
     // 星を取った？
-    if (hit(px, py, star.x, star.y, 30)) { score++; scoreEl.textContent = score; placeStar(); }
+    if (hit(px, py, star.x, star.y, 42)) { score++; scoreEl.textContent = score; placeStar(); }
     // スライムに当たった？
-    if (hit(px, py, sx, sy, 30)) { score = Math.max(0, score - 1); scoreEl.textContent = score; px = 320; py = 200; }
+    if (hit(px, py, sx, sy, 42)) { score = Math.max(0, score - 1); scoreEl.textContent = score; px = 320; py = 200; }
 
     // 時間
     secTimer += dt;
@@ -199,8 +201,14 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 placeStar();
-playerEl.setAttribute('transform', `translate(${px} ${py})`);
-slimeEl.setAttribute('transform', `translate(${sx} ${sy})`);
+playerEl.setAttribute('transform', `translate(${px} ${py}) scale(1.35)`);
+slimeEl.setAttribute('transform', `translate(${sx} ${sy}) scale(1.35)`);
+// 全画面ボタン
+document.getElementById('fsBtn').addEventListener('click', () => {
+  const st = document.getElementById('stage');
+  if (document.fullscreenElement) document.exitFullscreen();
+  else if (st.requestFullscreen) st.requestFullscreen();
+});
 requestAnimationFrame(loop);
 </script>
 </body>

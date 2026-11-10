@@ -60,7 +60,7 @@
     <circle cx="-7" cy="-3" r="1.5" fill="#222"/><circle cx="7" cy="-3" r="1.5" fill="#222"/>
   </g>
 
-  <!-- 主人公ペンギン：歩行アニメは足の2コマ（frameA/frameB）をJSで切替える -->
+  <!-- 主人公ペンギン：歩行アニメは足・腕・体を別部品にしてJSで位相をずらして動かす -->
   <g id="player">
     <g id="penguin">
       <ellipse cx="0" cy="0" rx="17" ry="20" fill="#263238"/>
@@ -68,16 +68,10 @@
       <circle cx="-6" cy="-8" r="2.6" fill="#fff"/><circle cx="6" cy="-8" r="2.6" fill="#fff"/>
       <circle cx="-6" cy="-8" r="1.3" fill="#111"/><circle cx="6" cy="-8" r="1.3" fill="#111"/>
       <polygon points="-4,-3 4,-3 0,2" fill="#ff9800"/>
-      <ellipse cx="-19" cy="2" rx="5" ry="10" fill="#263238"/>
-      <ellipse cx="19" cy="2" rx="5" ry="10" fill="#263238"/>
-      <g id="frameA">
-        <ellipse cx="-8" cy="21" rx="6" ry="3" fill="#ff9800"/>
-        <ellipse cx="8" cy="21" rx="6" ry="3" fill="#ff9800"/>
-      </g>
-      <g id="frameB" style="display:none">
-        <ellipse cx="-11" cy="20" rx="6" ry="3" fill="#ff9800"/>
-        <ellipse cx="11" cy="22" rx="6" ry="3" fill="#ff9800"/>
-      </g>
+      <g id="armL"><ellipse cx="-19" cy="2" rx="5" ry="10" fill="#263238"/></g>
+      <g id="armR"><ellipse cx="19" cy="2" rx="5" ry="10" fill="#263238"/></g>
+      <g id="footL"><ellipse cx="-8" cy="21" rx="7" ry="3.5" fill="#ff9800"/></g>
+      <g id="footR"><ellipse cx="8" cy="21" rx="7" ry="3.5" fill="#ff9800"/></g>
     </g>
   </g>
 
@@ -92,7 +86,7 @@
 
 <p class="note">
   遊び方：矢印キー／WASD／画面の十字キーでペンギンを動かし、60秒で星を何個集められるか。スライムに当たるとスコア-1＆スタート位置に戻ります。<br>
-  仕組み：キャラはSVGの部品で、移動は transform、歩行は足の2コマ切替、反転は scale(-1,1)、敵の変形も scale、当
+  仕組み：キャラはSVGの部品で、移動は transform、歩行は足の上下と体の傾きを位相でずらす方式、反転は scale(-1,1)、敵の変形も scale、当
 たり判定は四角の重なり判定です。ソースを表示すれば全部読めます。
 </p>
 
@@ -100,8 +94,10 @@
 const W = 640, H = 400;
 const playerEl = document.getElementById('player');
 const penguinEl = document.getElementById('penguin');
-const frameA = document.getElementById('frameA');
-const frameB = document.getElementById('frameB');
+const footL = document.getElementById('footL');
+const footR = document.getElementById('footR');
+const armL = document.getElementById('armL');
+const armR = document.getElementById('armR');
 const slimeEl = document.getElementById('slime');
 const starEl = document.getElementById('star');
 const msgEl = document.getElementById('msg');
@@ -112,7 +108,8 @@ let px = 320, py = 200, face = 1;           // 主人公の座標と向き
 let sx = 120, sy = 100;                      // スライムの座標
 let star = { x: 480, y: 280 };
 let score = 0, timeLeft = 60, running = false;
-let walkTimer = 0, frame = false;
+let phase = 0;                 // 歩行サイクルの位相
+let liftL = 0, liftR = 0, tilt = 0, bobY = 0, swayX = 0;  // 現在の歩行ポーズ（補間用）
 const keys = {};
 
 // 入力：キーボード
@@ -158,14 +155,24 @@ function loop(now) {
       px += dx / len * 170 * dt; py += dy / len * 170 * dt;
       px = Math.max(24, Math.min(W - 24, px)); py = Math.max(28, Math.min(H - 24, py));
       if (dx !== 0) face = dx > 0 ? 1 : -1;
-      // 歩行アニメ：足の2コマを交互に表示
-      walkTimer += dt;
-      if (walkTimer > 0.14) { walkTimer = 0; frame = !frame; frameA.style.display = frame ? 'none' : ''; frameB.style.display = frame ? '' : 'none'; }
+      phase += dt * 11;   // 歩行サイクルを進める
     }
-    // 主人公の配置：transformで移動＋左右反転＋歩行の上下動
-    const bob = moving ? Math.sin(now / 60) * 2 : 0;
-    playerEl.setAttribute('transform', `translate(${px} ${py + bob})`);
-    penguinEl.setAttribute('transform', `scale(${face} 1)`);
+    // 歩行ポーズ：左右の足を交互に上げ、体を左右に揺らし、腕を逆位相で振る
+    const tLiftL = moving ? Math.max(0, Math.sin(phase)) * 6 : 0;
+    const tLiftR = moving ? Math.max(0, Math.sin(phase + Math.PI)) * 6 : 0;
+    const tTilt  = moving ? Math.sin(phase) * 4 : 0;
+    const tBob   = moving ? -Math.abs(Math.sin(phase)) * 3 : 0;
+    const tSway  = moving ? Math.sin(phase) * 2.5 : 0;
+    const k = Math.min(1, dt * 18);   // ポーズへ滑らかに寄せる
+    liftL += (tLiftL - liftL) * k; liftR += (tLiftR - liftR) * k;
+    tilt += (tTilt - tilt) * k; bobY += (tBob - bobY) * k; swayX += (tSway - swayX) * k;
+    footL.setAttribute('transform', `translate(0 ${-liftL})`);
+    footR.setAttribute('transform', `translate(0 ${-liftR})`);
+    armL.setAttribute('transform', `rotate(${tilt * 2.2} -19 -6)`);
+    armR.setAttribute('transform', `rotate(${-tilt * 2.2} 19 -6)`);
+    // 主人公の配置：transformで移動＋左右反転＋体の傾き
+    playerEl.setAttribute('transform', `translate(${px + swayX} ${py + bobY})`);
+    penguinEl.setAttribute('transform', `scale(${face} 1) rotate(${tilt})`);
 
     // スライム：主人公をゆっくり追いかける＋ぷよぷよ変形
     const vx = px - sx, vy = py - sy, vl = Math.hypot(vx, vy) || 1;

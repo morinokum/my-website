@@ -150,6 +150,11 @@
 
   <!-- Dynamic External Master Data Script Tag -->
   <script src="https://morinokum.github.io/my-website/game-data.js" onerror="window.externalDataLoadFailed=true;"></script>
+<style>
+  #terminal-input { font-size: 16px; padding-top: 10px; padding-bottom: 10px; }
+  .cmd-quick { min-height: 42px; touch-action: manipulation; }
+  #btn-terminal-submit { min-height: 42px; touch-action: manipulation; }
+</style>
 </head>
 <body class="min-h-screen flex flex-col relative select-none crt-flicker" id="app-body">
 
@@ -315,6 +320,13 @@
               <button id="btn-terminal-submit" class="retro-btn-amber px-4 py-1.5 rounded text-xs font-bold">
                 RUN
               </button>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button class="cmd-quick retro-btn-amber px-3 rounded text-xs font-bold" data-cmd="HELP">HELP</button>
+              <button class="cmd-quick retro-btn-amber px-3 rounded text-xs font-bold" data-cmd="SCAN">SCAN</button>
+              <button class="cmd-quick retro-btn-amber px-3 rounded text-xs font-bold" data-cmd="DECRYPT">DECRYPT（コード入力）</button>
+              <button class="cmd-quick retro-btn-amber px-3 rounded text-xs font-bold" data-cmd="BYPASS">BYPASS</button>
+              <button class="cmd-quick retro-btn-amber px-3 rounded text-xs font-bold" data-cmd="CLEAR">CLEAR</button>
             </div>
           </div>
         </div>
@@ -1351,5 +1363,15 @@
       updateInventoryUI();
     };
   </script>
+<script>
+// スマホ対応: クイックコマンドボタン
+document.querySelectorAll('.cmd-quick').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var inp = document.getElementById('terminal-input');
+    if (b.dataset.cmd === 'DECRYPT') { inp.value = 'DECRYPT '; inp.focus(); }
+    else { inp.value = b.dataset.cmd; handleTerminalInput(); }
+  });
+});
+</script>
 </body>
 </html>

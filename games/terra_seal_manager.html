@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鳥人の一日 - 絶対封印指定惑星テラ 封印管理シム</title>
+<style>
+body { font-family: sans-serif; background: #101418; color: #e8e8e8; margin: 0;}
+main { max-width: 680px; margin: auto; padding: 16px 14px 40px;}
+h1 { font-size: 1.25em; color: #ffd83d; margin: 6px 0 2px;}
+.sub { color: #9fb4c0; font-size:.85em; margin-bottom: 14px; line-height: 1.6;}
+.turn { font-weight: bold; color: #4db2ff; margin: 10px 0;}
+.stat { margin: 8px 0;}
+.stat label { display: flex; justify-content: space-between; font-size:.9em; margin-bottom: 3px;}
+.bar { height: 14px; background: #2a2f36; border-radius: 7px; overflow: hidden;}
+.fill { height: 100%; transition: width.4s;}
+.tech { background: #e5534b;}.zeal { background: #b072d6;}.soldier { background: #e08a3c;}.viol { background: #d6c93c;}
+.watch { background: #20262d; border: 1px solid #3a4550; border-radius: 8px; padding: 8px 12px; font-size:.9em; margin: 12px 0;}
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0;}
+.actions button { background: #1d2733; color: #e8e8e8; border: 1px solid #4db2ff; border-radius: 10px; padding: 12px 8px; font-size:.95em; font-weight: bold; cursor: pointer; min-height: 64px;}
+.actions button small { display: block; font-weight: normal; color: #9fb4c0; font-size:.78em; margin-top: 4px; line-height: 1.5;}
+.actions button:disabled { opacity:.35; cursor: default;}
+#log { background: #0b0e11; border: 1px solid #2c353f; border-radius: 8px; padding: 10px 12px; height: 220px; overflow-y: auto; font-size:.88em; line-height: 1.7;}
+#log.ev { color: #ffd83d;} #log.bad { color: #ff7a72;} #log.good { color: #7ee2a8;} #log.sys { color: #7d8b96;}
+#restart { display: none; background: #007acc; color: #fff; border: none; padding: 12px 30px; border-radius: 22px; font-weight: bold; font-size: 1em; margin-top: 14px; cursor: pointer;}
+</style>
+</head>
+<body>
+<main>
+<h1>🕊️ 鳥人の一日 ― 絶対封印指定惑星テラ</h1>
+<p class="sub">あなたは封印管理官の鳥人。1ターン＝鳥人の1日＝人間の1年。介入は1日に1回だけ。人類の技術が宇宙進出に届けばフェイルセーフが作動し、地球ごと消滅する。任期30日（人間時間30年）を封印のまま乗り切れ。</p>
+
+<div class="turn">📅 鳥人時間 第<span id="day">1</span>日 ／ 人間時間 <span id="year">1</span>年目（残り任期 <span id="left">30</span>日）</div>
+
+<div class="stat"><label><span>🚀 人類の技術レベル（100で宇宙進出＝全滅）</span><span id="v-tech">0</span></label><div class="bar"><div class="fill tech" id="b-tech" style="width:0%"></div></div></div>
+<div class="stat"><label><span>🔥 狂信（100で信仰暴走＝文明自滅）</span><span id="v-zeal">0</span></label><div class="bar"><div class="fill zeal" id="b-zeal" style="width:0%"></div></div></div>
+<div class="stat"><label><span>😈 悪魔の私兵化（100で人類が悪魔の兵器に）</span><span id="v-soldier">0</span></label><div class="bar"><div class="fill soldier" id="b-soldier" style="width:0%"></div></div></div>
+<div class="stat"><label><span>👁️ 条約違反ポイント（5で失脚）</span><span id="v-viol">0 / 5</span></label><div class="bar"><div class="fill viol" id="b-viol" style="width:0%"></div></div></div>
+<div class="stat"><label><span>👥 人類人口（参考：増えるほど技術も伸びる）</span><span id="v-pop">80億</span></label></div>
+
+<div class="watch">🐦 鳥ドローン監視の強さ: <b id="watchLv">中</b> <span id="watchNote" style="color:#9fb4c0"></span></div>
+
+<div class="actions">
+<button id="a-proph">📡 預言する<small>技術-7前後。確実だが狂信+14</small></button>
+<button id="a-angel">👼 天使と取引<small>技術-12。科学者を密輸させる。監視に見つかると違反+1</small></button>
+<button id="a-demon">😈 悪魔に工作依頼<small>技術-6。宇宙開発を妨害。私兵化+10</small></button>
+<button id="a-wait">🪨 静観する<small>何もしない。狂信-8、私兵化-6（像のまま動かない）</small></button>
+</div>
+
+<div id="log"></div>
+<button id="restart">↻ もう一度管理する</button>
+<p class="sub" style="margin-top:16px">原作設定:『絶対封印指定惑星：テラ（仮）』／天使ボタンは2日に1回だけ使えます。</p>
+</main>
+
+<script>
+let S;
+const WATCH = [
+{ name: '低', detect: 0.15, note: 'カラスの縄張り争い（ジャミング戦）で監視に隙が多い'},
+{ name: '中', detect: 0.35, note: '通常の監視体制'},
+{ name: '高', detect: 0.60, note: '他部族の査察が活発。密輸は危険'},
+];
+const EVENTS = [
+{ t: '🧹 神官たちがあなたの体（像）の清掃を始めました。埃が落ち、気分が良い。次の預言の効果が上がります。', f: s => { s.prophBoost = true;}},
+{ t: '🐦‍⬛ カラスの大群が境界で衝突。ジャミング戦で監視網に空白が生まれました。', f: s => { s.watchOverride = 0;}},
+{ t: '🧠 人類に天才科学者が誕生しました。このままでは技術の伸びが加速します。', f: s => { s.genius = true;}},
+{ t: '🍎 人間が供物を新しく取り替えてくれました。……まだ食べていません。', f: s => {}},
+{ t: '🌋 大規模な自然災害。人類は復興に追われ、技術の伸びが止まります。', f: s => { s.techGrowthStop = true;}},
+{ t: '📺 人類が「宇宙はロマンだ」という映像作品を大ヒットさせました。宇宙熱が高まっています。', f: s => { s.spaceFever = true;}},
+];
+function reset() {
+S = { day: 1, tech: 12, zeal: 10, soldier: 0, viol: 0, pop: 80, angelCd: 0, over: false,
+prophBoost: false, watchOverride: null, genius: false, techGrowthStop: false, spaceFever: false};
+document.getElementById('log').innerHTML = '';
+document.getElementById('restart').style.display = 'none';
+log('sys', '封印管理官に着任した。人間時間で30年、静かに見守るのだ。');
+render();
+}
+function log(cls, msg) {
+const el = document.getElementById('log');
+const d = document.createElement('div'); if (cls) d.className = cls; d.textContent = msg;
+el.appendChild(d); el.scrollTop = el.scrollHeight;
+}
+function watchIdx() { return S.watchOverride!== null? S.watchOverride: (S.day * 7) % 3 < 1? 0: ((S.day * 7) % 3 === 1? 1: 2);}
+function clamp() { S.tech = Math.max(0, S.tech); S.zeal = Math.min(100, Math.max(0, S.zeal)); S.soldier = Math.min(100, Math.max(0, S.soldier));}
+function render() {
+document.getElementById('day').textContent = Math.min(S.day, 30);
+document.getElementById('year').textContent = Math.min(S.day, 30);
+document.getElementById('left').textContent = Math.max(0, 31 - S.day);
+const set = (id, v, max) => { document.getElementById('v-' + id).textContent = Math.round(v); document.getElementById('b-' + id).style.width = Math.min(100, v / max * 100) + '%';};
+set('tech', S.tech, 100); set('zeal', S.zeal, 100); set('soldier', S.soldier, 100);
+document.getElementById('v-viol').textContent = S.viol + ' / 5';
+document.getElementById('b-viol').style.width = (S.viol / 5 * 100) + '%';
+document.getElementById('v-pop').textContent = S.pop.toFixed(0) + '億';
+const w = WATCH[watchIdx()];
+document.getElementById('watchLv').textContent = w.name;
+document.getElementById('watchNote').textContent = '― ' + w.note + '（密輸の発覚率 ' + Math.round(w.detect * 100) + '%）';
+document.getElementById('a-angel').disabled = S.over || S.angelCd > 0;
+document.querySelectorAll('.actions button').forEach(b => { if (b.id!== 'a-angel') b.disabled = S.over;});
+if (S.angelCd > 0) document.querySelector('#a-angel small').textContent = '天使は移動中… あと' + S.angelCd + '日';
+else document.querySelector('#a-angel small').textContent = '技術-12。科学者を密輸させる。監視に見つかると違反+1';
+}
+function end(kind, msg) {
+S.over = true; log('bad', msg);
+document.getElementById('restart').style.display = 'block'; render();
+}
+function checkEnd() {
+if (S.tech >= 100) return end('failsafe', '💥 人類が重力圏を突破した瞬間、全鳥類が反物質化した。フェイルセーフ作動――惑星テラは兵器ごと消滅した。');
+if (S.viol >= 5) return end('viol', '⚖️ 密輸の証拠が他部族に揃った。条約違反で管理官を解任。封印は他部族の管理下に移る。');
+if (S.soldier >= 100) return end('soldier', '😈 人類の軍備が悪魔の私兵として再編された。封印は形だけ残り、内側から破られた。');
+if (S.zeal >= 100) return end('zeal', '🔥 狂信が臨界に達し、人類は「神の意思」と称して自ら文明を焼いた。兵器は自滅した。');
+if (S.day > 30) return end('win', '🏆 任期満了。30年間、封印は守られた。あなたはまばたきを1回して、次の管理官と交代する。');
+return false;
+}
+function nextTurn() {
+// 人類の自律進行（介入の後に1年が過ぎる）
+S.day++;
+let growth = S.techGrowthStop? 0: 3.5 + Math.random() * 3 + (S.genius? 2: 0) + (S.spaceFever? 1.5: 0) + Math.max(0, (S.pop - 80) * 0.05) + S.tech * 0.03;
+S.tech += growth; S.pop *= 1.011;
+S.zeal = Math.max(0, S.zeal - 3); S.soldier = Math.max(0, S.soldier - 2);
+if (S.angelCd > 0) S.angelCd--;
+log('sys', `―― ${S.day - 1}年目が過ぎた。技術 +${growth.toFixed(1)}`);
+S.techGrowthStop = false; S.spaceFever = false; S.watchOverride = null;
+if (S.zeal >= 70 && Math.random() < 0.3) { S.tech += 5; log('bad', '🔥 狂信的な研究集団が「神に近づく」と宇宙研究を加速させた。技術 +5');}
+if (!checkEnd() && Math.random() < 0.4) {
+const ev = EVENTS[Math.floor(Math.random() * EVENTS.length)];
+ev.f(S); log('ev', ev.t);
+}
+clamp(); render();
+}
+function act(kind) {
+if (S.over) return;
+if (kind === 'proph') {
+let cut = 6 + Math.random() * 3 + (S.prophBoost? 4: 0);
+S.tech -= cut; S.zeal += 14; S.prophBoost = false;
+log('good', `📡「恐れるな。星々は汝らの行く先にあらず」預言を送信。宇宙開発はタブーとして根付き、技術 -${cut.toFixed(0)}。ただし狂信が強まった。`);
+} else if (kind === 'angel') {
+S.tech -= 12; S.angelCd = 2;
+if (S.genius) { S.genius = false; log('good', '👼 天使が眠る天才科学者を静かに連れ去った。技術 -12');}
+else log('good', '👼 天使が有望な研究者を密輸した。技術 -12');
+if (Math.random() < WATCH[watchIdx()].detect) { S.viol++; log('bad', '👁️ 他部族の鳥ドローンが密輸の痕跡を捉えた。条約違反 +1');}
+} else if (kind === 'demon') {
+S.tech -= 6; S.soldier += 10;
+log('', '😈 悪魔がロケット工場で「事故」を起こした。技術 -7。だが悪魔の影響力が少し強まった。');
+} else if (kind === 'wait') {
+S.zeal -= 8; S.soldier -= 6;
+log('', '🪨 何もせず、像のように佇んだ。人類は勝手に日々を過ごしている。');
+}
+clamp(); render();
+if (!checkEnd()) nextTurn();
+}
+document.getElementById('a-proph').onclick = () => act('proph');
+document.getElementById('a-angel').onclick = () => act('angel');
+document.getElementById('a-demon').onclick = () => act('demon');
+document.getElementById('a-wait').onclick = () => act('wait');
+document.getElementById('restart').onclick = reset;
+reset();
+</script>
+</body>
+</html>

@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>山のぼりゲーム 〜エレメカ再現〜</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif; background:#0d0f14; color:#e8eef5; text-align:center; padding:10px 8px 30px; }
+  h1 { font-size:23px; letter-spacing:.14em; margin:4px 0 0; color:#ffd75e; text-shadow:0 0 14px rgba(255,180,0,.45); }
+  .sub { font-size:12.5px; color:#9fb4c8; margin:2px 0 10px; }
+  #cabinet { max-width:900px; margin:0 auto; background:linear-gradient(#232a36,#161b24); border:3px solid #3a4658; border-radius:16px; padding:10px 8px 6px; box-shadow:inset 0 0 0 2px #0d0f14, 0 8px 24px rgba(0,0,0,.5); }
+  svg { width:100%; height:auto; display:block; }
+  #hud { max-width:900px; margin:10px auto 0; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+  .card { background:#1a2432; border:1px solid #33475e; border-radius:10px; padding:7px 16px; min-width:128px; }
+  .card .label { font-size:11px; color:#9fb4c8; letter-spacing:.1em; }
+  .card .value { font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; }
+  #timeVal { color:#7ce3ff; }
+  #timeVal.danger { color:#ff5e5e; }
+  #altVal { color:#ffd75e; }
+  #msg { max-width:900px; margin:10px auto 0; min-height:46px; font-size:16.5px; line-height:1.55; }
+  #btnRow { max-width:900px; margin:8px auto 0; display:flex; gap:12px; justify-content:center; align-items:stretch; }
+  .bigbtn { flex:1; max-width:300px; min-height:74px; border-radius:50px; border:none; font-size:21px; font-weight:800; color:#fff; cursor:pointer; letter-spacing:.08em; }
+  #backBtn { background:radial-gradient(circle at 35% 30%, #6db3ff, #2563eb 60%, #173f92); box-shadow:0 6px 0 #122c66, 0 10px 18px rgba(0,0,0,.45); }
+  #fwdBtn { background:radial-gradient(circle at 35% 30%, #ff9a7a, #e8452c 60%, #9c2a18); box-shadow:0 6px 0 #6e1d0f, 0 10px 18px rgba(0,0,0,.45); }
+  .bigbtn:active { transform:translateY(4px); }
+  .bigbtn:disabled { filter:grayscale(.6) brightness(.6); }
+  #startBtn { background:#2e9e5b; box-shadow:0 5px 0 #1c6639; border:none; color:#fff; font-size:18px; font-weight:800; border-radius:12px; padding:14px 30px; min-height:56px; cursor:pointer; letter-spacing:.05em; }
+  #startBtn:active { transform:translateY(3px); }
+  .howto { max-width:680px; margin:16px auto 0; font-size:12.5px; color:#7e93a9; line-height:1.75; text-align:left; }
+  .lampGlow { filter:drop-shadow(0 0 6px rgba(255,190,60,.9)); }
+</style>
+</head>
+<body>
+<h1>山のぼりゲーム</h1>
+<div class="sub">1981年・こまやのエレメカを再現 ― 制限時間60秒、前進と後退で頂上を目指せ</div>
+
+<div id="cabinet">
+<svg id="stage" viewBox="0 0 960 640" aria-label="山のぼりゲーム盤面">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#274b73"/><stop offset="1" stop-color="#7fb2dd"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="948" height="628" rx="12" fill="url(#sky)"/>
+  <!-- sun / clouds -->
+  <circle cx="866" cy="66" r="30" fill="#ffe98a"/>
+  <g fill="#ffffff" opacity="0.9">
+    <ellipse cx="150" cy="58" rx="52" ry="17"/><ellipse cx="196" cy="48" rx="38" ry="14"/>
+    <ellipse cx="640" cy="42" rx="46" ry="15"/>
+  </g>
+  <!-- mountain -->
+  <path d="M40,600 L300,240 L420,330 L560,170 L700,260 L830,120 L920,600 Z" fill="#5d7a52"/>
+  <path d="M560,170 L700,260 L830,120 L872,196 L760,236 L668,196 L600,214 Z" fill="#eef4f8"/>
+  <path d="M300,240 L420,330 L368,352 L292,300 L238,318 Z" fill="#dfe9ef" opacity="0.85"/>
+  <!-- pine trees -->
+  <g id="trees"></g>
+  <!-- ravine under bridge steps -->
+  <path d="M470,540 L750,540 L700,640 L520,640 Z" fill="#20303f"/>
+  <path d="M540,640 L600,556 L650,640 Z" fill="#33505f"/>
+  <!-- rope bridge area backdrop -->
+  <!-- path lamps -->
+  <g id="lamps"></g>
+  <!-- bridge planks (steps 5-7) -->
+  <g id="bridge"></g>
+  <!-- rope (steps 27-29) -->
+  <g id="rope"></g>
+  <!-- hazards -->
+  <g id="snakeG" style="display:none">
+    <path d="M-26,0 q7,-12 14,0 q7,12 14,0 q7,-12 14,0" stroke="#58b368" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <circle cx="30" cy="-2" r="8" fill="#58b368"/>
+    <circle cx="33" cy="-4" r="1.8" fill="#10151d"/>
+    <path d="M38,-2 l10,-3 M38,-2 l10,2" stroke="#e8452c" stroke-width="2"/>
+  </g>
+  <g id="rockWarn" style="display:none">
+    <circle r="17" fill="none" stroke="#ff5e5e" stroke-width="3" stroke-dasharray="5 4"/>
+  </g>
+  <polygon id="rock" points="0,-14 12,-4 9,10 -3,14 -13,4 -10,-9" fill="#8b98a5" stroke="#5f7080" stroke-width="2" style="display:none"/>
+  <g id="boltWarn" style="display:none">
+    <circle r="18" fill="none" stroke="#ffe14d" stroke-width="3" stroke-dasharray="5 4"/>
+  </g>
+  <polygon id="bolt" points="4,-46 -12,2 -2,2 -6,34 14,-6 3,-6 12,-46" fill="#ffe14d" stroke="#e8a812" stroke-width="2" style="display:none"/>
+  <!-- summit flag -->
+  <g transform="translate(120,84)">
+    <line x1="0" y1="0" x2="0" y2="-58" stroke="#d8dee6" stroke-width="4"/>
+    <path d="M0,-58 L40,-48 L0,-36 Z" fill="#e8452c"/>
+    <text x="20" y="-66" text-anchor="middle" font-size="17" fill="#fff" font-weight="700">頂上</text>
+  </g>
+  <!-- base hut -->
+  <g transform="translate(66,540)">
+    <rect x="-26" y="0" width="52" height="34" fill="#8a6844"/>
+    <path d="M-32,2 L0,-20 L32,2 Z" fill="#b8452c"/>
+    <text x="0" y="52" text-anchor="middle" font-size="13" fill="#33475e" font-weight="700">ふもと</text>
+  </g>
+  <!-- climber -->
+  <g id="climber">
+    <g id="legsA">
+      <path d="M-3,-16 L-9,0" stroke="#37475c" stroke-width="6" stroke-linecap="round"/>
+      <path d="M3,-16 L10,-4" stroke="#37475c" stroke-width="6" stroke-linecap="round"/>
+    </g>
+    <g id="legsB" style="display:none">
+      <path d="M-3,-16 L1,-1" stroke="#37475c" stroke-width="6" stroke-linecap="round"/>
+      <path d="M3,-16 L-8,-6" stroke="#37475c" stroke-width="6" stroke-linecap="round"/>
+    </g>
+    <rect x="-11" y="-40" width="22" height="26" rx="6" fill="#e8452c"/>
+    <rect x="-19" y="-38" width="9" height="18" rx="4" fill="#2e9e5b"/>
+    <path d="M11,-34 L22,-24" stroke="#e8452c" stroke-width="6" stroke-linecap="round"/>
+    <line x1="22" y1="-24" x2="28" y2="-38" stroke="#c8d4e0" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="0" cy="-50" r="11" fill="#f2c79b"/>
+    <path d="M-12,-52 a12,12 0 0 1 24,0 Z" fill="#2563eb"/>
+    <rect x="-12" y="-53" width="24" height="4" rx="2" fill="#2563eb"/>
+  </g>
+</svg>
+</div>
+
+<div id="hud">
+  <div class="card"><div class="label">残り時間</div><div class="value" id="timeVal">60.0</div></div>
+  <div class="card"><div class="label">現在地</div><div class="value" id="altVal">ふもと</div></div>
+  <div class="card"><div class="label">ベスト（残り時間）</div><div class="value" id="bestVal">--.-</div></div>
+</div>
+
+<div id="msg">コイン投入…のつもりで「ゲームスタート」。赤ボタンで前進、青ボタンで後退。障害に当たるとふもとからやり直し。60秒以内に頂上へ！</div>
+
+<div id="btnRow">
+  <button class="bigbtn" id="backBtn" disabled>◀ 後退</button>
+  <button id="startBtn">ゲームスタート</button>
+  <button class="bigbtn" id="fwdBtn" disabled>前進 ▶</button>
+</div>
+
+<div class="howto">
+遊び方（本家エレメカのルール再現）：前進ボタン1回で1歩進む。途中の障害は5種類 ―
+<b>落ちる橋</b>（点滅したら落ちる合図）、<b>ヘビ</b>（左右を往復。当たるとアウト）、<b>落石</b>（赤い丸で予告してから落ちてくる）、<b>切れるロープ</b>（震えたら切れる合図）、<b>雷</b>（黄色い丸で予告してから落ちる）。
+どれも「後退」でやり過ごすのがコツ。障害に当たるとふもとへ逆戻り。制限時間60秒以内に頂上に着けばクリアで、残り時間がスコアになる。
+キーボードは ← →（または A / D）でも操作できる。
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var ROW_Y = [500, 392, 284, 176];
+  var SUMMIT = {x:120, y:84};
+  function stepXY(i){
+    if (i >= 40) return SUMMIT;
+    var row = Math.floor(i / 10), off = i % 10;
+    var col = (row % 2 === 0) ? off : 9 - off;
+    return { x: 120 + col * 80, y: ROW_Y[row] };
+  }
+  var lamps = document.getElementById('lamps');
+  (function(){
+    var s = '';
+    for (var i = 0; i < 40; i++) {
+      var p = stepXY(i);
+      s += '<circle id="lamp' + i + '" cx="' + p.x + '" cy="' + p.y + '" r="9" fill="#454f3d" stroke="#20261c" stroke-width="2"/>';
+    }
+    lamps.innerHTML = s;
+  })();
+  // trees
+  (function(){
+    var pos = [[210,470],[700,470],[300,350],[770,330],[430,240],[210,270],[600,420],[880,470],[520,330],[90,380]];
+    var s = '';
+    for (var i = 0; i < pos.length; i++) {
+      var x = pos[i][0], y = pos[i][1];
+      s += '<g transform="translate(' + x + ',' + y + ')"><path d="M0,-34 L13,-6 L6,-6 L16,12 L-16,12 L-6,-6 L-13,-6 Z" fill="#2e5230"/><rect x="-3" y="12" width="6" height="9" fill="#5d4630"/></g>';
+    }
+    document.getElementById('trees').innerHTML = s;
+  })();
+  // bridge planks over steps 5..7
+  var bridge = document.getElementById('bridge');
+  (function(){
+    var s = '';
+    for (var i = 5; i <= 7; i++) {
+      var p = stepXY(i);
+      s += '<rect x="' + (p.x - 38) + '" y="' + (p.y + 12) + '" width="76" height="10" rx="3" fill="#a97c50" stroke="#7c5a36" stroke-width="2"/>';
+    }
+    bridge.innerHTML = s;
+  })();
+  // rope over steps 27..29
+  var rope = document.getElementById('rope');
+  (function(){
+    var a = stepXY(26);
+    rope.innerHTML = '<path id="ropePath" d="M' + (a.x + 20) + ',' + (a.y + 16) + ' Q745,' + (a.y + 46) + ' 884,' + (a.y + 16) + '" stroke="#d8c49a" stroke-width="5" fill="none"/>' +
+      '<path id="ropePath2" d="M' + (a.x + 20) + ',' + (a.y + 25) + ' Q745,' + (a.y + 55) + ' 884,' + (a.y + 25) + '" stroke="#b39d72" stroke-width="3" fill="none"/>';
+  })();
+
+  var climber = document.getElementById('climber');
+  var legsA = document.getElementById('legsA');
+  var legsB = document.getElementById('legsB');
+  var snakeG = document.getElementById('snakeG');
+  var rock = document.getElementById('rock');
+  var rockWarn = document.getElementById('rockWarn');
+  var bolt = document.getElementById('bolt');
+  var boltWarn = document.getElementById('boltWarn');
+  var timeVal = document.getElementById('timeVal');
+  var altVal = document.getElementById('altVal');
+  var bestVal = document.getElementById('bestVal');
+  var msg = document.getElementById('msg');
+  var fwdBtn = document.getElementById('fwdBtn');
+  var backBtn = document.getElementById('backBtn');
+  var startBtn = document.getElementById('startBtn');
+
+  var best = null;
+  try { var b = localStorage.getItem('yamanobori_best'); if (b) best = parseFloat(b); } catch(e){}
+  if (best !== null) bestVal.textContent = best.toFixed(1);
+
+  var state = 'idle';   // idle | playing | falling | clear | over
+  var pos = 0;          // step 0..40
+  var t0 = 0;           // start timestamp
+  var remain = 60;
+  var lastMove = 0;
+  var fallUntil = 0;
+  var rockCycleDone = -1, boltCycleDone = -1;
+
+  function placeClimber(){
+    var p = stepXY(pos);
+    climber.setAttribute('transform', 'translate(' + p.x + ',' + (p.y - 12) + ')');
+    for (var i = 0; i < 40; i++) {
+      var lamp = document.getElementById('lamp' + i);
+      if (i < pos) { lamp.setAttribute('fill', '#ffb84d'); lamp.setAttribute('class',''); }
+      else if (i === pos) { lamp.setAttribute('fill', '#ffe14d'); lamp.setAttribute('class','lampGlow'); }
+      else { lamp.setAttribute('fill', '#454f3d'); lamp.setAttribute('class',''); }
+    }
+    altVal.textContent = pos >= 40 ? '頂上！' : (pos === 0 ? 'ふもと' : pos + ' 歩目');
+  }
+  placeClimber();
+
+  function setMsg(t){ msg.innerHTML = t; }
+
+  function doFall(reason){
+    state = 'falling';
+    fallUntil = performance.now() + 750;
+    setMsg(reason + ' ふもとからやり直し！');
+    climber.setAttribute('transform', climber.getAttribute('transform') + ' rotate(50)');
+    setTimeout(function(){
+      if (state !== 'falling') return;
+      pos = 0;
+      placeClimber();
+      state = 'playing';
+      setMsg('気を取り直して、もう一度登ろう。');
+    }, 750);
+  }
+
+  function move(d){
+    if (state !== 'playing') return;
+    var now = performance.now();
+    if (now - lastMove < 70) return;
+    lastMove = now;
+    pos = Math.max(0, Math.min(40, pos + d));
+    legsA.style.display = (pos % 2 === 0) ? '' : 'none';
+    legsB.style.display = (pos % 2 === 0) ? 'none' : '';
+    placeClimber();
+    if (pos >= 40) { clear(); return; }
+    checkStandingHazards(now - t0);
+  }
+
+  function inZone(z){ return pos >= z[0] && pos <= z[1]; }
+  var BRIDGE = [5,7], SNAKE = [12,15], ROCK = [22,25], ROPE = [27,29], BOLT = [33,37];
+
+  function bridgePhase(t){ var ph = t % 3200; return ph >= 2700 ? 'down' : (ph >= 2150 ? 'warn' : 'ok'); }
+  function ropePhase(t){ var ph = t % 4200; return ph >= 3550 ? 'down' : (ph >= 2950 ? 'warn' : 'ok'); }
+  function snakeStep(t){
+    var seq = [12,13,14,15,14,13];
+    return seq[Math.floor(t / 420) % 6];
+  }
+  function rockInfo(t){
+    var cycle = Math.floor(t / 1700), ph = t % 1700;
+    var target = 22 + ((cycle * 2654435761) >>> 8) % 4;
+    return { cycle: cycle, ph: ph, target: target };
+  }
+  function boltInfo(t){
+    var cycle = Math.floor(t / 2300), ph = t % 2300;
+    var target = 33 + ((cycle * 1597334677) >>> 8) % 5;
+    return { cycle: cycle, ph: ph, target: target };
+  }
+
+  function checkStandingHazards(t){
+    if (state !== 'playing') return;
+    if (inZone(BRIDGE) && bridgePhase(t) === 'down') doFall('橋が落ちた！');
+    else if (inZone(ROPE) && ropePhase(t) === 'down') doFall('ロープが切れた！');
+  }
+
+  function tick(){
+    if (state !== 'playing' && state !== 'falling') return;
+    var now = performance.now();
+    var t = now - t0;
+    remain = Math.max(0, 60 - t / 1000);
+    timeVal.textContent = remain.toFixed(1);
+    timeVal.className = 'value' + (remain <= 10 ? ' danger' : '');
+    if (remain <= 0) { gameOver(); return; }
+
+    // bridge visuals
+    var bp = bridgePhase(t);
+    bridge.setAttribute('opacity', bp === 'down' ? '0.12' : '1');
+    bridge.style.filter = (bp === 'warn' && Math.floor(t / 160) % 2 === 0) ? 'brightness(1.7)' : '';
+    if (state === 'playing') checkStandingHazards(t);
+    // rope visuals
+    var rp = ropePhase(t);
+    rope.setAttribute('opacity', rp === 'down' ? '0.1' : '1');
+    var rp1 = document.getElementById('ropePath');
+    if (rp1) rp1.setAttribute('stroke', rp === 'warn' ? '#ff9a7a' : '#d8c49a');
+    if (state === 'playing') checkStandingHazards(t);
+    // snake
+    var ss = snakeStep(t);
+    var sp = stepXY(ss);
+    snakeG.style.display = '';
+    snakeG.setAttribute('transform', 'translate(' + sp.x + ',' + (sp.y - 22) + ') scale(' + (ss % 2 ? -1 : 1) + ',1)');
+    if (state === 'playing' && pos === ss) { doFall('ヘビに噛まれた！'); return; }
+    // rock
+    var ri = rockInfo(t);
+    var rp2 = stepXY(ri.target);
+    if (ri.ph < 600) {
+      rockWarn.style.display = '';
+      rockWarn.setAttribute('transform', 'translate(' + rp2.x + ',' + (rp2.y - 60) + ')');
+      rock.style.display = 'none';
+    } else if (ri.ph < 1000) {
+      var yy = rp2.y - 60 + (ri.ph - 600) / 400 * 48;
+      rockWarn.style.display = 'none';
+      rock.style.display = '';
+      rock.setAttribute('transform', 'translate(' + rp2.x + ',' + yy + ') rotate(' + (ri.ph / 3) + ')');
+      if (ri.cycle !== rockCycleDone && ri.ph >= 640) {
+        rockCycleDone = ri.cycle;
+        if (state === 'playing' && pos === ri.target) { doFall('落石が直撃！'); return; }
+      }
+    } else {
+      rockWarn.style.display = 'none';
+      rock.style.display = 'none';
+    }
+    // lightning
+    var bi = boltInfo(t);
+    var bp3 = stepXY(bi.target);
+    if (bi.ph < 550) {
+      boltWarn.style.display = '';
+      boltWarn.setAttribute('transform', 'translate(' + bp3.x + ',' + (bp3.y - 14) + ')');
+      bolt.style.display = 'none';
+    } else if (bi.ph < 850) {
+      boltWarn.style.display = 'none';
+      bolt.style.display = '';
+      bolt.setAttribute('transform', 'translate(' + bp3.x + ',' + (bp3.y - 8) + ')');
+      if (bi.cycle !== boltCycleDone && bi.ph >= 580) {
+        boltCycleDone = bi.cycle;
+        if (state === 'playing' && pos === bi.target) { doFall('雷が落ちた！'); return; }
+      }
+    } else {
+      boltWarn.style.display = 'none';
+      bolt.style.display = 'none';
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  function start(){
+    pos = 0; remain = 60;
+    rockCycleDone = -1; boltCycleDone = -1;
+    placeClimber();
+    t0 = performance.now();
+    state = 'playing';
+    fwdBtn.disabled = false; backBtn.disabled = false;
+    startBtn.textContent = 'はじめから';
+    setMsg('登れ登れ！障害はタイミングを見て、後退でやり過ごすんだ。');
+    requestAnimationFrame(tick);
+  }
+  function clear(){
+    state = 'clear';
+    fwdBtn.disabled = true; backBtn.disabled = true;
+    var score = remain;
+    var isBest = (best === null || score > best);
+    if (isBest) {
+      best = score;
+      try { localStorage.setItem('yamanobori_best', String(score)); } catch(e){}
+      bestVal.textContent = score.toFixed(1);
+    }
+    setMsg('🎉 <b>登頂成功！</b> 残り時間 <b>' + score.toFixed(1) + '秒</b>' + (isBest ? ' ― 自己ベスト更新！' : '（ベスト ' + best.toFixed(1) + '秒）'));
+    startBtn.textContent = 'もう一度登る';
+  }
+  function gameOver(){
+    state = 'over';
+    timeVal.textContent = '0.0';
+    fwdBtn.disabled = true; backBtn.disabled = true;
+    setMsg('⏰ 時間切れ… あと ' + (40 - pos) + ' 歩だった。もう一度挑戦しよう。');
+    startBtn.textContent = 'リトライ';
+  }
+
+  fwdBtn.addEventListener('click', function(){ move(1); });
+  backBtn.addEventListener('click', function(){ move(-1); });
+  startBtn.addEventListener('click', start);
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') { e.preventDefault(); move(1); }
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') { e.preventDefault(); move(-1); }
+    if ((e.key === ' ' || e.key === 'Enter') && state !== 'playing' && state !== 'falling') { e.preventDefault(); start(); }
+  });
+})();
+</script>
+</body>
+</html>

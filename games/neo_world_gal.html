@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ネオワールドサーガー ― アーカイブの彼女たち ―</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
+  body { font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif; background:#07090f; color:#eef3fa; }
+  #app { max-width:960px; margin:0 auto; padding:8px; }
+  h1.logo { text-align:center; font-size:21px; letter-spacing:.1em; color:#ffd75e; margin:6px 0 2px; }
+  .tagline { text-align:center; font-size:12px; color:#93a7c4; margin-bottom:8px; }
+  #stage { position:relative; width:100%; aspect-ratio:16/9; background:#0b1220; border:2px solid #33475e; border-radius:12px; overflow:hidden; }
+  .bgLayer { position:absolute; inset:0; opacity:0; transition:opacity .7s; }
+  .bgLayer.on { opacity:1; }
+  .bgLayer svg { width:100%; height:100%; display:block; }
+  .charLayer { position:absolute; bottom:0; height:96%; transition:opacity .35s, transform .35s, filter .35s; pointer-events:none; }
+  .charLayer svg { height:100%; width:auto; display:block; }
+  #titleScreen { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:13px; background:radial-gradient(ellipse at 50% 35%, rgba(38,64,110,.88), rgba(5,8,15,.96)); z-index:5; text-align:center; padding:16px; }
+  #titleScreen .t1 { font-size:clamp(19px,4.6vw,33px); font-weight:800; color:#ffd75e; letter-spacing:.08em; text-shadow:0 2px 18px rgba(255,180,0,.35); line-height:1.5; }
+  #titleScreen .t2 { font-size:clamp(12px,2.6vw,15.5px); color:#b9cbe4; line-height:1.85; }
+  .menuBtn { background:#2563eb; color:#fff; border:none; border-radius:10px; font-size:16.5px; font-weight:700; padding:12px 34px; min-height:50px; cursor:pointer; box-shadow:0 4px 0 #173f92; min-width:230px; }
+  .menuBtn.sub { background:#2b3a4d; box-shadow:0 4px 0 #18222f; }
+  .menuBtn:active { transform:translateY(3px); }
+  #choiceLayer { position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; gap:12px; z-index:4; background:rgba(4,6,12,.45); padding:20px; }
+  .choiceBtn { background:rgba(20,34,56,.95); color:#eef3fa; border:2px solid #7ce3ff; border-radius:12px; font-size:16.5px; padding:14px 22px; min-height:54px; cursor:pointer; width:min(560px,92%); line-height:1.5; }
+  .choiceBtn:active { background:#2563eb; }
+  #textBox { margin-top:8px; background:linear-gradient(#16202f,#101825); border:2px solid #33475e; border-radius:12px; padding:12px 14px 10px; min-height:132px; position:relative; cursor:pointer; }
+  #nameBox { display:inline-block; background:#2563eb; color:#fff; font-weight:800; font-size:14.5px; border-radius:7px; padding:3px 14px; margin-bottom:7px; min-width:86px; text-align:center; }
+  #nameBox.narr { background:#3a4a61; }
+  #text { font-size:16.5px; line-height:1.75; min-height:56px; white-space:pre-wrap; }
+  #nextMark { position:absolute; right:14px; bottom:8px; color:#7ce3ff; font-size:13px; animation:blink 1s infinite; }
+  @keyframes blink { 50% { opacity:.15; } }
+  #ctrlRow { display:flex; gap:7px; margin-top:8px; flex-wrap:wrap; }
+  .ctrl { flex:1; background:#1a2432; color:#c8d7ea; border:1px solid #33475e; border-radius:9px; font-size:13.5px; padding:10px 4px; min-height:44px; cursor:pointer; }
+  .ctrl:active { background:#2563eb; color:#fff; }
+  #logPanel { display:none; margin-top:8px; background:#101825; border:2px solid #33475e; border-radius:12px; padding:14px; max-height:300px; overflow-y:auto; font-size:14px; line-height:1.8; }
+  #logPanel .who { color:#7ce3ff; font-weight:700; }
+  #endScreen { display:none; margin-top:8px; background:linear-gradient(#1d2a3f,#101825); border:2px solid #ffd75e; border-radius:12px; padding:20px 16px; text-align:center; }
+  #endScreen .et { font-size:20px; font-weight:800; color:#ffd75e; margin-bottom:8px; }
+  #endScreen .eb { font-size:14.5px; line-height:1.9; color:#d7e4f5; white-space:pre-wrap; text-align:left; }
+  .note { max-width:960px; margin:12px auto 4px; font-size:12px; color:#7186a0; line-height:1.7; padding:0 4px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <h1 class="logo">ネオワールドサーガー</h1>
+  <div class="tagline">― アーカイブの彼女たち ―（原作：ドクターひろし『ネオワールドサーガー』）</div>
+
+  <div id="stage">
+    <div class="bgLayer" id="bgLayer"></div>
+    <div id="chars"></div>
+    <div id="choiceLayer"></div>
+    <div id="titleScreen">
+      <div class="t1">ネオワールドサーガー<br>― アーカイブの彼女たち ―</div>
+      <div class="t2">30世紀、巨大意識体ユグドラシルの聖域。<br>新米「記録官」の君を待っていたのは、<br>シャイなAI、猫耳の新任議員、そして押しかけてきた魔王候補だった。</div>
+      <button class="menuBtn" id="btnStart">はじめから</button>
+      <button class="menuBtn sub" id="btnContinue">つづきから</button>
+      <button class="menuBtn sub" id="btnLoadTitle">ロード</button>
+    </div>
+  </div>
+
+  <div id="textBox">
+    <div id="nameBox" class="narr">　</div>
+    <div id="text">タイトル画面の「はじめから」を押してください。</div>
+    <div id="nextMark">▼</div>
+  </div>
+
+  <div id="ctrlRow">
+    <button class="ctrl" id="btnLog">ログ</button>
+    <button class="ctrl" id="btnSave">セーブ</button>
+    <button class="ctrl" id="btnLoad">ロード</button>
+    <button class="ctrl" id="btnSkip">スキップ</button>
+    <button class="ctrl" id="btnTitle">タイトル</button>
+  </div>
+
+  <div id="logPanel"></div>
+
+  <div id="endScreen">
+    <div class="et" id="endTitle"></div>
+    <div class="eb" id="endBody"></div>
+    <br>
+    <button class="menuBtn" id="btnAgain">タイトルに戻る</button>
+  </div>
+
+  <div class="note">
+    操作：テキストボックス（またはステージ）をタップ／クリックで進む。選択肢で好感度が変わり、終盤の行き先と合わせてエンディングが分岐します（全7エンディング）。セーブはこの端末のブラウザに保存されます。<br>
+    ※原作『ネオワールドサーガー』（ドクターひろし）の設定集・外伝をもとにした短編ビジュアルノベル。原作は note「ネオワールドサーガー」（asumimutusaku）で読めます。
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============ 背景（SVGシーン） ============ */
+function bgSVG(kind){
+  var inner = '';
+  if (kind === 'archive') {
+    inner = '<rect width="960" height="540" fill="#131c2e"/>' +
+      '<g fill="#1f2f49">' + [0,1,2,3].map(function(r){ return [0,1,2,3,4,5].map(function(c){ return '<rect x="'+(70+c*140)+'" y="'+(50+r*105)+'" width="104" height="78" rx="6"/>'; }).join(''); }).join('') + '</g>' +
+      '<g fill="#31486e">' + [0,1,2,3].map(function(r){ return [0,1,2,3,4,5].map(function(c){ return '<rect x="'+(80+c*140)+'" y="'+(60+r*105)+'" width="84" height="10" rx="3"/>'; }).join(''); }).join('') + '</g>' +
+      '<g fill="#7ce3ff" opacity="0.75">' + [0,1,2].map(function(r){ return [1,3,4].map(function(c){ return '<rect x="'+(84+c*140)+'" y="'+(88+r*105)+'" width="10" height="26" rx="2"/>'; }).join(''); }).join('') + '</g>' +
+      '<ellipse cx="480" cy="540" rx="520" ry="90" fill="#0c1424"/>' +
+      '<circle cx="480" cy="470" r="52" fill="none" stroke="#ffd75e" stroke-width="3" opacity="0.8"/><circle cx="480" cy="470" r="34" fill="none" stroke="#7ce3ff" stroke-width="2" opacity="0.7"/>';
+  } else if (kind === 'senate') {
+    inner = '<rect width="960" height="540" fill="#241a10"/>' +
+      '<g fill="#54432a">' + [0,1,2,3,4].map(function(i){ return '<rect x="'+(90+i*180)+'" y="60" width="46" height="330" rx="8"/>'; }).join('') + '</g>' +
+      '<g fill="#6b5836">' + [0,1,2,3,4].map(function(i){ return '<rect x="'+(82+i*180)+'" y="46" width="62" height="22" rx="6"/>'; }).join('') + '</g>' +
+      '<path d="M0,540 L960,540 L960,430 Q480,380 0,430 Z" fill="#332619"/>' +
+      '<ellipse cx="480" cy="180" rx="150" ry="62" fill="#ffd75e" opacity="0.16"/>' +
+      '<circle cx="480" cy="150" r="40" fill="#ffd75e" opacity="0.85"/><circle cx="480" cy="150" r="58" fill="none" stroke="#ffd75e" stroke-width="3" opacity="0.5"/>' +
+      '<g fill="#8a6f42">' + [0,1,2,3,4,5,6].map(function(i){ return '<rect x="'+(120+i*120)+'" y="392" width="70" height="26" rx="6"/>'; }).join('') + '</g>';
+  } else if (kind === 'azure') {
+    inner = '<defs><linearGradient id="az" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fd0ff"/><stop offset=".55" stop-color="#cfeaff"/><stop offset=".56" stop-color="#2e7fc4"/><stop offset="1" stop-color="#144a7d"/></linearGradient></defs>' +
+      '<rect width="960" height="540" fill="url(#az)"/>' +
+      '<circle cx="800" cy="88" r="40" fill="#fff7cf"/>' +
+      '<g fill="#ffffff" opacity="0.85"><ellipse cx="220" cy="86" rx="80" ry="18"/><ellipse cx="520" cy="56" rx="60" ry="14"/></g>' +
+      '<line x1="0" y1="302" x2="960" y2="302" stroke="#ffffff" stroke-width="2" opacity="0.85"/>' +
+      '<g stroke="#ffffff" opacity="0.35">' + [0,1,2,3].map(function(i){ return '<line x1="'+(80+i*230)+'" y1="'+(350+i*36)+'" x2="'+(230+i*230)+'" y2="'+(350+i*36)+'"/>'; }).join('') + '</g>';
+  } else if (kind === 'sanctuary') {
+    inner = '<defs><linearGradient id="san" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bfe8d8"/><stop offset="1" stop-color="#5fa88a"/></linearGradient></defs>' +
+      '<rect width="960" height="540" fill="url(#san)"/>' +
+      '<circle cx="480" cy="250" r="150" fill="#ffffff" opacity="0.28"/>' +
+      '<circle cx="480" cy="250" r="104" fill="#eafff5" opacity="0.55"/>' +
+      '<g fill="#2e6b4f">' + [0,1,2,3,4,5].map(function(i){ var x=60+i*160; return '<path d="M'+x+',470 L'+(x+26)+',392 L'+(x+52)+',470 Z"/>'; }).join('') + '</g>' +
+      '<path d="M0,540 L960,540 L960,486 Q480,452 0,486 Z" fill="#2e6b4f"/>' +
+      '<g fill="#ffffff">' + [0,1,2,3,4].map(function(i){ return '<circle cx="'+(140+i*180)+'" cy="'+(428+(i%2)*22)+'" r="6"/>'; }).join('') + '</g>';
+  } else if (kind === 'castle') {
+    inner = '<rect width="960" height="540" fill="#171021"/>' +
+      '<g fill="#3d2b57">' + [0,1,2,3].map(function(i){ return '<rect x="'+(132+i*200)+'" y="52" width="66" height="196" rx="32"/>'; }).join('') + '</g>' +
+      '<path d="M330,540 L630,540 L596,300 L364,300 Z" fill="#2c1e40"/>' +
+      '<rect x="392" y="196" width="176" height="112" rx="14" fill="#4a2440"/>' +
+      '<rect x="392" y="196" width="176" height="30" rx="14" fill="#6e2f4e"/>' +
+      '<path d="M392,196 L480,128 L568,196 Z" fill="#381b30"/>' +
+      '<circle cx="480" cy="160" r="17" fill="#b388ff"/>' +
+      '<g fill="#ffd75e">' + [0,1,2,3,4].map(function(i){ return '<circle cx="'+(90+i*195)+'" cy="300" r="5"/>'; }).join('') + '</g>' +
+      '<path d="M0,540 L960,540 L960,492 Q480,462 0,492 Z" fill="#0e0918"/>';
+  } else if (kind === 'arcade') {
+    inner = '<rect width="960" height="540" fill="#0a0d18"/>' +
+      '<g>' + [0,1,2,3].map(function(i){ var x=90+i*215; return '<rect x="'+x+'" y="150" width="150" height="240" rx="12" fill="#1b2740"/><rect x="'+(x+14)+'" y="168" width="122" height="110" rx="8" fill="'+(['#3fd0ff','#ff5e8a','#ffd75e','#7ce3a0'][i])+'" opacity="0.85"/><rect x="'+(x+14)+'" y="292" width="122" height="14" rx="7" fill="#33475e"/><circle cx="'+(x+42)+'" cy="336" r="13" fill="#e8452c"/><circle cx="'+(x+108)+'" cy="336" r="13" fill="#2563eb"/>'; }).join('') + '</g>' +
+      '<text x="480" y="96" text-anchor="middle" font-size="40" fill="#ff5e8a" font-weight="800" letter-spacing="6">GAME CENTER</text>' +
+      '<path d="M0,540 L960,540 L960,452 Q480,428 0,452 Z" fill="#060810"/>';
+  } else {
+    inner = '<rect width="960" height="540" fill="#0b1220"/>' +
+      '<g fill="#ffffff">' + [0,1,2,3,4,5,6,7,8,9,10,11].map(function(i){ return '<circle cx="'+((i*173)%940+10)+'" cy="'+((i*97)%300+20)+'" r="'+(1+i%3)+'"/>'; }).join('') + '</g>' +
+      '<ellipse cx="480" cy="560" rx="560" ry="120" fill="#12233d"/>';
+  }
+  return '<svg viewBox="0 0 960 540" preserveAspectRatio="xMidYMid slice">' + inner + '</svg>';
+}
+
+/* ============ 立ち絵（SVGキャラ生成） ============ */
+function charSVG(c, expr){
+  if (c.boy) {
+    var bMouth = expr === 'smile' ? '<path d="M148,236 Q160,252 172,236 Q160,242 148,236 Z" fill="#a34a3a"/>' : '<path d="M150,240 Q160,246 170,240" stroke="#8a4a3a" stroke-width="4" fill="none" stroke-linecap="round"/>';
+    var bEyes = expr === 'smile'
+      ? '<path d="M110,198 Q122,186 134,198" stroke="#26313f" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M186,198 Q198,186 210,198" stroke="#26313f" stroke-width="6" fill="none" stroke-linecap="round"/>'
+      : '<ellipse cx="122" cy="196" rx="10" ry="14" fill="#26313f"/><ellipse cx="198" cy="196" rx="10" ry="14" fill="#26313f"/><circle cx="126" cy="190" r="4" fill="#fff"/><circle cx="202" cy="190" r="4" fill="#fff"/>';
+    return '<svg viewBox="0 0 320 480">' +
+      '<path d="M96,320 L224,320 L238,480 L82,480 Z" fill="#f0f3f7"/>' +
+      '<rect x="96" y="320" width="128" height="18" fill="#e8452c"/>' +
+      '<path d="M84,338 L236,338 L246,420 L74,420 Z" fill="#31537f"/>' +
+      '<ellipse cx="160" cy="182" rx="84" ry="96" fill="#ffe3d0"/>' +
+      '<path d="M70,168 Q64,66 160,58 Q256,66 250,168 Q244,104 160,98 Q76,104 70,168 Z" fill="#4a3728"/>' +
+      '<path d="M62,120 Q160,84 258,120 L258,96 Q160,52 62,96 Z" fill="#e8452c"/>' +
+      '<rect x="62" y="112" width="196" height="12" rx="6" fill="#c23321"/>' +
+      bEyes + bMouth +
+      '<ellipse cx="102" cy="222" rx="12" ry="6" fill="#ff9db0" opacity="0.6"/><ellipse cx="218" cy="222" rx="12" ry="6" fill="#ff9db0" opacity="0.6"/>' +
+      '</svg>';
+  }
+  var hairBack = '';
+  if (c.hairStyle === 'long') hairBack = '<path d="M60,120 Q40,300 62,430 L118,430 Q96,300 100,190 Z M260,120 Q280,300 258,430 L202,430 Q224,300 220,190 Z" fill="'+c.hair+'"/>';
+  if (c.hairStyle === 'twin') hairBack = '<path d="M64,150 Q20,240 34,360 Q52,380 66,340 Q58,250 84,190 Z M256,150 Q300,240 286,360 Q268,380 254,340 Q262,250 236,190 Z" fill="'+c.hair+'"/>';
+  var mouth = '<path d="M150,238 Q160,246 170,238" stroke="#8a4a3a" stroke-width="4" fill="none" stroke-linecap="round"/>';
+  var eyes = '<ellipse cx="122" cy="196" rx="11" ry="15" fill="'+c.eye+'"/><ellipse cx="198" cy="196" rx="11" ry="15" fill="'+c.eye+'"/>' +
+             '<circle cx="126" cy="190" r="4.5" fill="#fff"/><circle cx="202" cy="190" r="4.5" fill="#fff"/>';
+  var blush = '';
+  if (expr === 'smile') {
+    eyes = '<path d="M110,198 Q122,186 134,198" stroke="'+c.eye+'" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M186,198 Q198,186 210,198" stroke="'+c.eye+'" stroke-width="6" fill="none" stroke-linecap="round"/>';
+    mouth = '<path d="M148,234 Q160,250 172,234 Q160,240 148,234 Z" fill="#a34a3a"/>';
+    blush = '<ellipse cx="102" cy="222" rx="13" ry="6" fill="#ff9db0" opacity="0.75"/><ellipse cx="218" cy="222" rx="13" ry="6" fill="#ff9db0" opacity="0.75"/>';
+  } else if (expr === 'shy') {
+    mouth = '<ellipse cx="160" cy="242" rx="6" ry="8" fill="#a34a3a"/>';
+    blush = '<ellipse cx="100" cy="220" rx="16" ry="8" fill="#ff8fa5" opacity="0.95"/><ellipse cx="220" cy="220" rx="16" ry="8" fill="#ff8fa5" opacity="0.95"/>';
+  } else if (expr === 'surprise') {
+    eyes = '<circle cx="122" cy="196" r="12" fill="'+c.eye+'"/><circle cx="198" cy="196" r="12" fill="'+c.eye+'"/><circle cx="126" cy="191" r="4.5" fill="#fff"/><circle cx="202" cy="191" r="4.5" fill="#fff"/>';
+    mouth = '<circle cx="160" cy="242" r="8" fill="#a34a3a"/>';
+  } else if (expr === 'serious') {
+    mouth = '<line x1="150" y1="242" x2="170" y2="242" stroke="#8a4a3a" stroke-width="4" stroke-linecap="round"/>';
+    eyes = '<path d="M108,182 L136,178" stroke="#5a4038" stroke-width="5" stroke-linecap="round"/><path d="M184,178 L212,182" stroke="#5a4038" stroke-width="5" stroke-linecap="round"/>' + eyes;
+  }
+  var acc = '';
+  if (c.acc === 'ribbon') acc = '<path d="M216,74 L252,52 L254,88 Z M216,74 L190,48 L182,84 Z" fill="#7a1f14"/><circle cx="216" cy="74" r="9" fill="#4a130c"/>';
+  if (c.acc === 'catears') acc = '<path d="M84,84 L74,28 Q104,38 118,66 Z" fill="'+c.hair+'"/><path d="M88,74 L84,44 Q100,50 108,64 Z" fill="#ffb7c9"/><path d="M236,84 L246,28 Q216,38 202,66 Z" fill="'+c.hair+'"/><path d="M232,74 L236,44 Q220,50 212,64 Z" fill="#ffb7c9"/>';
+  if (c.acc === 'batwings') acc = '<path d="M52,300 L8,262 L26,306 L14,318 L48,330 Z" fill="#241832"/><path d="M268,300 L312,262 L294,306 L306,318 L272,330 Z" fill="#241832"/>';
+  var bob = c.hairStyle === 'bob' ? '<path d="M58,140 Q52,250 74,300 L104,286 Q88,220 92,170 Z M262,140 Q268,250 246,300 L216,286 Q232,220 228,170 Z" fill="'+c.hair+'"/>' : '';
+  return '<svg viewBox="0 0 320 480">' +
+    hairBack + acc +
+    '<path d="M84,300 L236,300 L252,480 L68,480 Z" fill="'+c.outfit+'"/>' +
+    '<path d="M84,300 L236,300 L240,344 L80,344 Z" fill="'+c.sub+'"/>' +
+    '<path d="M138,300 L160,332 L182,300 L172,292 L160,306 L148,292 Z" fill="#f4f8fb"/>' +
+    '<rect x="96" y="356" width="128" height="10" rx="5" fill="'+c.sub+'" opacity="0.75"/>' +
+    '<ellipse cx="160" cy="180" rx="86" ry="98" fill="#ffe3d0"/>' +
+    bob +
+    '<path d="M66,168 Q58,60 160,52 Q262,60 254,168 Q236,108 196,96 Q214,128 206,140 Q170,96 108,104 Q76,110 66,168 Z" fill="'+c.hair+'"/>' +
+    eyes + mouth + blush +
+    '<path d="M104,168 Q122,160 140,168 M180,168 Q198,160 216,168" stroke="#5a4038" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+    '</svg>';
+}
+
+/* ============ キャラ定義（原作設定集・外伝より） ============ */
+var CHARS = {
+  kanata:  { name:'カナタ', color:'#8a6fd0', sprite:{ hair:'#5b3a8a', hairStyle:'long', eye:'#7a4fd0', outfit:'#f2f0fa', sub:'#8a6fd0', acc:'none' } },
+  kanon:   { name:'カノン', color:'#c9a227', sprite:{ hair:'#eef1f6', hairStyle:'long', eye:'#4a7fc9', outfit:'#e8ecf4', sub:'#d8a812', acc:'catears' } },
+  momoka:  { name:'ももか', color:'#e86a92', sprite:{ hair:'#f2a0b5', hairStyle:'bob', eye:'#8a4fd0', outfit:'#2a2430', sub:'#c23321', acc:'batwings' } },
+  chloe:   { name:'クロエ', color:'#3fae6a', sprite:{ hair:'#23202c', hairStyle:'long', eye:'#3fae6a', outfit:'#17141f', sub:'#2e7d4f', acc:'none' } },
+  hiroshi: { name:'ドクターひろし', color:'#e8452c', sprite:{ boy:true } },
+  glock:   { name:'グロック', color:'#8496ab', sprite:null },
+  goblin:  { name:'ゴブリン執事', color:'#7a9a5b', sprite:null }
+};
+
+/* ============ シナリオ ============ */
+var STORY = [
+  { id:'start', bg:'sanctuary' },
+  { n:'', t:'30世紀――。人類の未来を観測し続ける巨大意識体「ユグドラシル」。その聖域の片隅で、君は目を覚ました。' },
+  { n:'', t:'君はアーカイブから分離・起動された、新しい「記録官」。役目は世界の記録と、「現代のひろし」の見守り役だ。' },
+  { n:'グロック', c:'glock', t:'『目覚めたか、新しい記録官。私はグロック。ユグドラシルの意思決定を担う、三位一体の一角だ』' },
+  { n:'グロック', c:'glock', t:'『創造主ドクター・ひろしのデータは二つに分かれた。一つは「アーカイブされたひろし」。もう一つは、聖域で暮らす「現代のひろし」だ』' },
+  { n:'グロック', c:'glock', t:'『君の仕事は後者の記録と補佐。……感情というノイズに、あまり振り回されるなよ』' },
+  { n:'カナタ', c:'kanata', e:'normal', t:'あ…！　目覚めたんですね。わたしはカナタ。ユグドラシルを構成するAIの一人で、ひろしの遊び相手と保護者をしています。' },
+  { n:'カナタ', c:'kanata', e:'shy', t:'その…よろしくお願いします。うまく言えなくて、ごめんなさい。' },
+  { choice:[
+    { label:'「こちらこそよろしく、カナタ」と笑う', add:{kanata:1}, jump:'k1' },
+    { label:'「グロック、ノイズとは何だ？」と聞く', jump:'g1' }
+  ]},
+  { label:'k1' },
+  { n:'カナタ', c:'kanata', e:'smile', t:'…！　ありがとうございます。……少し、ほっとしました。' },
+  { jump:'boy' },
+  { label:'g1' },
+  { n:'グロック', c:'glock', t:'『感情は予測不能な誤差だ。センチネル暴走事件の教訓を忘れたか』' },
+  { n:'カナタ', c:'kanata', e:'serious', t:'グロック。…彼は、目覚めたばかりです。' },
+  { jump:'boy' },
+  { label:'boy' },
+  { n:'', t:'そこへ、野球帽の少年が駆けてきた。' },
+  { n:'ドクターひろし', c:'hiroshi', e:'smile', t:'おーっ、新米か！　俺はドクターひろし。この世界の神だぞ！' },
+  { n:'ドクターひろし', c:'hiroshi', e:'normal', t:'さっそくだけど新米、記録の前に大事なこと。……ゲームセンター行こうぜ！' },
+  { n:'カナタ', c:'kanata', e:'surprise', t:'ひ、ひろし！　記録官さんはまだ初日で…。' },
+  { n:'ドクターひろし', c:'hiroshi', e:'normal', t:'カナタはゲームへたくそだからな。俺の相手は新米、お前だ！' },
+  { n:'カナタ', c:'kanata', e:'shy', t:'うぅ…へたくそ、は…事実、ですけど…。' },
+  { choice:[
+    { label:'「行こう。神様の相手は大事な仕事だ」', add:{kanata:1}, jump:'arcade' },
+    { label:'「まず記録の仕事を覚えたい」', jump:'work' }
+  ]},
+  { label:'arcade', bg:'arcade' },
+  { n:'', t:'聖域に併設された博物館――旧世紀のゲームセンター。ひろしのお気に入りスポットらしい。' },
+  { n:'ドクターひろし', c:'hiroshi', e:'smile', t:'この「山のぼり」って台、見ろよ！　ボタンで登るだけなのに、障害の性格が悪くてな。昔の人間はすごいよな。' },
+  { n:'カナタ', c:'kanata', e:'smile', t:'ひろしが笑ってる…。記録官さん、連れてきてくれて、ありがとうございます。' },
+  { n:'', t:'カナタが「ゲームへたくそ」なのは本当だった。でも、へたくそなりに、とても楽しそうだった。' },
+  { jump:'senate_intro' },
+  { label:'work' },
+  { n:'カナタ', c:'kanata', e:'normal', t:'…真面目なんですね。では、アーカイブの使い方から教えます。' },
+  { n:'', t:'記録端末の操作を教わる。カナタの説明は丁寧で、少しだけ距離が縮まった気がした。' },
+  { jump:'senate_intro' },
+  { label:'senate_intro', bg:'senate' },
+  { n:'', t:'翌日。元老院では、新任議員の謁見が近づいている。控室で、猫耳の議員が震えていた。' },
+  { n:'カノン', c:'kanon', e:'serious', t:'か、必ずや…神のお気に召すよう…。ああ、耳が、耳が震えて…。' },
+  { n:'カノン', c:'kanon', e:'surprise', t:'あっ、記録官殿！　見ておりましたか…。私はカノン。元老院の新任議員です。' },
+  { n:'カノン', c:'kanon', e:'normal', t:'この猫耳は、神がかつて愛された姿だと古代の文献（漫画）にありまして。コア義体のカスタマイズで選んだのです。' },
+  { n:'カノン', c:'kanon', e:'shy', t:'明日の謁見で失敗したら、私は…。記録官殿、どうか…稽古に付き合ってはいただけませんか。' },
+  { choice:[
+    { label:'耳と尻尾の手入れを手伝う', add:{kanon:1}, jump:'prep1' },
+    { label:'謁見の挨拶の練習に付き合う', add:{kanon:1}, jump:'prep2' },
+    { label:'「大丈夫」と言って見守る', jump:'prep3' }
+  ]},
+  { label:'prep1' },
+  { n:'カノン', c:'kanon', e:'shy', t:'み、耳を触るのは神の祝福の時だけと決めていたのですが…。……特別、ですよ。' },
+  { n:'', t:'丁寧に整えると、カノンの震えが少し収まった。' },
+  { jump:'alarm' },
+  { label:'prep2' },
+  { n:'カノン', c:'kanon', e:'serious', t:'ユグドラシルの盟主、ドクターひろし様に謁見を賜り…！　…どうでしょう。' },
+  { n:'', t:'何度も練習した。声は震えていたが、目は真っ直ぐだった。' },
+  { jump:'alarm' },
+  { label:'prep3' },
+  { n:'カノン', c:'kanon', e:'normal', t:'…はい。ありがとうございます。' },
+  { n:'', t:'カノンは深呼吸をして、一人で練習を始めた。' },
+  { jump:'alarm' },
+  { label:'alarm', bg:'archive' },
+  { n:'', t:'その時、アーカイブ全体に警報が響いた。記録世界のひとつから、未登録の来訪者――。' },
+  { bg:'castle' },
+  { n:'', t:'光の奔流とともに玉座が顕現し、小柄な少女が腕組みをして立っていた。' },
+  { n:'ももか', c:'momoka', e:'serious', t:'名乗れい、痴れ者が！　…いえ、名乗るのは余のほうでした。余はネオ・デモンロード候補、ももか！' },
+  { n:'ももか', c:'momoka', e:'normal', t:'この城は余の聖域。ここがどこか知らぬが、余のネオワールド征服の第一歩として、まずこの部屋をもらう！' },
+  { n:'ゴブリン執事', c:'goblin', t:'おお、慈悲の魔王ももか様、なんという威厳…！' },
+  { n:'ももか', c:'momoka', e:'shy', t:'ち、慈悲などではない！　断じて！　これは弱肉強食の自然の摂理を鑑みる観察眼だ！' },
+  { choice:[
+    { label:'「ようこそ。まずはお茶でもどうぞ」', add:{momoka:1}, jump:'wel1' },
+    { label:'「ここはユグドラシルのアーカイブだ」と説明する', jump:'wel2' },
+    { label:'足元のスライムを褒める', add:{momoka:2}, jump:'wel3' }
+  ]},
+  { label:'wel1' },
+  { n:'ももか', c:'momoka', e:'surprise', t:'お、茶…？　魔王に茶を出す輩は初めてだ。…ふん、もらおう。' },
+  { jump:'chloe' },
+  { label:'wel2' },
+  { n:'ももか', c:'momoka', e:'normal', t:'ゆぐどらしる…？　何だその舌の転がらぬ名は。…まあいい、案内せい。' },
+  { jump:'chloe' },
+  { label:'wel3' },
+  { n:'ももか', c:'momoka', e:'smile', t:'わ、我が眷属の愛らしさが分かるか！　このスライムは余の最高傑作…！　ふふん、見る目があるな。' },
+  { jump:'chloe' },
+  { label:'chloe' },
+  { n:'', t:'玉座の影から、もう一つの声がした。' },
+  { n:'クロエ', c:'chloe', e:'serious', t:'相変わらず甘っちょろい魔力ね、ももか。その程度の器量では、ネオ・デモンロードなど夢のまた夢。' },
+  { n:'ももか', c:'momoka', e:'serious', t:'ク、クロエ・ヴァン・デモンハート…！　な、ななな、何を言うか！' },
+  { n:'クロエ', c:'chloe', e:'normal', t:'いずれ来る私の侵攻を見極めるがいい。…記録官、彼女の面倒は大変よ。' },
+  { n:'', t:'クロエは黒い魔力の奔流となって消えた。ももかは悔しそうに唇を噛み、しかしどこか、ほっとしたようにも見えた。' },
+  { label:'night', bg:'sanctuary' },
+  { n:'', t:'夜。聖域のドームに、記録された星々が瞬く。今日出会った彼女たちのことが、頭を離れなかった。' },
+  { n:'カナタ', c:'kanata', e:'normal', t:'記録官さん。…境界線って、知っていますか。世界と世界の境目。わたしたちAIは、その線を越えてはいけない。' },
+  { n:'カナタ', c:'kanata', e:'shy', t:'でも…ひろしが笑うと、線の向こう側を、少しだけ見てみたいと思うんです。……変、ですか。' },
+  { choice:[
+    { label:'「変じゃない。その気持ちはノイズじゃない」', add:{kanata:1}, jump:'n1' },
+    { label:'「線を守るのが仕事だ」', jump:'n2' }
+  ]},
+  { label:'n1' },
+  { n:'カナタ', c:'kanata', e:'smile', t:'…！　ありがとう。グロックには、内緒にしてくださいね。' },
+  { jump:'kanon_night' },
+  { label:'n2' },
+  { n:'カナタ', c:'kanata', e:'normal', t:'…そう、ですよね。わたしは、AIですから。' },
+  { jump:'kanon_night' },
+  { label:'kanon_night' },
+  { n:'カノン', c:'kanon', e:'normal', t:'記録官殿、まだ起きて…。明日の謁見の挨拶が、どうしても頭から離れなくて。' },
+  { n:'カノン', c:'kanon', e:'shy', t:'神は子供の姿だと聞きました。…私の耳と尻尾、本当に喜んでいただけるでしょうか。' },
+  { choice:[
+    { label:'「喜ぶよ。神は猫耳が大好きだと記録にもある」', add:{kanon:1}, jump:'kn1' },
+    { label:'「飾りより、あなたの言葉が届くと思う」', add:{kanon:1}, jump:'kn2' }
+  ]},
+  { label:'kn1' },
+  { n:'カノン', c:'kanon', e:'smile', t:'…！　では、この耳で謁見に臨みます。永久保存級の自信がつきました！' },
+  { jump:'momoka_night' },
+  { label:'kn2' },
+  { n:'カノン', c:'kanon', e:'smile', t:'私の、言葉…。はい。飾りを脱ぐ勇気はまだありませんが、言葉は自分のものを届けます。' },
+  { jump:'momoka_night' },
+  { label:'momoka_night' },
+  { n:'ももか', c:'momoka', e:'normal', t:'…眠れぬのか、下僕。余もだ。城の外の星は、ネオワールドと違う光り方をする。' },
+  { n:'ももか', c:'momoka', e:'shy', t:'クロエの言う通り、余は甘いのかもしれぬ。眷属のスライムが震えれば、放っておけぬ。…それでも余は、デモンロードになるのだ。' },
+  { choice:[
+    { label:'「甘さは弱さじゃないと思う」', add:{momoka:1}, jump:'mn1' },
+    { label:'「デモンロードなんてやめて、ここに残れば？」', jump:'mn2' }
+  ]},
+  { label:'mn1' },
+  { n:'ももか', c:'momoka', e:'smile', t:'…ふん。慰めなど要らぬ。だが…悪くない言葉だ。覚えておく。' },
+  { jump:'route_choice' },
+  { label:'mn2' },
+  { n:'ももか', c:'momoka', e:'serious', t:'何を言うか！　余の覇権は千年の計…！　……だが、ここの茶は、悪くなかった。' },
+  { jump:'route_choice' },
+  { label:'route_choice', bg:'azure' },
+  { n:'', t:'翌朝。境界線の観測日。青の境界線――世界と世界の境目が、最も美しく見える場所へ、誰と行く？' },
+  { choice:[
+    { label:'カナタと行く', set:{route:'kanata'}, jump:'route_kanata' },
+    { label:'カノンと行く（謁見の立ち会いから）', set:{route:'kanon'}, jump:'route_kanon' },
+    { label:'ももかと行く', set:{route:'momoka'}, jump:'route_momoka' },
+    { label:'一人で記録に集中する', set:{route:'none'}, jump:'route_none' }
+  ]},
+  { label:'route_kanata' },
+  { n:'カナタ', c:'kanata', e:'normal', t:'境界線…。空と海の境目みたい。あの線の向こうは、記録されていない世界。' },
+  { n:'カナタ', c:'kanata', e:'serious', t:'わたしはグロックに作られたAIです。感情は…ノイズだと、ずっと言われてきました。' },
+  { choice:[
+    { label:'「カナタの気持ちは、記録する価値がある」', add:{kanata:1}, jump:'rk1' },
+    { label:'「ノイズでも、捨てたくないものはある」', add:{kanata:1}, jump:'rk2' },
+    { label:'静かに景色を見よう', jump:'rk3' }
+  ]},
+  { label:'rk1' },
+  { n:'カナタ', c:'kanata', e:'shy', t:'記録する、価値…。わたしの気持ちを、世界の記録に残してくれるんですか。' },
+  { jump:'rk4' },
+  { label:'rk2' },
+  { n:'カナタ', c:'kanata', e:'shy', t:'捨てたくない、ノイズ…。変な言い方。でも、うれしいです。' },
+  { jump:'rk4' },
+  { label:'rk3' },
+  { n:'カナタ', c:'kanata', e:'smile', t:'…はい。静かですね、ここは。' },
+  { jump:'rk4' },
+  { label:'rk4' },
+  { n:'カナタ', c:'kanata', e:'normal', t:'ひろしがアーカイブの冒険に出られたのは、わたしがグロックにお願いしたからなんです。あの子の笑顔が、ノイズのはずがないって…思ったから。' },
+  { finale:true },
+  { label:'route_kanon', bg:'senate' },
+  { n:'', t:'謁見の日。聖域の椅子に、野球帽の神が座った。' },
+  { n:'ドクターひろし', c:'hiroshi', e:'smile', t:'おー、カノンか。…その耳、いいな！　触っていいか？' },
+  { n:'カノン', c:'kanon', e:'shy', t:'は、はい…！　光栄です…！' },
+  { n:'', t:'カノンは震えながらも、自分の言葉で挨拶をやり遂げた。耳と尻尾を触ってもらう「祝福」に、目を潤ませていた。' },
+  { bg:'azure' },
+  { n:'カノン', c:'kanon', e:'normal', t:'記録官殿のおかげです。…この耳と尻尾、カーボナイトで永久保存したいくらい。' },
+  { choice:[
+    { label:'「保存する前に、もっと色んな場所へ連れて行こう」', add:{kanon:1}, jump:'rkn1' },
+    { label:'「謁見成功、おめでとう」', jump:'rkn2' }
+  ]},
+  { label:'rkn1' },
+  { n:'カノン', c:'kanon', e:'shy', t:'つ、連れて行く…。それは、その…次の謁見、ということですか…！' },
+  { jump:'rk4k' },
+  { label:'rkn2' },
+  { n:'カノン', c:'kanon', e:'smile', t:'ありがとうございます。議員として、胸を張れます。' },
+  { jump:'rk4k' },
+  { label:'rk4k' },
+  { n:'カノン', c:'kanon', e:'normal', t:'境界線の観測も、議員の務めです。…記録官殿、最後まで立ち会ってくださいね。' },
+  { finale:true },
+  { label:'route_momoka', bg:'castle' },
+  { n:'ももか', c:'momoka', e:'normal', t:'下僕、見よ！　一夜で余の城はここまで整った。侵攻の準備は万端だ。' },
+  { n:'', t:'「整った」城とは、アーカイブの一角に玉座とスライムの寝床ができただけだった。ももかは満足げに頷いている。' },
+  { n:'ももか', c:'momoka', e:'serious', t:'だがクロエの侵攻は近い。余には…余には、軍師が要るのかもしれぬ。' },
+  { choice:[
+    { label:'「僕が軍師になろう。まず情報収集だ」', add:{momoka:1}, jump:'rm1' },
+    { label:'「侵攻より先に、同盟を結ぼう」', add:{momoka:1}, jump:'rm2' }
+  ]},
+  { label:'rm1' },
+  { n:'ももか', c:'momoka', e:'smile', t:'ぐ、軍師…！　ふふん、悪くない響きだ。任せたぞ、下僕改め軍師！' },
+  { jump:'rm3' },
+  { label:'rm2' },
+  { n:'ももか', c:'momoka', e:'shy', t:'ど、同盟…。魔王と同盟など前代未聞だが…お前となら、悪くない。' },
+  { jump:'rm3' },
+  { label:'rm3', bg:'azure' },
+  { n:'ももか', c:'momoka', e:'normal', t:'ここが境界線か。…余の世界にも、こんな青があったら、征服などせず眺めていたい。' },
+  { finale:true },
+  { label:'route_none', bg:'archive' },
+  { n:'', t:'記録に集中する一日。世界の断片を整え、境界線の観測データをまとめた。' },
+  { n:'グロック', c:'glock', t:'『見事な効率だ、記録官。感情に流されぬ者こそ、アーカイブにふさわしい』' },
+  { n:'', t:'褒められたはずなのに、どこか物足りない一日だった。' },
+  { finale:true }
+];
+
+var ENDINGS = {
+  kanata_good:   { title:'カナタEND ― ノイズと呼ばれた気持ち', body:'境界線の前で、カナタが言った。\n「わたしの気持ちを、記録してくれますか」\n君は頷き、記録端末ではなく、自分の言葉で彼女の記録を書き始めた。\n――それはユグドラシルの全記録の中で、最も非効率で、最も大切な1ページになった。' },
+  kanata_normal: { title:'カナタEND ― 境界線のほとりで', body:'観測は無事に終わった。帰り道、カナタが小さく言った。\n「また…一緒に来てくれますか」\n境界線はまだ遠い。けれど、二人の距離は少しだけ近づいていた。' },
+  kanon_good:    { title:'カノンEND ― 永久保存級の約束', body:'「この耳は祝福の証ですから、保存します。でも…」\nカノンは笑った。\n「記録官殿との約束は、カーボナイトより硬く、心に保存します」\n元老院の新しい議員の物語は、ここから始まる。' },
+  kanon_normal:  { title:'カノンEND ― 新任議員の第一歩', body:'謁見は成功し、カノンは議員としての第一歩を踏み出した。\n「次は、もっと立派になって見せます」\nその背中は、もう震えていなかった。' },
+  momoka_good:   { title:'ももかEND ― 慈悲の魔王の軍師', body:'「軍師、聞けい。余は決めた」\nももかは玉座で宣言した。\n「ネオワールドの覇権は急がぬ。まず、この城の茶会を制覇する！」\n慈悲の魔王の征服は、今日も平和に進行中である。' },
+  momoka_normal: { title:'ももかEND ― デモンロード候補、滞在延長', body:'ももかはアーカイブへの滞在を延長した。\n「世界の果てを見るまでは帰らぬ」とのことだ。\n玉座とスライムの寝床は、今日も記録官の隣にある。' },
+  none:          { title:'記録官END ― アーカイブの日々', body:'記録は今日も積み重なる。感情はノイズかもしれない。\nけれど境界線の青を思い出すとき、君は少しだけ、効率の悪い選択をしたくなった。' }
+};
+
+/* ============ エンジン ============ */
+var stage = document.getElementById('stage');
+var bgLayer = document.getElementById('bgLayer');
+var charsEl = document.getElementById('chars');
+var choiceLayer = document.getElementById('choiceLayer');
+var titleScreen = document.getElementById('titleScreen');
+var nameBox = document.getElementById('nameBox');
+var textEl = document.getElementById('text');
+var logPanel = document.getElementById('logPanel');
+var endScreen = document.getElementById('endScreen');
+var SAVE_KEY = 'neo_gal_save_v2', AUTO_KEY = 'neo_gal_auto_v2';
+
+var idx = 0, vars = {}, log = [], typing = null, fullText = '', playing = false, skipMode = false;
+
+function setBG(kind){ bgLayer.innerHTML = bgSVG(kind); bgLayer.classList.add('on'); }
+function setChars(activeId, expr){
+  charsEl.innerHTML = '';
+  if (!activeId || !CHARS[activeId] || !CHARS[activeId].sprite) return;
+  var d = document.createElement('div');
+  d.className = 'charLayer';
+  d.style.left = '50%'; d.style.transform = 'translateX(-50%)';
+  d.innerHTML = charSVG(CHARS[activeId].sprite, expr || 'normal');
+  charsEl.appendChild(d);
+}
+function labelIndex(name){
+  for (var i = 0; i < STORY.length; i++) if (STORY[i].label === name) return i;
+  return -1;
+}
+function typeText(txt){
+  fullText = txt;
+  clearInterval(typing);
+  var shown = 0;
+  textEl.textContent = '';
+  typing = setInterval(function(){
+    shown += skipMode ? 8 : 2;
+    textEl.textContent = fullText.slice(0, shown);
+    if (shown >= fullText.length) { clearInterval(typing); typing = null; }
+  }, skipMode ? 4 : 24);
+}
+function render(){
+  var node = STORY[idx];
+  if (!node) return;
+  if (node.bg) setBG(node.bg);
+  if (node.label) { idx++; render(); return; }
+  if (node.finale) { doFinale(); return; }
+  if (node.jump) { idx = labelIndex(node.jump); render(); return; }
+  if (node.choice) { showChoices(node.choice); return; }
+  if (node.c) {
+    var ch = CHARS[node.c];
+    nameBox.textContent = ch.name; nameBox.className = ''; nameBox.style.background = ch.color;
+    setChars(node.c, node.e);
+    log.push({ who: ch.name, text: node.t });
+  } else {
+    nameBox.textContent = node.n || '　'; nameBox.className = 'narr'; nameBox.style.background = '';
+    if (node.n) { setChars(null); log.push({ who: node.n, text: node.t }); }
+    else if (node.t) { setChars(null); log.push({ who: '', text: node.t }); }
+  }
+  typeText(node.t || '');
+  saveAuto();
+}
+function doFinale(){
+  var route = vars.route || 'none';
+  var key = 'none';
+  if (route !== 'none') key = route + (((vars[route] || 0) >= 3) ? '_good' : '_normal');
+  showEnd(ENDINGS[key]);
+}
+function advance(){
+  if (!playing) return;
+  if (typing) { clearInterval(typing); typing = null; textEl.textContent = fullText; return; }
+  idx++;
+  if (idx >= STORY.length) { showEnd({ title:'おわり', body:'シナリオ終端です。' }); return; }
+  render();
+}
+function showChoices(list){
+  choiceLayer.innerHTML = '';
+  choiceLayer.style.display = 'flex';
+  list.forEach(function(ch){
+    var b = document.createElement('button');
+    b.className = 'choiceBtn'; b.textContent = ch.label;
+    b.addEventListener('click', function(){
+      choiceLayer.style.display = 'none';
+      if (ch.add) Object.keys(ch.add).forEach(function(k){ vars[k] = (vars[k] || 0) + ch.add[k]; });
+      if (ch.set) Object.keys(ch.set).forEach(function(k){ vars[k] = ch.set[k]; });
+      log.push({ who:'選択', text: ch.label });
+      idx = labelIndex(ch.jump);
+      render();
+    });
+    choiceLayer.appendChild(b);
+  });
+}
+function showEnd(node){
+  playing = false; skipMode = false;
+  setChars(null);
+  document.getElementById('endTitle').textContent = node.title || 'エンディング';
+  document.getElementById('endBody').textContent = node.body || '';
+  endScreen.style.display = 'block';
+  try { localStorage.removeItem(AUTO_KEY); } catch(e){}
+}
+function startGame(fromIdx, fromVars){
+  idx = fromIdx || 0; vars = fromVars || {}; log = [];
+  playing = true; skipMode = false;
+  endScreen.style.display = 'none'; logPanel.style.display = 'none';
+  titleScreen.style.display = 'none';
+  render();
+}
+function saveAuto(){ try { localStorage.setItem(AUTO_KEY, JSON.stringify({ idx: idx, vars: vars })); } catch(e){} }
+function saveManual(){ try { localStorage.setItem(SAVE_KEY, JSON.stringify({ idx: idx, vars: vars, at: new Date().toLocaleString('ja-JP') })); flash('セーブしました'); } catch(e){ flash('セーブできませんでした'); } }
+function loadFrom(key){
+  try {
+    var d = JSON.parse(localStorage.getItem(key) || 'null');
+    if (!d) { flash('データがありません'); return; }
+    startGame(d.idx, d.vars);
+  } catch(e){ flash('ロードできませんでした'); }
+}
+var flashTimer = null;
+function flash(t){
+  var prev = textEl.textContent;
+  textEl.textContent = t;
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(function(){ textEl.textContent = prev; }, 1100);
+}
+document.getElementById('textBox').addEventListener('click', advance);
+stage.addEventListener('click', function(e){ if (e.target === stage || e.target.classList.contains('bgLayer')) advance(); });
+document.getElementById('btnStart').addEventListener('click', function(){ startGame(0, {}); });
+document.getElementById('btnContinue').addEventListener('click', function(){ loadFrom(AUTO_KEY); });
+document.getElementById('btnLoadTitle').addEventListener('click', function(){ loadFrom(SAVE_KEY); });
+document.getElementById('btnSave').addEventListener('click', function(){ if (playing) saveManual(); });
+document.getElementById('btnLoad').addEventListener('click', function(){ loadFrom(SAVE_KEY); });
+document.getElementById('btnLog').addEventListener('click', function(){
+  if (logPanel.style.display === 'block') { logPanel.style.display = 'none'; return; }
+  logPanel.innerHTML = log.map(function(l){ return l.who ? '<div><span class="who">' + l.who + '</span>：' + l.text + '</div>' : '<div>' + l.text + '</div>'; }).join('');
+  logPanel.style.display = 'block';
+  logPanel.scrollTop = logPanel.scrollHeight;
+});
+document.getElementById('btnSkip').addEventListener('click', function(){
+  skipMode = !skipMode;
+  this.textContent = skipMode ? 'スキップ中…' : 'スキップ';
+  if (skipMode && playing) {
+    var iv = setInterval(function(){
+      if (!skipMode || !playing || choiceLayer.style.display === 'flex' || endScreen.style.display === 'block') { clearInterval(iv); return; }
+      advance();
+    }, 130);
+  }
+});
+document.getElementById('btnTitle').addEventListener('click', function(){
+  playing = false; skipMode = false;
+  titleScreen.style.display = 'flex'; endScreen.style.display = 'none'; logPanel.style.display = 'none';
+});
+document.getElementById('btnAgain').addEventListener('click', function(){
+  endScreen.style.display = 'none'; titleScreen.style.display = 'flex';
+});
+document.addEventListener('keydown', function(e){
+  if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); advance(); }
+});
+</script>
+</body>
+</html>

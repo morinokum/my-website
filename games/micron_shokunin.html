@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ミクロン職人 〜寸法ぴったり止め〜</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif; background:#10151d; color:#e8eef5; text-align:center; padding:10px 8px 28px; }
+  h1 { font-size:22px; letter-spacing:.06em; margin:6px 0 2px; color:#ffd75e; }
+  .sub { font-size:12.5px; color:#9fb4c8; margin-bottom:10px; }
+  #stageWrap { max-width:980px; margin:0 auto; background:linear-gradient(#1b2635,#141c28); border:2px solid #33475e; border-radius:12px; padding:8px 6px 4px; }
+  svg { width:100%; height:auto; display:block; }
+  #hud { max-width:980px; margin:10px auto 0; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+  .card { background:#1a2432; border:1px solid #33475e; border-radius:10px; padding:8px 14px; min-width:128px; }
+  .card .label { font-size:11px; color:#9fb4c8; letter-spacing:.08em; }
+  .card .value { font-size:21px; font-weight:700; font-variant-numeric:tabular-nums; }
+  #targetVal { color:#ffd75e; }
+  #measureVal { color:#7ce3ff; }
+  #msg { max-width:980px; margin:12px auto 0; min-height:52px; font-size:16px; line-height:1.5; }
+  #msg .rank { font-size:21px; font-weight:800; }
+  .r-god{color:#ff5e8a;} .r-top{color:#ffd75e;} .r-1{color:#7ce3ff;} .r-2{color:#9fe870;} .r-app{color:#c8d4e0;} .r-scrap{color:#ff7b5e;}
+  #btnRow { margin-top:10px; display:flex; gap:10px; justify-content:center; }
+  button { font-size:18px; font-weight:700; border:none; border-radius:10px; padding:14px 26px; min-height:52px; cursor:pointer; }
+  #mainBtn { background:#e8452c; color:#fff; box-shadow:0 4px 0 #9c2a18; min-width:210px; }
+  #mainBtn:active { transform:translateY(3px); box-shadow:0 1px 0 #9c2a18; }
+  #mainBtn.start { background:#2e9e5b; box-shadow:0 4px 0 #1c6639; }
+  #mainBtn.next { background:#2563eb; box-shadow:0 4px 0 #173f92; }
+  #scoreLine { margin-top:12px; font-size:14px; color:#9fb4c8; font-variant-numeric:tabular-nums; }
+  .howto { max-width:640px; margin:16px auto 0; font-size:12.5px; color:#7e93a9; line-height:1.7; text-align:left; }
+</style>
+</head>
+<body>
+<h1>🛠 ミクロン職人</h1>
+<div class="sub">〜 寸法ぴったり止め 〜　動く刃物を、目標寸法の位置で止めろ！</div>
+
+<div id="stageWrap">
+<svg id="stage" viewBox="0 0 960 340" aria-label="フライス盤">
+  <!-- machine bed -->
+  <rect x="30" y="252" width="900" height="34" rx="6" fill="#2b3a4d"/>
+  <rect x="30" y="246" width="900" height="10" rx="4" fill="#3c5069"/>
+  <!-- scale ruler -->
+  <g id="ruler"></g>
+  <!-- target flag -->
+  <g id="targetFlag" style="display:none">
+    <line id="targetLine" x1="0" y1="96" x2="0" y2="246" stroke="#ffd75e" stroke-width="2" stroke-dasharray="6 5" opacity="0.55"/>
+  </g>
+  <!-- workpiece -->
+  <rect x="70" y="206" width="820" height="40" rx="3" fill="#5b718c" stroke="#7e97b3" stroke-width="2"/>
+  <rect x="70" y="206" width="820" height="9" fill="#7189a6"/>
+  <!-- moving head -->
+  <g id="head">
+    <rect x="-26" y="60" width="52" height="66" rx="8" fill="#42597a" stroke="#63799b" stroke-width="2"/>
+    <rect x="-9" y="126" width="18" height="26" fill="#63799b"/>
+    <g id="cutter">
+      <circle cx="0" cy="168" r="17" fill="#c8d4e0" stroke="#8496ab" stroke-width="3"/>
+      <path d="M0,-17 L4,0 L0,17 L-4,0 Z M-17,0 L0,4 L17,0 L0,-4 Z" fill="#8496ab"/>
+    </g>
+    <line x1="0" y1="185" x2="0" y2="246" stroke="#ff5e5e" stroke-width="2.5"/>
+    <circle cx="0" cy="168" r="3.5" fill="#33475e"/>
+  </g>
+  <!-- sparks -->
+  <g id="sparks"></g>
+  <!-- penguin operator -->
+  <g id="penguin" transform="translate(868,128)">
+    <ellipse cx="0" cy="52" rx="27" ry="34" fill="#26313f"/>
+    <ellipse cx="0" cy="58" rx="17" ry="24" fill="#f4f8fb"/>
+    <circle cx="-9" cy="26" r="3.4" fill="#10151d"/>
+    <circle cx="9" cy="26" r="3.4" fill="#10151d"/>
+    <path id="pengMouth" d="M-5,36 Q0,41 5,36" stroke="#f2a33c" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M-4,33 L4,33 L0,39 Z" fill="#f2a33c"/>
+    <g id="pengArmL"><path d="M-24,48 Q-38,40 -36,28" stroke="#26313f" stroke-width="9" fill="none" stroke-linecap="round"/></g>
+    <g id="pengArmR"><path d="M24,48 Q38,40 36,28" stroke="#26313f" stroke-width="9" fill="none" stroke-linecap="round"/></g>
+    <ellipse cx="-11" cy="88" rx="10" ry="4.5" fill="#f2a33c"/>
+    <ellipse cx="11" cy="88" rx="10" ry="4.5" fill="#f2a33c"/>
+  </g>
+  <text x="868" y="112" text-anchor="middle" font-size="13" fill="#9fb4c8">見習いペンギン</text>
+</svg>
+</div>
+
+<div id="hud">
+  <div class="card"><div class="label">目標寸法</div><div class="value" id="targetVal">--.--- mm</div></div>
+  <div class="card"><div class="label">実測</div><div class="value" id="measureVal">--.--- mm</div></div>
+  <div class="card"><div class="label">ラウンド</div><div class="value" id="roundVal">- / 10</div></div>
+</div>
+
+<div id="msg">目標寸法が表示されたら「加工スタート」。刃物が左右に動くから、目標の位置で「止まれ！」を押して寸法を合わせよう。</div>
+
+<div id="btnRow">
+  <button id="mainBtn" class="start">加工スタート</button>
+</div>
+<div id="scoreLine"></div>
+
+<div class="howto">
+遊び方：スケールは 0〜100mm（目盛りは1mm、数字は10mmごと）。目標寸法の位置を目で読んで、刃物の赤い線がその位置に来た瞬間に止める。誤差が小さいほど職人ランクが上がる。全10ラウンド、後半は刃物の動きが速くなる。キーボードのスペースでも止められる。
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var X0 = 80, X1 = 880;            // px for 0..100 mm
+  var ROUNDS = 10;
+  var head = document.getElementById('head');
+  var cutter = document.getElementById('cutter');
+  var ruler = document.getElementById('ruler');
+  var sparks = document.getElementById('sparks');
+  var targetFlag = document.getElementById('targetFlag');
+  var targetLine = document.getElementById('targetLine');
+  var targetVal = document.getElementById('targetVal');
+  var measureVal = document.getElementById('measureVal');
+  var roundVal = document.getElementById('roundVal');
+  var msg = document.getElementById('msg');
+  var scoreLine = document.getElementById('scoreLine');
+  var mainBtn = document.getElementById('mainBtn');
+  var pengMouth = document.getElementById('pengMouth');
+
+  // build ruler: ticks every 1mm (8px), labels every 10mm
+  (function(){
+    var s = '';
+    for (var mm = 0; mm <= 100; mm++) {
+      var x = (X0 + (X1 - X0) * mm / 100).toFixed(1);
+      var h = (mm % 10 === 0) ? 20 : (mm % 5 === 0 ? 14 : 8);
+      s += '<line x1="' + x + '" y1="246" x2="' + x + '" y2="' + (246 - h) + '" stroke="#5f7d9c" stroke-width="' + (mm % 10 === 0 ? 2 : 1) + '"/>';
+      if (mm % 10 === 0) {
+        s += '<text x="' + x + '" y="308" text-anchor="middle" font-size="15" fill="#9fb4c8">' + mm + '</text>';
+      }
+    }
+    s += '<text x="' + X1 + '" y="330" text-anchor="end" font-size="12" fill="#7e93a9">mm</text>';
+    ruler.innerHTML = s;
+  })();
+
+  function mmToX(mm){ return X0 + (X1 - X0) * mm / 100; }
+  function fmt(v){ return v.toFixed(3) + ' mm'; }
+
+  var state = 'ready';       // ready | running | stopped | finished
+  var round = 0;
+  var target = 0;            // mm
+  var pos = 0;               // mm (head position)
+  var dir = 1;
+  var speed = 20;            // mm per second
+  var lastT = 0;
+  var spin = 0;
+  var totalErrUm = 0;
+  var scrap = 0;
+  var godCount = 0;
+
+  function setHead(mm){
+    head.setAttribute('transform', 'translate(' + mmToX(mm).toFixed(1) + ',0)');
+  }
+  setHead(0);
+
+  function rankOf(errMm){
+    var um = Math.round(errMm * 1000);
+    if (um <= 50)  return {t:'神業！', c:'r-god', um:um};
+    if (um <= 150) return {t:'超一級', c:'r-top', um:um};
+    if (um <= 300) return {t:'一級', c:'r-1', um:um};
+    if (um <= 600) return {t:'二級', c:'r-2', um:um};
+    if (um <= 1200)return {t:'見習い', c:'r-app', um:um};
+    return {t:'スクラップ…', c:'r-scrap', um:um};
+  }
+
+  function burst(x){
+    var s = '';
+    for (var i = 0; i < 14; i++) {
+      var a = Math.random() * Math.PI - Math.PI/2;
+      var d = 14 + Math.random() * 26;
+      s += '<circle cx="' + x + '" cy="200" r="' + (1.6 + Math.random()*1.8) + '" fill="#ffd75e">' +
+           '<animate attributeName="cx" dur="0.45s" fill="freeze" from="' + x + '" to="' + (x + Math.cos(a)*d) + '"/>' +
+           '<animate attributeName="cy" dur="0.45s" fill="freeze" from="200" to="' + (200 - Math.abs(Math.sin(a))*d - 8) + '"/>' +
+           '<animate attributeName="opacity" dur="0.45s" fill="freeze" from="1" to="0"/></circle>';
+    }
+    sparks.innerHTML = s;
+    setTimeout(function(){ sparks.innerHTML=''; }, 500);
+  }
+
+  function newRound(){
+    round++;
+    roundVal.textContent = round + ' / ' + ROUNDS;
+    target = (Math.floor(Math.random() * 900) + 50) / 10;  // 5.0 .. 94.9
+    targetVal.textContent = fmt(target);
+    measureVal.textContent = '--.--- mm';
+    targetLine.setAttribute('x1', mmToX(target));
+    targetLine.setAttribute('x2', mmToX(target));
+    targetFlag.style.display = 'none';  // target line stays hidden: read the scale!
+    pos = 0; dir = 1;
+    speed = 20 + (round - 1) * 5.5;
+    setHead(pos);
+    state = 'ready';
+    pengMouth.setAttribute('d', 'M-5,36 Q0,41 5,36');
+    msg.innerHTML = '第' + round + 'ラウンド。目標は <b style="color:#ffd75e">' + fmt(target) + '</b>。「加工スタート」で刃物が動くよ。';
+    mainBtn.textContent = '加工スタート';
+    mainBtn.className = 'start';
+  }
+
+  function startRun(){
+    state = 'running';
+    lastT = performance.now();
+    mainBtn.textContent = '止まれ！';
+    mainBtn.className = '';
+    msg.textContent = '刃物が動いてる…目標の位置で止めて！';
+    requestAnimationFrame(tick);
+  }
+
+  function tick(t){
+    if (state !== 'running') return;
+    var dt = Math.min((t - lastT) / 1000, 0.05);
+    lastT = t;
+    pos += dir * speed * dt;
+    if (pos >= 100) { pos = 100; dir = -1; }
+    if (pos <= 0)   { pos = 0;   dir = 1; }
+    spin += dt * 720;
+    cutter.setAttribute('transform', 'rotate(' + spin + ')');
+    setHead(pos);
+    requestAnimationFrame(tick);
+  }
+
+  function stopRun(){
+    state = 'stopped';
+    var measured = pos;
+    var err = Math.abs(measured - target);
+    var r = rankOf(err);
+    totalErrUm += r.um;
+    if (r.t === 'スクラップ…') scrap++;
+    if (r.t === '神業！') godCount++;
+    measureVal.textContent = fmt(measured);
+    targetFlag.style.display = '';  // reveal the true target line after stopping
+    burst(mmToX(measured));
+    pengMouth.setAttribute('d', (r.t==='スクラップ…') ? 'M-5,40 Q0,34 5,40' : 'M-6,35 Q0,44 6,35');
+    var sign = (measured - target) >= 0 ? '+' : '−';
+    msg.innerHTML = '<span class="rank ' + r.c + '">' + r.t + '</span><br>' +
+      '誤差 ' + r.um + ' μm（' + sign + '方向）。目標の線（黄色）と赤い線の差が誤差だよ。';
+    scoreLine.textContent = '合計誤差 ' + totalErrUm + ' μm　スクラップ ' + scrap + ' 個　神業 ' + godCount + ' 回';
+    if (round >= ROUNDS) {
+      mainBtn.textContent = '結果を見る';
+      mainBtn.className = 'next';
+      state = 'lastStopped';
+    } else {
+      mainBtn.textContent = '次のラウンドへ';
+      mainBtn.className = 'next';
+    }
+  }
+
+  function finish(){
+    state = 'finished';
+    var avg = Math.round(totalErrUm / ROUNDS);
+    var grade, comment;
+    if (scrap === 0 && avg <= 150)      { grade = '伝説のミクロン職人'; comment = 'もう人間国宝。寸法の神です。'; }
+    else if (scrap === 0 && avg <= 300) { grade = '一級職人'; comment = '安定した腕前。量産ラインを任せられる。'; }
+    else if (scrap <= 2 && avg <= 600)  { grade = '二級職人'; comment = '悪くない。あとは反復練習あるのみ。'; }
+    else if (scrap <= 4)                { grade = '見習い職人'; comment = 'スクラップが多め。目盛りを読む練習から。'; }
+    else                                { grade = 'スクラップ職人'; comment = '材料が泣いている…。まず落ち着いて止めよう。'; }
+    msg.innerHTML = '<span class="rank r-top">最終結果：' + grade + '</span><br>' + comment + '<br>' +
+      '平均誤差 ' + avg + ' μm ／ 合計誤差 ' + totalErrUm + ' μm ／ スクラップ ' + scrap + ' 個 ／ 神業 ' + godCount + ' 回';
+    mainBtn.textContent = 'もう一度やる';
+    mainBtn.className = 'start';
+  }
+
+  mainBtn.addEventListener('click', function(){
+    if (state === 'ready') startRun();
+    else if (state === 'running') stopRun();
+    else if (state === 'stopped') newRound();
+    else if (state === 'lastStopped') finish();
+    else if (state === 'finished') { round = 0; totalErrUm = 0; scrap = 0; godCount = 0; scoreLine.textContent=''; newRound(); }
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.code === 'Space') { e.preventDefault(); mainBtn.click(); }
+  });
+  document.getElementById('stage').addEventListener('pointerdown', function(){
+    if (state === 'running') stopRun();
+  });
+
+  roundVal.textContent = '1 / ' + ROUNDS;
+  newRound();
+})();
+</script>
+</body>
+</html>

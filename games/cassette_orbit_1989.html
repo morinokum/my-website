@@ -1173,6 +1173,13 @@
         document.getElementById('hack-status-label').innerText = 'DECRYPTED / ACCESS GRANTED';
         document.getElementById('hack-status-label').className = 'text-emerald-400 font-bold';
         appendTerminalLog("SUCCESS: Security Level 1 Bypassed! Orbital Dock Access granted.");
+      } else if (val === 'BYPASS') {
+        if (gameState.terminal.solvedLevel1) {
+          appendTerminalLog("BYPASS: Security Level 1 is already bypassed. Orbital Dock Access is open.");
+        } else {
+          appendTerminalLog("[BYPASS] Probing maintenance route around CYBER LOCK A...");
+          appendTerminalLog("BYPASS ROUTE SEALED: Rune encryption blocks the direct route. A valid Security Hash is still required - try SCAN, then DECRYPT [CODE]. (No hack attempt consumed.)");
+        }
       } else {
         sound.playSeError();
         gameState.terminal.attempts--;

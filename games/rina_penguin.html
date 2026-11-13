@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>リナのペンギン救出大作戦｜Linux研究会</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{background:#07070f;color:#e8ecf7;font-family:"DotGothic16","Hiragino Kaku Gothic ProN",sans-serif;
+    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  body{display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:10px 8px 18px;
+    background:radial-gradient(1000px 500px at 50% -80px,#1b2340 0%,#07070f 60%)}
+  h1{font-size:clamp(19px,4.6vw,30px);letter-spacing:.06em;color:#ffb7d5;text-shadow:0 0 12px rgba(255,110,180,.55);text-align:center}
+  h1 .sub{display:block;font-size:clamp(11px,2.6vw,14px);color:#7de8dc;letter-spacing:.28em;margin-top:2px;text-shadow:0 0 8px rgba(61,219,217,.6)}
+  #hud{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center;margin:10px 0 8px;font-size:clamp(13px,3.4vw,17px)}
+  #hud .box{background:#12172b;border:2px solid #2c3a5e;border-radius:8px;padding:4px 12px;min-width:86px;text-align:center}
+  #hud .lbl{font-size:10px;color:#8fa3cc;letter-spacing:.2em;display:block}
+  #hearts{color:#ff5d7e;letter-spacing:2px}
+  .hbtn{background:#12172b;border:2px solid #2c3a5e;border-radius:8px;color:#e8ecf7;font-family:inherit;
+    font-size:16px;padding:5px 10px;cursor:pointer}
+  .hbtn:active{transform:translateY(1px)}
+  #stageWrap{position:relative;width:100%;max-width:980px}
+  svg#stage{width:100%;height:auto;display:block;background:#0a0e22;border:3px solid #2c3a5e;border-radius:10px;touch-action:none}
+  .scan{position:absolute;inset:0;pointer-events:none;border-radius:10px;
+    background:repeating-linear-gradient(0deg,rgba(255,255,255,.028) 0 2px,transparent 2px 4px)}
+  .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+    background:rgba(5,6,18,.78);border-radius:10px;text-align:center;padding:16px;z-index:5}
+  .overlay h2{font-size:clamp(22px,6vw,40px);color:#ffb7d5;text-shadow:0 0 14px rgba(255,110,180,.6)}
+  .overlay p{font-size:clamp(13px,3.6vw,17px);line-height:1.75;color:#dfe6ff;max-width:560px}
+  .overlay .ctrl{color:#7de8dc;font-size:clamp(12px,3.2vw,15px)}
+  .bigbtn{font-family:inherit;font-size:clamp(17px,4.6vw,22px);letter-spacing:.14em;color:#08131a;
+    background:linear-gradient(180deg,#5ff2d0,#23c8a8);border:none;border-radius:10px;padding:12px 38px;cursor:pointer;
+    box-shadow:0 0 18px rgba(61,219,217,.45)}
+  .bigbtn:active{transform:translateY(2px)}
+  .rank{font-size:clamp(30px,9vw,54px);color:#ffd94d;text-shadow:0 0 16px rgba(255,217,77,.7)}
+  .hidden{display:none!important}
+  #controls{display:flex;justify-content:space-between;width:100%;max-width:980px;margin-top:12px;gap:10px}
+  .cgroup{display:flex;gap:10px}
+  .cbtn{width:70px;height:70px;border-radius:50%;border:3px solid #2c3a5e;background:#161d38;color:#e8ecf7;
+    font-size:26px;font-family:inherit;touch-action:none;cursor:pointer}
+  .cbtn.on,.cbtn:active{background:#2b3a6e;border-color:#3ddbd9}
+  #btnJ{width:84px;height:84px;background:#3a1630;border-color:#a03a72;font-size:17px;letter-spacing:.05em}
+  #btnJ.on,#btnJ:active{background:#6e2450;border-color:#ff7eb0}
+  .note{margin-top:12px;font-size:12px;color:#8fa3cc;text-align:center;line-height:1.8}
+  .note a{color:#7de8dc}
+</style>
+</head>
+<body>
+<h1>リナのペンギン救出大作戦<span class="sub">RINA'S PENGUIN RESCUE</span></h1>
+
+<div id="hud">
+  <div class="box"><span class="lbl">LIFE</span><span id="hearts">❤❤❤</span></div>
+  <div class="box"><span class="lbl">SCORE</span><span id="score">0</span></div>
+  <div class="box"><span class="lbl">フロッピー</span><span id="flops">0/12</span></div>
+  <div class="box"><span class="lbl">TIME</span><span id="time">0:00</span></div>
+  <div class="box"><span class="lbl">BEST</span><span id="best">0</span></div>
+  <button class="hbtn" id="btnSound" title="サウンド">🔊</button>
+  <button class="hbtn" id="btnFull" title="全画面">⛶</button>
+</div>
+
+<div id="stageWrap">
+  <svg id="stage" viewBox="0 0 960 540" preserveAspectRatio="xMidYMid meet" aria-label="ゲーム画面">
+    <defs>
+      <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#0a1030"/><stop offset=".62" stop-color="#131a3d"/><stop offset="1" stop-color="#1d1440"/>
+      </linearGradient>
+      <linearGradient id="plat" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#2a3049"/><stop offset="1" stop-color="#171b2c"/>
+      </linearGradient>
+    </defs>
+    <rect x="0" y="0" width="960" height="540" fill="url(#sky)"/>
+    <g id="bgFar"></g>
+    <g id="world">
+      <g id="plats"></g>
+      <g id="deco"></g>
+      <g id="flopsG"></g>
+      <g id="enemiesG"></g>
+      <g id="goalG"></g>
+      <!-- リナ（原点＝足元中央） -->
+      <g id="player">
+        <g id="pFlip">
+          <g id="pony"><ellipse cx="-14" cy="-70" rx="5.5" ry="11" fill="#ff7eb0" transform="rotate(22 -14 -70)"/></g>
+          <g transform="translate(-5,-27)"><g id="legL"><rect x="-3.5" y="0" width="7" height="21" rx="3" fill="#26262e"/><rect x="-4.5" y="19" width="10" height="6" rx="2.5" fill="#f2f2f2"/></g></g>
+          <g transform="translate(5,-27)"><g id="legR"><rect x="-3.5" y="0" width="7" height="21" rx="3" fill="#26262e"/><rect x="-4.5" y="19" width="10" height="6" rx="2.5" fill="#f2f2f2"/></g></g>
+          <path d="M-13,-23 L-13,-45 Q-13,-53 0,-53 Q13,-53 13,-45 L13,-23 Q0,-19 -13,-23 Z" fill="#1d1d24"/>
+          <rect x="-7" y="-31" width="14" height="7" rx="2" fill="#26262e" stroke="#3a3a46" stroke-width="1"/>
+          <line x1="-3" y1="-49" x2="-3.5" y2="-41" stroke="#fff" stroke-width="1.8"/>
+          <line x1="3" y1="-49" x2="3.5" y2="-41" stroke="#fff" stroke-width="1.8"/>
+          <g transform="translate(11,-46)"><g id="armR"><rect x="-3" y="0" width="6.5" height="18" rx="3" fill="#1d1d24"/><circle cx="0" cy="19" r="3.6" fill="#ffd9c4"/></g></g>
+          <circle cx="0" cy="-66" r="14" fill="#ff8fb8"/>
+          <circle cx="2.5" cy="-62.5" r="10.5" fill="#ffd9c4"/>
+          <ellipse cx="5.2" cy="-62.5" rx="1.7" ry="2.7" fill="#40222e"/>
+          <ellipse cx="10.6" cy="-62.5" rx="1.7" ry="2.7" fill="#40222e"/>
+          <circle cx="5.8" cy="-63.6" r=".7" fill="#fff"/><circle cx="11.2" cy="-63.6" r=".7" fill="#fff"/>
+          <ellipse cx="2.6" cy="-58.6" rx="2.4" ry="1.2" fill="#ffb3c1" opacity=".75"/>
+          <path d="M6,-56.8 Q8,-55.2 10,-56.8" stroke="#b3546e" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+          <text x="5.5" y="-71" font-size="12" fill="#ffd94d">★</text>
+          <rect x="-10" y="-77.5" width="7.5" height="3.4" rx="1.6" fill="#57c8c0" transform="rotate(-18 -10 -77.5)"/>
+        </g>
+      </g>
+    </g>
+  </svg>
+  <div class="scan"></div>
+
+  <div class="overlay" id="ovStart">
+    <h2>リナのペンギン救出大作戦</h2>
+    <p>ペンギンがバグモンスターに捕まってしまった！<br>
+    夜の京都を駆け抜け、フロッピーを集めながらゴールの檻までたどり着こう。<br>
+    敵は上から踏めば倒せる。落っこちるとライフが減るよ。</p>
+    <p class="ctrl">◀ ▶ ： 移動　／　JUMP ： ジャンプ（キーボード ←→・スペースでもOK）</p>
+    <button class="bigbtn" id="btnStart">▶ スタート</button>
+  </div>
+
+  <div class="overlay hidden" id="ovEnd">
+    <h2 id="endTitle">クリア！</h2>
+    <div class="rank hidden" id="endRank">S</div>
+    <p id="endText"></p>
+    <button class="bigbtn" id="btnRetry">↻ もう一度</button>
+  </div>
+</div>
+
+<div id="controls">
+  <div class="cgroup">
+    <button class="cbtn" id="btnL" aria-label="左">◀</button>
+    <button class="cbtn" id="btnR" aria-label="右">▶</button>
+  </div>
+  <div class="cgroup">
+    <button class="cbtn" id="btnJ" aria-label="ジャンプ">JUMP</button>
+  </div>
+</div>
+
+<p class="note">Linux研究会 公式イメージキャラクター「リナ」主役のレトロアクション（全SVG）。<br>
+<a href="../linux-kenkyukai.html">Linux研究会ページへ</a> ／ <a href="../rina.html">リナの紹介ページ</a> ／ <a href="../sitemap.html">全作品リンク集</a></p>
+
+<script>
+"use strict";
+/* ===== 定数・レベルデータ ===== */
+const VW = 960, WORLD_W = 3200, GRAV = 0.6, SPD = 3.4, JUMP_V = 13.6;
+const PLATS = [
+  {x:0,y:470,w:700},{x:780,y:470,w:720},{x:1580,y:470,w:720},{x:2380,y:470,w:820},
+  {x:300,y:382,w:120},{x:520,y:302,w:110},{x:880,y:362,w:120},{x:1080,y:282,w:110},
+  {x:1300,y:352,w:120},{x:1700,y:342,w:120},{x:1900,y:262,w:110},{x:2100,y:342,w:120},
+  {x:2500,y:362,w:120},{x:2720,y:282,w:110},{x:2900,y:352,w:130}
+];
+const FLOPS = [
+  [360,348],[575,268],[760,436],[940,328],[1135,248],[1360,318],
+  [1760,308],[1955,228],[2160,308],[2240,436],[2560,328],[2775,248]
+];
+const ENEMIES = [
+  {min:430,max:640,y:470,spd:0.8},{min:930,max:1180,y:470,spd:1.0},
+  {min:1090,max:1160,y:282,spd:0.7},{min:1315,max:1395,y:352,spd:0.8},
+  {min:1760,max:2040,y:470,spd:1.1},{min:2115,max:2195,y:342,spd:0.7},
+  {min:2460,max:2740,y:470,spd:0.9},{min:2820,max:3030,y:470,spd:1.0}
+];
+const GOAL_X = 3090, CHECK_X = 1650;
+
+/* ===== 状態 ===== */
+let state = "title"; // title / playing / clear / over / done
+let px, py, vy, face, onGround, walkPh, inv, hp, score, flopN, timeF, camX;
+let respawn, checkOn, clearAnim, checkMsg, jumpBuf, soundOn = true;
+let flopState = [], foeState = [];
+const keys = { l:false, r:false };
+let best = +(localStorage.getItem("rina_penguin_best") || 0);
+
+/* ===== DOM ===== */
+const $ = id => document.getElementById(id);
+const elPlayer = $("player"), elFlip = $("pFlip"), elLegL = $("legL"), elLegR = $("legR"),
+      elArm = $("armR"), elPony = $("pony"), elWorld = $("world"), elFar = $("bgFar");
+const NS = "http://www.w3.org/2000/svg";
+function svgEl(tag, attrs, parent){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+/* ===== 背景（遠景：京都の夜） ===== */
+(function buildBG(){
+  const g = elFar;
+  const stars = [[60,60],[210,120],[420,50],[700,90],[980,60],[1250,130],[1500,55],[1750,100],[240,200],[880,170],[1600,190],[520,150]];
+  stars.forEach(s => svgEl("circle",{cx:s[0],cy:s[1],r:1.8,fill:"#cfe4ff",opacity:.8},g));
+  svgEl("circle",{cx:1560,cy:86,r:30,fill:"#f5eeda"},g);
+  svgEl("circle",{cx:1548,cy:78,r:27,fill:"#131a3d",opacity:.85},g);
+  // 五重塔シルエット
+  const pg = svgEl("g",{fill:"#0d1330"},g);
+  [[1136,470,88],[1144,428,72],[1152,390,58],[1159,356,45],[1166,326,32]].forEach(r =>
+    svgEl("rect",{x:r[0],y:r[1],width:r[2],height:10,rx:3},pg));
+  svgEl("rect",{x:1173,y:300,width:6,height:172},pg);
+  // ビル群
+  const builds = [[0,300,120],[140,350,90],[260,270,140],[430,330,100],[560,290,120],[710,360,90],
+                  [830,300,130],[990,340,100],[1240,320,110],[1380,280,120],[1520,350,100],[1650,300,130]];
+  builds.forEach(b => {
+    svgEl("rect",{x:b[0],y:b[1],width:b[2],height:470-b[1],fill:"#0d1330"},g);
+    for (let wy = b[1]+16; wy < 440; wy += 26)
+      for (let wx = b[0]+10; wx < b[0]+b[2]-12; wx += 22)
+        if ((wx*7+wy*13)%5 < 2) svgEl("rect",{x:wx,y:wy,width:8,height:10,fill:"#ffd97a",opacity:.5},g);
+  });
+  const t = svgEl("text",{x:600,y:330,"font-size":30,fill:"#3ddbd9",opacity:.85,"letter-spacing":4},g);
+  t.textContent = "LINUX";
+  const t2 = svgEl("text",{x:1420,y:320,"font-size":20,fill:"#ff7eb0",opacity:.8,"letter-spacing":3},g);
+  t2.textContent = "sudo";
+})();
+
+/* ===== ステージ構築 ===== */
+(function buildStage(){
+  const pg = $("plats");
+  PLATS.forEach(p => {
+    svgEl("rect",{x:p.x,y:p.y,width:p.w,height:540-p.y,fill:"url(#plat)"},pg);
+    svgEl("rect",{x:p.x,y:p.y,width:p.w,height:5,fill:"#35e0c8"},pg);
+    for (let x = p.x+26; x < p.x+p.w-10; x += 52)
+      svgEl("rect",{x:x,y:p.y+18,width:3,height:26,fill:"#39415e",opacity:.7},pg);
+  });
+  const dc = $("deco");
+  // スタート看板
+  svgEl("rect",{x:118,y:424,width:6,height:46,fill:"#6b4a2f"},dc);
+  const sb = svgEl("rect",{x:88,y:398,width:96,height:28,rx:4,fill:"#24304f",stroke:"#3ddbd9","stroke-width":2},dc);
+  const st = svgEl("text",{x:136,y:418,"text-anchor":"middle","font-size":15,fill:"#7de8dc"},dc);
+  st.textContent = "START →";
+  // チェックポイント鳥居
+  svgEl("rect",{x:1618,y:400,width:9,height:70,fill:"#c94f4f"},dc);
+  svgEl("rect",{x:1683,y:400,width:9,height:70,fill:"#c94f4f"},dc);
+  window._toriiBeam = svgEl("rect",{x:1604,y:388,width:102,height:11,rx:3,fill:"#8a4a4a"},dc);
+  const tt = svgEl("text",{x:1655,y:380,"text-anchor":"middle","font-size":13,fill:"#8fa3cc"},dc);
+  tt.textContent = "CHECKPOINT";
+  window._checkText = svgEl("text",{x:1655,y:350,"text-anchor":"middle","font-size":20,fill:"#ffd94d",opacity:0},dc);
+  window._checkText.textContent = "✓ チェックポイント！";
+  // ゴール看板
+  const gt = svgEl("text",{x:GOAL_X,y:372,"text-anchor":"middle","font-size":22,fill:"#ffd94d","letter-spacing":4},dc);
+  gt.textContent = "GOAL";
+})();
+
+/* フロッピー */
+(function buildFlops(){
+  const g = $("flopsG");
+  FLOPS.forEach((f,i) => {
+    const gr = svgEl("g",{},g);
+    svgEl("rect",{x:-11,y:-11,width:22,height:22,rx:2,fill:"#2b2f3a",stroke:"#9fb4ff","stroke-width":1.5},gr);
+    svgEl("rect",{x:-6,y:-11,width:12,height:9,fill:"#c8d2e8"},gr);
+    svgEl("rect",{x:-7,y:2,width:14,height:8,fill:"#e8ecf7"},gr);
+    flopState.push({x:f[0], y:f[1], taken:false, el:gr, ph:i*0.9});
+  });
+})();
+
+/* 敵（バグスライム） */
+(function buildFoes(){
+  const g = $("enemiesG");
+  ENEMIES.forEach((e,i) => {
+    const gr = svgEl("g",{},g);
+    const inner = svgEl("g",{},gr);
+    svgEl("path",{d:"M-16,0 Q-19,-15 -9,-20 Q0,-27 9,-20 Q19,-15 16,0 Z",fill:"#57d977",stroke:"#2c8a44","stroke-width":2},inner);
+    svgEl("line",{x1:6,y1:-22,x2:11,y2:-31,stroke:"#2c8a44","stroke-width":2},inner);
+    svgEl("circle",{cx:12,cy:-32,r:3.4,fill:"#ff5d5d"},inner);
+    svgEl("circle",{cx:-5,cy:-13,r:3.6,fill:"#fff"},inner);
+    svgEl("circle",{cx:6,cy:-13,r:3.6,fill:"#fff"},inner);
+    svgEl("circle",{cx:-4.4,cy:-13,r:1.8,fill:"#20301c"},inner);
+    svgEl("circle",{cx:6.6,cy:-13,r:1.8,fill:"#20301c"},inner);
+    svgEl("path",{d:"M-3,-6 Q1,-4 5,-6",stroke:"#20301c","stroke-width":1.4,fill:"none"},inner);
+    foeState.push({cfg:e, x:(e.min+e.max)/2, dir:i%2? -1:1, alive:true, dead:0, el:gr, inner:inner});
+  });
+})();
+
+/* ゴール（檻とペンギン） */
+let cageDoor, goalPeng;
+(function buildGoal(){
+  const g = $("goalG"), gy = 470;
+  goalPeng = svgEl("g",{},g);
+  svgEl("ellipse",{cx:GOAL_X,cy:gy-17,rx:14,ry:17,fill:"#33404f"},goalPeng);
+  svgEl("ellipse",{cx:GOAL_X,cy:gy-13,rx:8.5,ry:11.5,fill:"#f4f7fb"},goalPeng);
+  svgEl("circle",{cx:GOAL_X-4.5,cy:gy-26,r:1.8,fill:"#10161f"},goalPeng);
+  svgEl("circle",{cx:GOAL_X+4.5,cy:gy-26,r:1.8,fill:"#10161f"},goalPeng);
+  svgEl("polygon",{points:`${GOAL_X-3},${gy-22} ${GOAL_X+3},${gy-22} ${GOAL_X},${gy-18.5}`,fill:"#ffb340"},goalPeng);
+  svgEl("ellipse",{cx:GOAL_X-8,cy:gy-1.5,rx:5,ry:2.4,fill:"#ffb340"},goalPeng);
+  svgEl("ellipse",{cx:GOAL_X+8,cy:gy-1.5,rx:5,ry:2.4,fill:"#ffb340"},goalPeng);
+  svgEl("rect",{x:GOAL_X-24,y:gy-56,width:48,height:5,fill:"#8a93a5"},g);
+  svgEl("rect",{x:GOAL_X-24,y:gy-4,width:48,height:5,fill:"#8a93a5"},g);
+  cageDoor = svgEl("g",{},g);
+  for (let x = GOAL_X-21; x <= GOAL_X+21; x += 8.4)
+    svgEl("rect",{x:x,y:gy-54,width:3.6,height:52,fill:"#aab4c8"},cageDoor);
+})();
+</script>
+<script>
+"use strict";
+/* ===== サウンド（WebAudio ビープ） ===== */
+let AC = null;
+function ac(){
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return null; } }
+  if (AC && AC.state === "suspended") AC.resume();
+  return AC;
+}
+function tone(f0, f1, dur, type, vol, delay){
+  if (!soundOn) return;
+  const a = ac(); if (!a) return;
+  try {
+    const o = a.createOscillator(), g = a.createGain(), t = a.currentTime + (delay || 0);
+    o.type = type || "square";
+    o.frequency.setValueAtTime(f0, t);
+    if (f1) o.frequency.exponentialRampToValueAtTime(Math.max(f1, 1), t + dur);
+    g.gain.setValueAtTime(vol || 0.045, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(t); o.stop(t + dur + 0.03);
+  } catch(e) {}
+}
+const sJump  = () => tone(280, 660, 0.14);
+const sPick  = () => { tone(920, 0, 0.07); tone(1380, 0, 0.1, "square", 0.045, 0.06); };
+const sStomp = () => tone(330, 55, 0.15, "square", 0.06);
+const sHurt  = () => tone(210, 65, 0.24, "sawtooth", 0.055);
+const sCheck = () => { tone(784, 0, 0.09); tone(1175, 0, 0.13, "square", 0.045, 0.08); };
+const sClear = () => { [523,659,784,1046].forEach((f,i) => tone(f, 0, 0.16, "square", 0.05, i*0.11)); };
+
+/* ===== HUD ===== */
+function hud(){
+  $("hearts").textContent = "❤".repeat(hp) + "🖤".repeat(Math.max(0, 3 - hp));
+  $("score").textContent = score;
+  $("flops").textContent = flopN + "/12";
+  const s = Math.floor(timeF / 60);
+  $("time").textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+  $("best").textContent = best;
+}
+
+/* ===== リセット ===== */
+function reset(toTitle){
+  px = 60; py = 470; vy = 0; face = 1; onGround = true; walkPh = 0; inv = 0;
+  hp = 3; score = 0; flopN = 0; timeF = 0; camX = 0; jumpBuf = 0;
+  respawn = { x:60, y:470 }; checkOn = false; clearAnim = -1; checkMsg = 0;
+  flopState.forEach(f => { f.taken = false; f.el.style.display = ""; });
+  foeState.forEach(f => { f.x = (f.cfg.min + f.cfg.max) / 2; f.alive = true; f.dead = 0; f.el.style.display = ""; f.el.setAttribute("opacity", 1); });
+  cageDoor.setAttribute("transform", "translate(0 0)"); cageDoor.setAttribute("opacity", 1);
+  goalPeng.setAttribute("transform", "translate(0 0)");
+  window._toriiBeam.setAttribute("fill", "#8a4a4a");
+  window._checkText.setAttribute("opacity", 0);
+  state = toTitle ? "title" : "playing";
+  hud(); draw(0);
+}
+
+/* ===== ダメージ ===== */
+function gameOver(){
+  state = "over";
+  $("endTitle").textContent = "ゲームオーバー";
+  $("endRank").classList.add("hidden");
+  $("endText").innerHTML = "ペンギンはまだ檻の中…。<br>スコア " + score + " 点（フロッピー " + flopN + "/12）";
+  $("ovEnd").classList.remove("hidden");
+}
+function hurt(fromX){
+  if (inv > 0 || state !== "playing") return;
+  hp--; sHurt(); hud();
+  if (hp <= 0) { gameOver(); return; }
+  inv = 90; vy = -7.5;
+  px += (px < fromX ? -26 : 26);
+}
+function fallHurt(){
+  hp--; sHurt(); hud();
+  if (hp <= 0) { gameOver(); return; }
+  px = respawn.x; py = respawn.y; vy = 0; inv = 90; camX = Math.max(0, Math.min(WORLD_W - VW, px - 380));
+}
+
+/* ===== クリア ===== */
+function startClear(){
+  state = "clear"; clearAnim = 0;
+  const sec = Math.floor(timeF / 60);
+  score += hp * 200 + Math.max(0, 900 - sec * 3);
+  if (score > best) { best = score; localStorage.setItem("rina_penguin_best", best); }
+  hud(); sClear();
+}
+function showClear(){
+  state = "done";
+  const sec = Math.floor(timeF / 60);
+  const rank = score >= 2600 ? "S" : score >= 2100 ? "A" : score >= 1600 ? "B" : "C";
+  $("endTitle").textContent = "ペンギン救出成功！";
+  const r = $("endRank"); r.textContent = "ランク " + rank; r.classList.remove("hidden");
+  $("endText").innerHTML = "スコア " + score + " 点<br>フロッピー " + flopN + "/12 ・ タイム " +
+    Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0") + " ・ 残りライフ " + hp;
+  $("ovEnd").classList.remove("hidden");
+}
+
+/* ===== メインステップ ===== */
+function step(dt){
+  timeF += dt;
+  if (jumpBuf > 0) jumpBuf -= dt;
+  if (inv > 0) inv -= dt;
+  if (checkMsg > 0) { checkMsg -= dt; if (checkMsg <= 0) window._checkText.setAttribute("opacity", 0); }
+
+  const vx = (keys.r ? SPD : 0) - (keys.l ? SPD : 0);
+  if (vx !== 0) face = vx > 0 ? 1 : -1;
+  px += vx * dt;
+  if (px < 22) px = 22;
+  if (px > WORLD_W - 20) px = WORLD_W - 20;
+
+  if (jumpBuf > 0 && onGround) { vy = -JUMP_V; onGround = false; jumpBuf = 0; sJump(); }
+  vy += GRAV * dt; if (vy > 16) vy = 16;
+  const prevBottom = py;
+  py += vy * dt;
+  onGround = false;
+  if (vy >= 0) {
+    for (const p of PLATS) {
+      if (px + 12 > p.x && px - 12 < p.x + p.w && prevBottom <= p.y + 0.5 && py >= p.y) {
+        py = p.y; vy = 0; onGround = true; break;
+      }
+    }
+  }
+  if (py > 780) { fallHurt(); if (state !== "playing") return; }
+
+  if (vx !== 0 && onGround) walkPh += dt * 0.32; else if (onGround) walkPh = 0;
+
+  // フロッピー
+  for (const f of flopState) {
+    if (f.taken) continue;
+    if (Math.abs(px - f.x) < 28 && Math.abs((py - 34) - f.y) < 42) {
+      f.taken = true; f.el.style.display = "none";
+      flopN++; score += 50; sPick(); hud();
+    }
+  }
+  // チェックポイント
+  if (!checkOn && px > CHECK_X) {
+    checkOn = true; respawn = { x:1660, y:470 };
+    window._toriiBeam.setAttribute("fill", "#ffd94d");
+    window._checkText.setAttribute("opacity", 1); checkMsg = 110; sCheck();
+  }
+  // 敵
+  for (const f of foeState) {
+    if (!f.alive) { if (f.dead > 0) f.dead -= dt; continue; }
+    f.x += f.dir * f.cfg.spd * dt;
+    if (f.x < f.cfg.min) { f.x = f.cfg.min; f.dir = 1; }
+    if (f.x > f.cfg.max) { f.x = f.cfg.max; f.dir = -1; }
+    const ey = f.cfg.y;
+    if (Math.abs(px - f.x) < 27 && py > ey - 30 && py - 56 < ey) {
+      if (vy > 0.8 && py - (ey - 30) < 20) {
+        f.alive = false; f.dead = 22; score += 100; vy = -9; sStomp(); hud();
+      } else {
+        hurt(f.x);
+        if (state !== "playing") return;
+      }
+    }
+  }
+  // ゴール
+  if (px > GOAL_X - 34) startClear();
+  hud();
+}
+
+/* ===== 描画 ===== */
+function draw(t){
+  camX = Math.max(0, Math.min(WORLD_W - VW, px - 380));
+  elWorld.setAttribute("transform", "translate(" + (-camX) + " 0)");
+  elFar.setAttribute("transform", "translate(" + (-camX * 0.35) + " 0)");
+
+  const moving = (keys.l || keys.r) && onGround;
+  let legA = 0, legB = 0, bob = 0;
+  if (!onGround) { legA = -24; legB = 30; }
+  else if (moving) { legA = Math.sin(walkPh) * 30; legB = -Math.sin(walkPh) * 30; bob = Math.abs(Math.sin(walkPh)) * 1.6; }
+  elPlayer.setAttribute("transform", "translate(" + px + " " + (py - bob) + ")");
+  elPlayer.style.opacity = (inv > 0 && Math.floor(inv / 6) % 2 === 0) ? 0.3 : 1;
+  elFlip.setAttribute("transform", "scale(" + face + " 1)");
+  elLegL.setAttribute("transform", "rotate(" + legA + ")");
+  elLegR.setAttribute("transform", "rotate(" + legB + ")");
+  elArm.setAttribute("transform", "rotate(" + (-legA * 0.7) + ")");
+  elPony.setAttribute("transform", "rotate(" + (Math.sin(walkPh * 0.5 + t * 0.02) * 3) + " -14 -76)");
+
+  flopState.forEach(f => { if (!f.taken) f.el.setAttribute("transform",
+    "translate(" + f.x + " " + (f.y + Math.sin(t * 0.06 + f.ph) * 3) + ")"); });
+  foeState.forEach(f => {
+    if (!f.alive && f.dead <= 0) { f.el.style.display = "none"; return; }
+    if (!f.alive) f.el.setAttribute("transform", "translate(" + f.x + " " + f.cfg.y + ") scale(1.25 0.3)");
+    else f.el.setAttribute("transform", "translate(" + f.x + " " + (f.cfg.y + Math.sin(t * 0.09 + f.x) * 1.2) + ") scale(" + f.dir + " 1)");
+  });
+
+  if (state === "clear" && clearAnim >= 0) {
+    clearAnim += 1;
+    const lift = Math.min(48, clearAnim * 1.1);
+    cageDoor.setAttribute("transform", "translate(0 " + (-lift) + ")");
+    cageDoor.setAttribute("opacity", Math.max(0.25, 1 - clearAnim / 90));
+    if (clearAnim > 34) {
+      const b = Math.abs(Math.sin(clearAnim * 0.22)) * 9;
+      goalPeng.setAttribute("transform", "translate(0 " + (-b) + ")");
+    }
+    if (clearAnim > 95) showClear();
+  }
+}
+
+/* ===== ループ ===== */
+let lastTs = 0;
+function frame(ts){
+  requestAnimationFrame(frame);
+  const dt = Math.min(2.5, Math.max(0, (ts - lastTs) / 16.667 || 0));
+  lastTs = ts;
+  if (state === "playing") step(dt);
+  if (state === "playing" || state === "clear" || state === "title") draw(ts);
+}
+
+/* ===== 入力 ===== */
+function bindHold(id, on, off){
+  const b = $(id);
+  const start = e => { e.preventDefault(); b.classList.add("on"); on(); };
+  const end = e => { b.classList.remove("on"); off(); };
+  b.addEventListener("pointerdown", start);
+  b.addEventListener("pointerup", end);
+  b.addEventListener("pointerleave", end);
+  b.addEventListener("pointercancel", end);
+  b.addEventListener("contextmenu", e => e.preventDefault());
+}
+bindHold("btnL", () => keys.l = true,  () => keys.l = false);
+bindHold("btnR", () => keys.r = true,  () => keys.r = false);
+bindHold("btnJ", () => { jumpBuf = 7; }, () => {});
+window.addEventListener("keydown", e => {
+  if (e.code === "ArrowLeft" || e.code === "KeyA") { keys.l = true; e.preventDefault(); }
+  if (e.code === "ArrowRight" || e.code === "KeyD") { keys.r = true; e.preventDefault(); }
+  if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") { jumpBuf = 7; e.preventDefault(); }
+});
+window.addEventListener("keyup", e => {
+  if (e.code === "ArrowLeft" || e.code === "KeyA") keys.l = false;
+  if (e.code === "ArrowRight" || e.code === "KeyD") keys.r = false;
+});
+$("btnStart").addEventListener("click", () => { ac(); $("ovStart").classList.add("hidden"); reset(false); });
+$("btnRetry").addEventListener("click", () => { ac(); $("ovEnd").classList.add("hidden"); reset(false); });
+$("btnSound").addEventListener("click", () => { soundOn = !soundOn; $("btnSound").textContent = soundOn ? "🔊" : "🔇"; if (soundOn) sPick(); });
+$("btnFull").addEventListener("click", () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
+});
+
+reset(true);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

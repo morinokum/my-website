@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PIPE MASTER - シェルスクリプト学習カードゲーム</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<!-- Three.js for 3D Spatial & WebXR (Meta Quest 2) Mode -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <!-- Tone.js for procedural sound effects -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 <!-- Google Fonts: JetBrains Mono & Noto Sans JP -->
@@ -82,6 +84,11 @@ PIPE MASTER
 <!-- JSでステージボタンを生成 -->
 </div>
 
+<!-- 3D空間 / WebXR (Meta Quest 2) モード起動ボタン -->
+<button id="vr-mode-toggle" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-xs shadow-[0_0_15px_rgba(6,182,212,0.4)] border border-cyan-400/50 transition flex items-center gap-1.5" title="マイノリティ・リポート風の3D空間インターフェース＆Meta Quest 2 VRモードを起動">
+<span>🥽</span> <span class="hidden sm:inline">3D空間 / VR</span>
+</button>
+
 <!-- サウンド切替 -->
 <button id="sound-toggle" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition text-sm flex items-center gap-1" title="効果音のオン/オフ">
 <span id="sound-icon">🔊</span>
@@ -96,11 +103,16 @@ PIPE MASTER
 <section class="grid grid-cols-1 lg:grid-cols-12 gap-4">
 <!-- 依頼書パネル -->
 <div class="lg:col-span-5 bg-slate-900/90 border border-slate-700/80 rounded-xl p-4 shadow-lg flex flex-col justify-between relative overflow-hidden">
-<div class="absolute top-0 right-0 bg-amber-500/10 text-amber-400 text-xs font-mono-code px-3 py-1 rounded-bl-lg border-b border-l border-amber-500/30">
-CLIENT REQUEST #<span id="mission-number">01</span>
+<div class="absolute top-0 right-0 flex items-center">
+<div class="bg-emerald-500/15 text-emerald-300 text-xs font-mono-code px-2.5 py-1 border-b border-l border-emerald-500/30 font-bold" title="目標カード枚数（コードゴルフ規定数）">
+⛳ PAR: <span id="par-count">1</span>枚
+</div>
+<div class="bg-amber-500/10 text-amber-400 text-xs font-mono-code px-3 py-1 rounded-bl-lg border-b border-l border-amber-500/30">
+CLIENT #<span id="mission-number">01</span>
+</div>
 </div>
 <div>
-<div class="flex items-center gap-2 mb-2">
+<div class="flex items-center gap-2 mb-2 pr-28">
 <span class="text-2xl" id="client-avatar">👨‍💼</span>
 <div>
 <div class="text-xs text-slate-400" id="client-role">新人エンジニアの先輩</div>
@@ -113,8 +125,8 @@ CLIENT REQUEST #<span id="mission-number">01</span>
 </div>
 
 <!-- ヒントボタン -->
-<div class="mt-3 pt-2 border-t border-slate-800 flex items-center justify-between">
-<button id="hint-btn" class="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-bold py-1 px-2 rounded hover:bg-amber-500/10 transition">
+<div class="mt-3 pt-2 border-t border-slate-800 flex items-center justify-between gap-2">
+<button id="hint-btn" class="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-bold py-1 px-2 rounded hover:bg-amber-500/10 transition shrink-0">
 💡 ヒントを見る
 </button>
 <span id="hint-text" class="text-xs text-amber-200/90 hidden font-mono-code bg-amber-950/50 px-2 py-1 rounded border border-amber-500/30"></span>
@@ -153,9 +165,11 @@ CLIENT REQUEST #<span id="mission-number">01</span>
 <!-- 中段：パイプライン構築エリア（コマンドスロット） -->
 <section class="bg-slate-900/95 border border-slate-700 rounded-xl p-4 shadow-xl">
 <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-<div class="flex items-center gap-2">
+<div class="flex items-center gap-2 flex-wrap">
 <span class="text-emerald-400 font-mono-code font-bold text-sm">❯_ PIPELINE BUILDER</span>
-<span class="text-xs text-slate-400 hidden sm:inline">（下のカードをクリックしてパイプ「|」で繋ごう！置いたカードをクリックで解除）</span>
+<span id="golf-meter" class="text-xs font-mono-code bg-slate-800 border border-slate-700 px-2.5 py-0.5 rounded-full text-slate-300">
+使用枚数: <strong id="used-cards-count" class="text-white">0</strong> / 目標(PAR): <strong id="par-cards-count" class="text-emerald-400">1</strong>枚
+</span>
 </div>
 <div class="flex items-center gap-2">
 <button id="clear-btn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-950 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-500/50 text-xs font-bold transition flex items-center gap-1">
@@ -204,16 +218,25 @@ CLIENT REQUEST #<span id="mission-number">01</span>
 <div id="result-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
 <div class="bg-slate-900 border-2 border-emerald-500 rounded-2xl max-w-lg w-full p-6 shadow-[0_0_50px_rgba(16,185,129,0.3)] transform transition-all">
 <div class="text-center mb-4">
-<div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 text-3xl mb-2 border border-emerald-400">
+<div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 text-3xl mb-2 border border-emerald-400" id="modal-trophy">
 🎉
 </div>
 <h2 class="text-2xl font-black text-white tracking-wide">MISSION COMPLETE!</h2>
-<p class="text-sm text-emerald-400 font-bold mt-1">完璧なパイプライン構築です！</p>
+
+<!-- コードゴルフ・ランク評価バッジ -->
+<div class="mt-2.5 inline-flex items-center gap-2.5 bg-slate-950 border border-slate-700 px-4 py-1.5 rounded-full">
+<span class="text-xs text-slate-400 font-mono-code">GOLF RANK:</span>
+<span id="modal-rank-badge" class="font-mono-code font-black text-lg text-amber-400">S RANK (PAR達成!)</span>
+</div>
+<p id="modal-golf-comment" class="text-xs text-slate-300 mt-1.5"></p>
 </div>
 
 <!-- 構築したコマンド -->
 <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-4">
-<div class="text-[10px] text-slate-400 font-mono-code mb-1">EXECUTED SHELL SCRIPT:</div>
+<div class="flex items-center justify-between text-[10px] text-slate-400 font-mono-code mb-1">
+<span>EXECUTED SHELL SCRIPT:</span>
+<span id="modal-step-summary" class="text-emerald-400"></span>
+</div>
 <div id="modal-command" class="font-mono-code text-sm text-emerald-300 break-all"></div>
 </div>
 
@@ -242,6 +265,33 @@ CLIENT REQUEST #<span id="mission-number">01</span>
 <div>
 <div class="font-bold text-xs text-rose-400">出力が一致しません！</div>
 <div id="toast-text" class="text-xs mt-0.5">依頼者の求める結果と現在の実行結果を見比べてみよう。</div>
+</div>
+</div>
+
+<!-- 3D空間 / WebXR (Meta Quest 2) オーバーレイコンテナ -->
+<div id="spatial-overlay" class="fixed inset-0 z-40 hidden bg-slate-950 select-none">
+<!-- Three.js レンダリングキャンバス用マウント -->
+<div id="spatial-canvas-container" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+
+<!-- 空間モード用 HUD（2D操作ガイド＆戻るボタン） -->
+<div class="fixed top-4 left-4 right-4 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+<div class="bg-slate-900/85 backdrop-blur-md border border-cyan-500/40 px-4 py-2 rounded-xl pointer-events-auto flex items-center gap-3 shadow-[0_0_20px_rgba(6,182,212,0.25)]">
+<span class="text-cyan-400 font-mono-code font-black text-sm">🥽 SPATIAL SHELL OS</span>
+<span class="text-xs text-slate-300 hidden md:inline">ドラッグで360°見渡し ／ 空中のホログラムカードをクリックしてパイプ連結</span>
+</div>
+
+<div class="flex items-center gap-2 pointer-events-auto">
+<!-- WebXR ENTER VR ボタンは対応ブラウザ(Quest 2等)でここに動的追加 -->
+<div id="webxr-btn-slot"></div>
+<button id="exit-spatial-btn" class="px-4 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-600 font-bold text-xs shadow-lg transition">
+✕ 2D画面に戻る
+</button>
+</div>
+</div>
+
+<!-- 空間モード用 ステータス通知バー -->
+<div id="spatial-hud-banner" class="fixed bottom-20 left-1/2 -translate-x-1/2 bg-slate-900/90 border border-emerald-500/50 text-emerald-300 px-5 py-2.5 rounded-full font-mono-code text-xs sm:text-sm shadow-[0_0_25px_rgba(16,185,129,0.3)] pointer-events-none transition-all">
+空間上のコマンドカードを選択してパイプラインを構築せよ
 </div>
 </div>
 
@@ -311,11 +361,13 @@ const sfx = new SoundFX();
 const STAGES = [
 {
 id: 1,
+par: 1,
 title: "エラーログだけを抜き出せ！",
 role: "サーバー監視担当",
 avatar: "👨‍💻",
 desc: "システムログ（server.log）が長すぎて読めない！『ERROR』という文字が含まれる行だけを抽出してくれ。",
-hint: "文字を検索して絞り込むコマンドは grep だ！",
+hint: "文字を検索して絞り込むコマンドは grep だ！1枚でいけるぞ。",
+golfTip: "1枚（PAR）達成！余計なパイプを挟まず grep だけで完結させるのが最も高速でスマートです。",
 inputFilename: "server.log",
 inputData: [
 "2026-11-14 INFO User login: alice",
@@ -366,11 +418,13 @@ exec: (lines) => [...lines].sort()
 },
 {
 id: 2,
+par: 1,
 title: "重複を消してアクセス元IP一覧を作れ",
 role: "セキュリティ分析官",
 avatar: "🕵️‍♀️",
 desc: "アクセス記録（access.txt）から重複しているIPアドレスを整理して、綺麗な『重複なしリスト』を作ってほしい！",
-hint: "uniq コマンドは「隣り合った重複」しか消せないぞ。先に並べ替えよう！",
+hint: "sort と uniq の2枚でもクリアできるが…実は「sort -u」なら1枚で済むぞ！",
+golfTip: "「sort | uniq」は「sort -u」（uniqueオプション）に短縮できます！実務のコードゴルフでは超定番のテクニックです。",
 inputFilename: "access.txt",
 inputData: [
 "192.168.1.5",
@@ -385,7 +439,7 @@ expectedOutput: [
 "172.16.0.8",
 "192.168.1.5"
 ],
-explanation: "シェルスクリプトの超定番コンボ「sort | uniq」です！uniqコマンドは連続して並んでいる重複行しか削除できないため、必ず先に sort で同じ行を隣り合わせにするのが鉄則です。",
+explanation: "基本は「sort | uniq」の2段階ですが、sortコマンドに「-u（unique）」オプションを付けると、並べ替えと重複削除を1コマンド（1プロセス）で同時に行えます！",
 cards: [
 {
 id: "sort",
@@ -404,30 +458,32 @@ desc: "連続して重複している行を1つにまとめる",
 exec: (lines) => lines.filter((item, idx) => idx === 0 || item!== lines[idx - 1])
 },
 {
+id: "sort_u",
+cmd: "sort -u",
+tag: "短縮技",
+color: "emerald",
+desc: "昇順に並べ替えつつ、重複も同時に削除する",
+exec: (lines) => Array.from(new Set(lines)).sort()
+},
+{
 id: "head_2",
 cmd: "head -n 2",
 tag: "切り出し",
 color: "rose",
 desc: "先頭から2行だけを取り出す",
 exec: (lines) => lines.slice(0, 2)
-},
-{
-id: "wc_l",
-cmd: "wc -l",
-tag: "集計",
-color: "amber",
-desc: "現在の行数を数える",
-exec: (lines) => [String(lines.length)]
 }
 ]
 },
 {
 id: 3,
+par: 2,
 title: "売上トップ3の商品名を報告せよ",
 role: "ECサイト店長",
 avatar: "👩‍💼",
 desc: "売上データ（sales.csv）は『金額,商品名』の形式だ。金額が高い順に並べて、上位3つだけを報告してくれ！",
-hint: "数値を大きい順に並べるには sort -nr を使うぞ！そのあと先頭3行を取ろう。",
+hint: "数値を大きい順に並べる sort -nr と、先頭3行を取る head -n 3 の2枚構成だ！",
+golfTip: "2枚（PAR）達成！並べ替え（sort -nr）と切り出し（head -n 3）の最短2ステップです。",
 inputFilename: "sales.csv",
 inputData: [
 "1200,Mouse",
@@ -488,11 +544,13 @@ exec: (lines) => lines.filter(l => l.includes("o"))
 },
 {
 id: 4,
+par: 3,
 title: "部署名だけを抽出し種類数を数えよ",
 role: "人事部マネージャー",
 avatar: "🧑‍💼",
 desc: "社員名簿（staff.csv）は『名前,部署,年齢』だ。全部で『何種類の部署』があるか、数字1つで教えてほしい！",
-hint: "2列目を取り出す cut -d',' -f2 → 並べ替え → 重複削除 → 行数カウント！",
+hint: "通常は cut → sort → uniq → wc -l の4枚だが、sort -u を使えば3枚に短縮できるぞ！",
+golfTip: "4枚（cut | sort | uniq | wc -l）から「sort -u」を使って3枚に圧縮できれば見事PAR達成です！",
 inputFilename: "staff.csv",
 inputData: [
 "Sato,Sales,28",
@@ -505,7 +563,7 @@ inputData: [
 expectedOutput: [
 "3"
 ],
-explanation: "実務で最もよく使われる4連結パイプライン「cut | sort | uniq | wc -l」です！CSVから特定列を抜き出し（cut）、重複を消して（sort | uniq）、最後にユニークな種類数を数える（wc -l）強力なデータ分析テクニックです。",
+explanation: "実務でよく使われる「cut | sort | uniq | wc -l」は、sort -u を使うことで「cut -d',' -f2 | sort -u | wc -l」の3コマンドに短縮できます。パイプの数が減ると可読性も処理速度もアップします！",
 cards: [
 {
 id: "cut_f2",
@@ -514,14 +572,6 @@ tag: "列抽出",
 color: "indigo",
 desc: "カンマ区切りの「2列目（部署）」だけ抜き出す",
 exec: (lines) => lines.map(l => l.split(",")[1]?? "")
-},
-{
-id: "cut_f1",
-cmd: "cut -d',' -f1",
-tag: "列抽出",
-color: "indigo",
-desc: "カンマ区切りの「1列目（名前）」だけ抜き出す",
-exec: (lines) => lines.map(l => l.split(",")[0]?? "")
 },
 {
 id: "sort",
@@ -540,6 +590,14 @@ desc: "隣り合う重複行を1つにまとめる",
 exec: (lines) => lines.filter((item, idx) => idx === 0 || item!== lines[idx - 1])
 },
 {
+id: "sort_u",
+cmd: "sort -u",
+tag: "短縮技",
+color: "emerald",
+desc: "並べ替えと重複削除を1枚で同時に行う",
+exec: (lines) => Array.from(new Set(lines)).sort()
+},
+{
 id: "wc_l",
 cmd: "wc -l",
 tag: "行数集計",
@@ -551,11 +609,13 @@ exec: (lines) => [String(lines.length)]
 },
 {
 id: 5,
+par: 3,
 title: "最終試験：攻撃者のIPアドレスを特定せよ",
 role: "CISO（最高情報セキュリティ責任者）",
 avatar: "🛡️",
 desc: "認証ログ（auth.log）に不正ログイン攻撃（FAILED）の痕跡がある！『FAILED』の行から『IPアドレス（3列目）』を取り出し、重複をなくして一覧化せよ！",
-hint: "まずは FAILED だけに絞り込み、スペース区切りの3列目を cut しよう！",
+hint: "grep で絞り込み → cut で3列目抽出 → sort -u で整列＆重複削除なら3枚でフィニッシュだ！",
+golfTip: "4枚の王道パイプラインを「sort -u」で3枚に削ぎ落とした美しいワンライナーです！",
 inputFilename: "auth.log",
 inputData: [
 "SUCCESS alice 10.0.0.2",
@@ -569,7 +629,7 @@ expectedOutput: [
 "198.51.100.42",
 "203.0.113.99"
 ],
-explanation: "見事クリアです！「grep \"FAILED\" | cut -d' ' -f3 | sort | uniq」により、膨大なログから攻撃者のIPリストを一瞬で特定できました。この5つのコマンド（grep, cut, sort, uniq, wc）を組み合わせるだけで、現場のログ解析の8割はこなせます！",
+explanation: "見事クリアです！「grep \"FAILED\" | cut -d' ' -f3 | sort -u」により、わずか3コマンドでログから攻撃者のIPリストを一瞬で特定できました。最短パイプラインの感覚をぜひ現場でも活かしてください！",
 cards: [
 {
 id: "grep_failed",
@@ -604,12 +664,12 @@ desc: "連続する重複行を1つにする",
 exec: (lines) => lines.filter((item, idx) => idx === 0 || item!== lines[idx - 1])
 },
 {
-id: "grep_v_root",
-cmd: 'grep -v "root"',
-tag: "除外",
-color: "rose",
-desc: "「root」を含む行を除外する（-vは反転）",
-exec: (lines) => lines.filter(l =>!l.includes("root"))
+id: "sort_u",
+cmd: "sort -u",
+tag: "短縮技",
+color: "emerald",
+desc: "昇順ソート＋重複削除を1枚で行う",
+exec: (lines) => Array.from(new Set(lines)).sort()
 }
 ]
 }
@@ -658,11 +718,12 @@ cmd: "text-indigo-300"
 // ゲーム状態管理
 let currentStageIndex = 0;
 let pipeline = []; // 選択されたカードオブジェクトの配列
-let clearedStages = new Set();
+let stageRanks = {}; // { stageId: 'S' | 'A' | 'B'}
 
 // DOM要素の取得
 const stageSelectorEl = document.getElementById("stage-selector");
 const missionNumberEl = document.getElementById("mission-number");
+const parCountEl = document.getElementById("par-count");
 const clientAvatarEl = document.getElementById("client-avatar");
 const clientRoleEl = document.getElementById("client-role");
 const missionTitleEl = document.getElementById("mission-title");
@@ -680,6 +741,8 @@ const handContainerEl = document.getElementById("hand-container");
 const cardTooltipEl = document.getElementById("card-tooltip");
 const resultModalEl = document.getElementById("result-modal");
 const toastEl = document.getElementById("toast-message");
+const usedCardsCountEl = document.getElementById("used-cards-count");
+const parCardsCountEl = document.getElementById("par-cards-count");
 
 /**
 * 初期化＆ステージ読み込み
@@ -691,6 +754,8 @@ const stage = STAGES[currentStageIndex];
 
 // UIテキスト更新
 missionNumberEl.textContent = String(stage.id).padStart(2, "0");
+parCountEl.textContent = stage.par;
+parCardsCountEl.textContent = stage.par;
 clientAvatarEl.textContent = stage.avatar;
 clientRoleEl.textContent = stage.role;
 missionTitleEl.textContent = stage.title;
@@ -708,17 +773,19 @@ expectedOutputEl.textContent = stage.expectedOutput.join("\n");
 renderStageButtons();
 renderHand();
 updatePipelineAndExecute();
+if (window.spatialEngine && window.spatialEngine.isActive) {
+window.spatialEngine.rebuildScene();
 }
-
-/**
-* ヘッダーのステージ切替ボタン描画
-*/
-function renderStageButtons() {
+}
+        /**
+         * ヘッダーのステージ切替ボタン描画
+         */
+        function renderStageButtons() {
 stageSelectorEl.innerHTML = "";
 STAGES.forEach((st, idx) => {
 const btn = document.createElement("button");
 const isActive = idx === currentStageIndex;
-const isCleared = clearedStages.has(st.id);
+const isCleared = stageRanks[st.id] !== undefined;
 
 btn.className = `px-2.5 py-1 rounded text-xs font-mono-code font-bold transition flex items-center gap-1 ${
 isActive
@@ -727,16 +794,16 @@ isActive
 ? "bg-slate-700/80 text-emerald-400 hover:bg-slate-700"
 : "text-slate-400 hover:text-white hover:bg-slate-700/50"
 }`;
-btn.innerHTML = `${isCleared? "✓": ""}Lv.${st.id}`;
+btn.innerHTML = `${isCleared ? "✓" + stageRanks[st.id] + " " : ""}Lv.${st.id}`;
 btn.onclick = () => loadStage(idx);
 stageSelectorEl.appendChild(btn);
 });
 }
 
-/**
-* 手札（カードデッキ）の描画
-*/
-function renderHand() {
+        /**
+         * 手札（カードデッキ）の描画
+         */
+        function renderHand() {
 const stage = STAGES[currentStageIndex];
 handContainerEl.innerHTML = "";
 
@@ -776,10 +843,10 @@ handContainerEl.appendChild(cardEl);
 });
 }
 
-/**
-* パイプラインの描画とリアルタイムシェルスクリプト実行
-*/
-function updatePipelineAndExecute() {
+        /**
+         * パイプラインの描画とリアルタイムシェルスクリプト実行
+         */
+        function updatePipelineAndExecute() {
 const stage = STAGES[currentStageIndex];
 pipelineContainerEl.innerHTML = "";
 
@@ -845,6 +912,8 @@ pipelineContainerEl.appendChild(placeholder);
 // 4. 実際のワンライナー文字列を更新
 const fullCmd = [`cat ${stage.inputFilename}`,...pipeline.map(c => c.cmd)].join(" | ");
 generatedCommandEl.textContent = fullCmd;
+            usedCardsCountEl.textContent = pipeline.length;
+            parCardsCountEl.textContent = stage.par;
 
 // 5. パイプラインを順番に実行して出力を計算
 let currentData = [...stage.inputData];
@@ -871,6 +940,7 @@ currentOutputEl.parentElement.classList.remove("border-emerald-400", "ring-2", "
 }
 }
 
+
 /**
 * 提出・判定処理
 */
@@ -882,10 +952,51 @@ currentData = card.exec(currentData);
 }
 
 if (arraysEqual(currentData, stage.expectedOutput)) {
-// クリア成功！
+// クリア成功！コードゴルフ評価計算
 sfx.playSuccess();
-clearedStages.add(stage.id);
+const used = pipeline.length;
+const par = stage.par;
+const diff = used - par;
+
+let rank = "B";
+let rankLabel = "";
+let rankColor = "";
+let trophy = "🎉";
+let golfComment = "";
+
+if (diff <= 0) {
+rank = "S";
+rankLabel = "S RANK (PAR達成 / 最短解!)";
+rankColor = "text-amber-400";
+trophy = "🏆";
+golfComment = stage.golfTip;
+} else if (diff === 1) {
+rank = "A";
+rankLabel = `A RANK (PAR +1枚)`;
+rankColor = "text-emerald-400";
+trophy = "✨";
+golfComment = `正解です！さらにあと1枚減らして「${par}枚」にすると最短のSランクになります！`;
+} else {
+rank = "B";
+rankLabel = `B RANK (PAR +${diff}枚)`;
+rankColor = "text-sky-400";
+trophy = "👍";
+golfComment = `出力は完璧です！短縮オプション等を使って「${par}枚」以内のワンライナーにも挑戦してみよう！`;
+}
+
+// 最高ランクを記録（S > A > B）
+const rankOrder = { S: 3, A: 2, B: 1};
+if (!stageRanks[stage.id] || rankOrder[rank] > rankOrder[stageRanks[stage.id]]) {
+stageRanks[stage.id] = rank;
+}
 renderStageButtons();
+
+document.getElementById("modal-trophy").textContent = trophy;
+const rankBadgeEl = document.getElementById("modal-rank-badge");
+rankBadgeEl.textContent = rankLabel;
+rankBadgeEl.className = `font-mono-code font-black text-base sm:text-lg ${rankColor}`;
+document.getElementById("modal-golf-comment").textContent = golfComment;
+document.getElementById("modal-step-summary").textContent = `使用カード: ${used}枚 (目標PAR: ${par}枚)`;
 
 document.getElementById("modal-command").textContent =
 "$ " + [`cat ${stage.inputFilename}`,...pipeline.map(c => c.cmd)].join(" | ");
@@ -910,10 +1021,16 @@ loadStage(0);
 
 resultModalEl.classList.remove("hidden");
 resultModalEl.classList.add("flex");
+if (window.spatialEngine && window.spatialEngine.isActive) {
+window.spatialEngine.showSpatialBanner(`🏆 ${rankLabel}！ 次の依頼へ進むか空間で実験を続けよう！`);
+}
 } else {
 // 不一致の場合
 sfx.playError();
 showToast("現在の実行結果と、依頼者の求める結果がまだ違うようです！");
+if (window.spatialEngine && window.spatialEngine.isActive) {
+window.spatialEngine.showSpatialBanner("⚠️ 出力が一致しません！モニターの目標結果を確認しよう");
+}
 }
 }
 
@@ -967,6 +1084,591 @@ resultModalEl.classList.remove("flex");
 document.getElementById("sound-toggle").onclick = () => {
 sfx.enabled =!sfx.enabled;
 document.getElementById("sound-icon").textContent = sfx.enabled? "🔊": "🔇";
+};
+
+/**
+* ============================================================================
+* 3D空間 / WebXR (Meta Quest 2) 空間プログラミングエンジン
+* マイノリティ・リポートのように360度空間に浮遊するホログラムパネルと光のパイプを構築
+* ============================================================================
+*/
+class SpatialShellEngine {
+constructor() {
+this.isActive = false;
+this.scene = null;
+this.camera = null;
+this.renderer = null;
+this.interactables = []; // レイキャスト対象メッシュ
+this.dynamicGroup = null; // ステージ・パイプラインごとに再構築するグループ
+this.particles = null;
+this.raycaster = new THREE.Raycaster();
+this.pointer = new THREE.Vector2();
+
+// PC/スマホ視点回転用（カメラリグ方式でWebXRヘッドトラッキングと両立）
+this.cameraRig = null;
+this.yaw = 0;
+this.pitch = -0.05;
+this.isDragging = false;
+this.dragMoved = false;
+this.prevMouse = { x: 0, y: 0};
+
+// Meta Quest Touchコントローラー用
+this.controllers = [];
+this.controllerRays = [];
+this.hoveredObj = null;
+}
+
+init() {
+if (this.renderer) return;
+
+const container = document.getElementById("spatial-canvas-container");
+this.scene = new THREE.Scene();
+this.scene.background = new THREE.Color(0x040812);
+this.scene.fog = new THREE.FogExp2(0x040812, 0.045);
+
+// カメラとカメラリグ（VR時はHMDの姿勢がcameraに入り、リグが基準位置になる）
+this.cameraRig = new THREE.Group();
+this.cameraRig.position.set(0, 1.5, 0.6);
+this.scene.add(this.cameraRig);
+
+this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+this.camera.position.set(0, 0, 0);
+this.cameraRig.add(this.camera);
+
+// WebGLレンダラー（WebXR有効化）
+this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance"});
+this.renderer.setSize(window.innerWidth, window.innerHeight);
+this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+this.renderer.xr.enabled = true;
+container.appendChild(this.renderer.domElement);
+
+// 環境光＆サイバーネオンライト
+const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+this.scene.add(ambient);
+
+const dirLight = new THREE.DirectionalLight(0x34d399, 1.0);
+dirLight.position.set(2, 5, 3);
+this.scene.add(dirLight);
+
+// 床グリッド＆空間パーティクル（電脳空間の奥行き演出）
+const grid = new THREE.GridHelper(30, 30, 0x10b981, 0x0f172a);
+grid.position.y = 0;
+this.scene.add(grid);
+
+this.createSpaceParticles();
+
+this.dynamicGroup = new THREE.Group();
+this.scene.add(this.dynamicGroup);
+
+// WebXR (Meta Quest 2) コントローラー＆VRボタンセットアップ
+this.setupWebXR();
+
+// マウス・タッチ操作イベント（PC/スマホでの空間操作）
+this.bindEvents(container);
+
+// リサイズ追従
+window.addEventListener("resize", () => {
+if (!this.renderer) return;
+this.camera.aspect = window.innerWidth / window.innerHeight;
+this.camera.updateProjectionMatrix();
+this.renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// レンダリングループ開始（WebXR対応のsetAnimationLoop）
+this.renderer.setAnimationLoop((time) => this.animate(time));
+}
+
+createSpaceParticles() {
+const count = 400;
+const geo = new THREE.BufferGeometry();
+const positions = new Float32Array(count * 3);
+for (let i = 0; i < count * 3; i += 3) {
+positions[i] = (Math.random() - 0.5) * 20;
+positions[i + 1] = Math.random() * 8;
+positions[i + 2] = (Math.random() - 0.5) * 20;
+}
+geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+const mat = new THREE.PointsMaterial({ color: 0x38bdf8, size: 0.05, transparent: true, opacity: 0.6});
+this.particles = new THREE.Points(geo, mat);
+this.scene.add(this.particles);
+}
+
+/**
+* Meta Quest 2 向け WebXR コントローラー（レーザーポインター）と ENTER VR ボタン設定
+*/
+setupWebXR() {
+const slot = document.getElementById("webxr-btn-slot");
+if ("xr" in navigator) {
+navigator.xr.isSessionSupported("immersive-vr").then((supported) => {
+if (supported) {
+const vrBtn = document.createElement("button");
+vrBtn.textContent = "🥽 ENTER VR (Quest)";
+vrBtn.className = "px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 font-black text-xs shadow-[0_0_20px_rgba(16,185,129,0.6)] animate-pulse cursor-pointer";
+vrBtn.onclick = async () => {
+try {
+const session = await navigator.xr.requestSession("immersive-vr", {
+optionalFeatures: ["local-floor", "bounded-floor", "hand-tracking"]
+});
+this.renderer.xr.setSession(session);
+} catch (err) {
+this.showSpatialBanner("VRセッションの開始に失敗しました: " + err.message);
+}
+};
+slot.appendChild(vrBtn);
+}
+});
+}
+
+// 左右のTouchコントローラー（0, 1）から青いレーザーポインターを伸ばす
+const lineGeo = new THREE.BufferGeometry().setFromPoints([
+new THREE.Vector3(0, 0, 0),
+new THREE.Vector3(0, 0, -5)
+]);
+const lineMat = new THREE.LineBasicMaterial({ color: 0x38bdf8});
+
+for (let i = 0; i < 2; i++) {
+const controller = this.renderer.xr.getController(i);
+const line = new THREE.Line(lineGeo, lineMat);
+line.name = "laser";
+controller.add(line);
+
+// トリガーまたはハンドトラッキングのピンチ（selectイベント）で空間カードを実行
+controller.addEventListener("selectstart", () => {
+this.handleControllerSelect(controller);
+});
+
+this.cameraRig.add(controller);
+this.controllers.push(controller);
+}
+}
+
+handleControllerSelect(controller) {
+const tempMatrix = new THREE.Matrix4();
+tempMatrix.identity().extractRotation(controller.matrixWorld);
+this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+
+const hits = this.raycaster.intersectObjects(this.interactables, false);
+if (hits.length > 0 && hits[0].object.userData.onClick) {
+hits[0].object.userData.onClick();
+}
+}
+
+bindEvents(container) {
+const onPointerDown = (x, y) => {
+this.isDragging = true;
+this.dragMoved = false;
+this.prevMouse = { x, y};
+};
+
+const onPointerMove = (x, y) => {
+// ホバー判定用座標
+this.pointer.x = (x / window.innerWidth) * 2 - 1;
+this.pointer.y = -(y / window.innerHeight) * 2 + 1;
+
+if (!this.isDragging) return;
+const dx = x - this.prevMouse.x;
+const dy = y - this.prevMouse.y;
+if (Math.abs(dx) > 3 || Math.abs(dy) > 3) this.dragMoved = true;
+
+this.yaw -= dx * 0.004;
+this.pitch = Math.max(-0.7, Math.min(0.7, this.pitch - dy * 0.004));
+this.prevMouse = { x, y};
+};
+
+const onPointerUp = (x, y) => {
+this.isDragging = false;
+if (!this.dragMoved) {
+this.pointer.x = (x / window.innerWidth) * 2 - 1;
+this.pointer.y = -(y / window.innerHeight) * 2 + 1;
+this.raycastAndClick();
+}
+};
+
+container.addEventListener("mousedown", (e) => onPointerDown(e.clientX, e.clientY));
+window.addEventListener("mousemove", (e) => onPointerMove(e.clientX, e.clientY));
+window.addEventListener("mouseup", (e) => onPointerUp(e.clientX, e.clientY));
+
+container.addEventListener("touchstart", (e) => {
+if (e.touches.length > 0) onPointerDown(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: true});
+container.addEventListener("touchmove", (e) => {
+if (e.touches.length > 0) onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: true});
+container.addEventListener("touchend", (e) => {
+if (e.changedTouches.length > 0) onPointerUp(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+});
+}
+
+raycastAndClick() {
+if (!this.isActive) return;
+this.raycaster.setFromCamera(this.pointer, this.camera);
+const hits = this.raycaster.intersectObjects(this.interactables, false);
+if (hits.length > 0 && hits[0].object.userData.onClick) {
+hits[0].object.userData.onClick();
+}
+}
+
+/**
+* Canvasテクスチャを生成して立体ホログラムパネルを作るヘルパー
+*/
+createHoloPanel({ width, height, borderColor = "#10b981", bgColor = "rgba(10, 18, 32, 0.92)", drawFn}) {
+const canvas = document.createElement("canvas");
+canvas.width = Math.round(width * 320);
+canvas.height = Math.round(height * 320);
+const ctx = canvas.getContext("2d");
+
+// パネル背景とネオン枠線
+ctx.fillStyle = bgColor;
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+ctx.strokeStyle = borderColor;
+ctx.lineWidth = 8;
+ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+
+// スキャンライン装飾
+ctx.fillStyle = "rgba(255,255,255,0.03)";
+for (let y = 0; y < canvas.height; y += 8) {
+ctx.fillRect(0, y, canvas.width, 2);
+}
+
+if (drawFn) drawFn(ctx, canvas.width, canvas.height);
+
+const tex = new THREE.CanvasTexture(canvas);
+tex.minFilter = THREE.LinearFilter;
+const mat = new THREE.MeshBasicMaterial({
+map: tex,
+transparent: true,
+opacity: 0.95,
+side: THREE.DoubleSide
+});
+const geo = new THREE.PlaneGeometry(width, height);
+return new THREE.Mesh(geo, mat);
+}
+
+/**
+* 現在のステージとパイプライン状態から3D空間のホログラム群を再構築
+*/
+rebuildScene() {
+if (!this.dynamicGroup) return;
+
+// 既存メッシュの破棄
+while (this.dynamicGroup.children.length > 0) {
+const obj = this.dynamicGroup.children[0];
+if (obj.geometry) obj.geometry.dispose();
+if (obj.material) {
+if (obj.material.map) obj.material.map.dispose();
+obj.material.dispose();
+}
+this.dynamicGroup.remove(obj);
+}
+this.interactables = [];
+
+const stage = STAGES[currentStageIndex];
+
+// 現在のパイプライン実行結果を計算
+let currentData = [...stage.inputData];
+for (const card of pipeline) {
+currentData = card.exec(currentData);
+}
+const isMatch = arraysEqual(currentData, stage.expectedOutput);
+
+// 1. 正面奥の巨大ホログラムモニター（依頼内容・入力・現在出力・目標出力）
+const mainMonitor = this.createHoloPanel({
+width: 4.4,
+height: 1.75,
+borderColor: isMatch? "#34d399": "#38bdf8",
+drawFn: (ctx, w, h) => {
+// ヘッダー帯
+ctx.fillStyle = "rgba(16, 185, 129, 0.18)";
+ctx.fillRect(12, 12, w - 24, 64);
+
+ctx.fillStyle = "#34d399";
+ctx.font = "bold 28px 'JetBrains Mono', monospace";
+ctx.fillText(`MISSION #0${stage.id} [PAR: ${stage.par}枚]`, 28, 54);
+
+ctx.fillStyle = "#ffffff";
+ctx.font = "bold 26px 'Noto Sans JP', sans-serif";
+ctx.fillText(stage.title, 440, 54);
+
+// 3カラムのデータ表示（入力 / 現在の出力 / 目標出力）
+const colW = (w - 64) / 3;
+const cols = [
+{ title: `📄 入力 (${stage.inputFilename})`, color: "#38bdf8", lines: stage.inputData},
+{ title: `⚡ 現在の実行結果 (${currentData.length}行)`, color: isMatch? "#34d399": "#a7f3d0", lines: currentData.length? currentData: ["(空)"]},
+{ title: "🎯 依頼者の求める結果", color: "#fbbf24", lines: stage.expectedOutput}
+];
+
+cols.forEach((col, i) => {
+const x = 20 + i * (colW + 12);
+const y = 94;
+const boxH = h - 114;
+
+ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+ctx.fillRect(x, y, colW, boxH);
+ctx.strokeStyle = col.color;
+ctx.lineWidth = 3;
+ctx.strokeRect(x, y, colW, boxH);
+
+ctx.fillStyle = col.color;
+ctx.font = "bold 22px 'Noto Sans JP', sans-serif";
+ctx.fillText(col.title, x + 14, y + 34);
+
+ctx.fillStyle = "#e2e8f0";
+ctx.font = "20px 'JetBrains Mono', monospace";
+col.lines.slice(0, 8).forEach((line, li) => {
+const clipped = line.length > 26? line.slice(0, 25) + "…": line;
+ctx.fillText(clipped, x + 14, y + 72 + li * 34);
+});
+});
+}
+});
+mainMonitor.position.set(0, 2.55, -3.2);
+this.dynamicGroup.add(mainMonitor);
+
+// 2. 空中のパイプラインレーン（cat ファイル | カード1 | カード2...）
+const totalNodes = pipeline.length + 1;
+const spacing = 1.05;
+const startX = -((totalNodes - 1) * spacing) / 2;
+
+// 起点ノード（cat）
+const srcPanel = this.createHoloPanel({
+width: 0.88,
+height: 0.56,
+borderColor: "#38bdf8",
+drawFn: (ctx, w, h) => {
+ctx.fillStyle = "#38bdf8";
+ctx.font = "bold 22px monospace";
+ctx.fillText("STDIN", 20, 42);
+ctx.fillStyle = "#ffffff";
+ctx.font = "bold 26px monospace";
+ctx.fillText(`cat ${stage.inputFilename}`, 20, 105);
+}
+});
+srcPanel.position.set(startX, 1.48, -2.1);
+this.dynamicGroup.add(srcPanel);
+
+// 連結されたカード＆光のパイプ（|）
+pipeline.forEach((card, idx) => {
+const x = startX + (idx + 1) * spacing;
+
+// 光のパイプシリンダー
+const pipeGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.22, 12);
+pipeGeo.rotateZ(Math.PI / 2);
+const pipeMat = new THREE.MeshBasicMaterial({ color: 0x34d399});
+const pipeMesh = new THREE.Mesh(pipeGeo, pipeMat);
+pipeMesh.position.set(x - spacing / 2, 1.48, -2.1);
+this.dynamicGroup.add(pipeMesh);
+
+// スロットカード
+const slotPanel = this.createHoloPanel({
+width: 0.88,
+height: 0.56,
+borderColor: "#34d399",
+drawFn: (ctx, w, h) => {
+ctx.fillStyle = "#94a3b8";
+ctx.font = "bold 20px monospace";
+ctx.fillText(`STEP ${idx + 1} [×外す]`, 18, 38);
+ctx.fillStyle = "#34d399";
+ctx.font = "bold 28px monospace";
+ctx.fillText(card.cmd, 18, 105);
+}
+});
+slotPanel.position.set(x, 1.48, -2.1);
+slotPanel.userData.onClick = () => {
+pipeline.splice(idx, 1);
+sfx.playCardRemove();
+updatePipelineAndExecute();
+this.rebuildScene();
+};
+this.dynamicGroup.add(slotPanel);
+this.interactables.push(slotPanel);
+});
+
+// 3. 手元の扇状ホログラムデッキ（マイノリティ・リポート配置）
+const handCount = stage.cards.length;
+const arcRadius = 1.65;
+const angleStep = 0.36;
+const startAngle = -((handCount - 1) * angleStep) / 2;
+
+stage.cards.forEach((card, idx) => {
+const angle = startAngle + idx * angleStep;
+const hx = Math.sin(angle) * arcRadius;
+const hz = -Math.cos(angle) * arcRadius + 0.3;
+
+const hexMap = {
+emerald: "#10b981",
+sky: "#0ea5e9",
+purple: "#a855f7",
+amber: "#f59e0b",
+rose: "#f43f5e",
+indigo: "#6366f1"
+};
+const bColor = hexMap[card.color] || "#10b981";
+
+const cardMesh = this.createHoloPanel({
+width: 0.62,
+height: 0.72,
+borderColor: bColor,
+bgColor: "rgba(15, 23, 42, 0.94)",
+drawFn: (ctx, w, h) => {
+ctx.fillStyle = bColor;
+ctx.fillRect(14, 14, w - 28, 36);
+ctx.fillStyle = "#040812";
+ctx.font = "bold 20px sans-serif";
+ctx.fillText(`+${card.tag}`, 22, 39);
+
+ctx.fillStyle = "#ffffff";
+ctx.font = "bold 24px monospace";
+ctx.fillText(card.cmd, 16, 95);
+
+// 説明文を折り返して描画
+ctx.fillStyle = "#cbd5e1";
+ctx.font = "17px sans-serif";
+const desc = card.desc;
+ctx.fillText(desc.slice(0, 11), 16, 145);
+if (desc.length > 11) ctx.fillText(desc.slice(11, 22), 16, 172);
+}
+});
+
+cardMesh.position.set(hx, 0.88, hz);
+cardMesh.rotation.y = -angle;
+cardMesh.rotation.x = -0.25;
+cardMesh.userData.baseY = 0.88;
+
+cardMesh.userData.onClick = () => {
+if (pipeline.length >= 6) {
+this.showSpatialBanner("⚠️ パイプラインは最大6枚までです！");
+return;
+}
+pipeline.push(card);
+sfx.playCardAdd();
+updatePipelineAndExecute();
+this.rebuildScene();
+this.showSpatialBanner(`➕ [${card.cmd}] をパイプラインに連結しました！`);
+};
+
+this.dynamicGroup.add(cardMesh);
+this.interactables.push(cardMesh);
+});
+
+// 4. 空間アクションボタン群（リセット / 提出判定 / ステージ切替）
+const actionButtons = [
+{
+label: "🗑️ リセット",
+x: -1.15,
+color: "#f43f5e",
+action: () => {
+pipeline = [];
+sfx.playCardRemove();
+updatePipelineAndExecute();
+this.rebuildScene();
+this.showSpatialBanner("🗑️ パイプラインをリセットしました");
+}
+},
+{
+label: "▶ 提出して判定！",
+x: 0,
+color: "#10b981",
+action: () => {
+checkSolution();
+}
+},
+{
+label: "⏭ 次のLvへ",
+x: 1.15,
+color: "#38bdf8",
+action: () => {
+const nextIdx = (currentStageIndex + 1) % STAGES.length;
+loadStage(nextIdx);
+this.showSpatialBanner(`📡 Lv.${STAGES[nextIdx].id} に切り替えました`);
+}
+}
+];
+
+actionButtons.forEach((btn) => {
+const btnMesh = this.createHoloPanel({
+width: 0.95,
+height: 0.34,
+borderColor: btn.color,
+bgColor: "rgba(9, 13, 22, 0.95)",
+drawFn: (ctx, w, h) => {
+ctx.fillStyle = btn.color;
+ctx.font = "bold 28px sans-serif";
+ctx.textAlign = "center";
+ctx.fillText(btn.label, w / 2, h / 2 + 10);
+}
+});
+btnMesh.position.set(btn.x, 0.42, -1.35);
+btnMesh.rotation.x = -0.35;
+btnMesh.userData.onClick = btn.action;
+this.dynamicGroup.add(btnMesh);
+this.interactables.push(btnMesh);
+});
+}
+
+showSpatialBanner(text) {
+const banner = document.getElementById("spatial-hud-banner");
+if (banner) banner.textContent = text;
+}
+
+enter() {
+this.init();
+this.isActive = true;
+document.getElementById("spatial-overlay").classList.remove("hidden");
+this.rebuildScene();
+}
+
+exit() {
+this.isActive = false;
+document.getElementById("spatial-overlay").classList.add("hidden");
+if (this.renderer && this.renderer.xr.isPresenting) {
+const session = this.renderer.xr.getSession();
+if (session) session.end();
+}
+}
+
+animate(time) {
+if (!this.isActive) return;
+
+// 非VR時はマウスドラッグによる視点回転をカメラに適用
+if (!this.renderer.xr.isPresenting) {
+this.camera.rotation.order = "YXZ";
+this.camera.rotation.y = this.yaw;
+this.camera.rotation.x = this.pitch;
+}
+
+// 空間パーティクルの緩やかな回転
+if (this.particles) {
+this.particles.rotation.y = time * 0.00005;
+}
+
+// 手札カードの浮遊アニメーション＆ホバー強調
+this.raycaster.setFromCamera(this.pointer, this.camera);
+const hits = this.raycaster.intersectObjects(this.interactables, false);
+const hitObj = hits.length > 0? hits[0].object: null;
+
+this.interactables.forEach((obj, idx) => {
+if (obj.userData.baseY!== undefined) {
+const floatOffset = Math.sin(time * 0.003 + idx) * 0.015;
+const hoverBoost = obj === hitObj? 0.05: 0;
+obj.position.y = obj.userData.baseY + floatOffset + hoverBoost;
+}
+obj.scale.setScalar(obj === hitObj? 1.06: 1.0);
+});
+
+this.renderer.render(this.scene, this.camera);
+}
+}
+
+window.spatialEngine = new SpatialShellEngine();
+
+document.getElementById("vr-mode-toggle").onclick = () => {
+window.spatialEngine.enter();
+};
+
+document.getElementById("exit-spatial-btn").onclick = () => {
+window.spatialEngine.exit();
 };
 
 // 起動時にステージ1をロード

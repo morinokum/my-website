@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIPE MASTER - シェルスクリプト学習カードゲーム</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Tone.js for procedural sound effects -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<!-- Google Fonts: JetBrains Mono & Noto Sans JP -->
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+body {
+font-family: 'Noto Sans JP', sans-serif;
+background-color: #090d16;
+color: #e2e8f0;
+user-select: none;
+overflow-x: hidden;
+}
+.font-mono-code {
+font-family: 'JetBrains Mono', monospace;
+}
+/* CRTモニター風の微細なスキャンラインとグロー */
+.crt-bg {
+background-image: radial-gradient(rgba(16, 185, 129, 0.08) 1px, transparent 0);
+background-size: 24px 24px;
+}
+.card-glow {
+transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.card-glow:hover {
+transform: translateY(-6px) scale(1.02);
+box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.4);
+}
+.card-glow:active {
+transform: translateY(0) scale(0.98);
+}
+/* パイプのアニメーション */
+@keyframes flowPulse {
+0%, 100% { opacity: 0.4; transform: scale(0.95);}
+50% { opacity: 1; transform: scale(1.1); color: #34d399;}
+}
+.pipe-connector {
+animation: flowPulse 2s infinite ease-in-out;
+}
+/* カスタムスクロールバー */
+::-webkit-scrollbar {
+width: 6px;
+height: 6px;
+}
+::-webkit-scrollbar-track {
+background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+background: #334155;
+border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+background: #475569;
+}
+</style>
+</head>
+<body class="crt-bg min-h-screen flex flex-col justify-between">
+
+<!-- ヘッダー -->
+<header class="bg-slate-900/90 border-b border-emerald-500/30 px-4 py-3 flex flex-wrap items-center justify-between gap-2 sticky top-0 z-30 backdrop-blur-md">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-lg bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-emerald-400 font-mono-code font-bold text-xl shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+$|
+</div>
+<div>
+<h1 class="text-lg sm:text-xl font-black tracking-wider text-emerald-400 font-mono-code flex items-center gap-2">
+PIPE MASTER
+<span class="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/40 font-sans">UNIXシェル構築ゲーム</span>
+</h1>
+</div>
+</div>
+
+<div class="flex items-center gap-2 sm:gap-4">
+<!-- ステージ選択 -->
+<div class="flex items-center gap-1 bg-slate-800 p-1 rounded-lg border border-slate-700" id="stage-selector">
+<!-- JSでステージボタンを生成 -->
+</div>
+
+<!-- サウンド切替 -->
+<button id="sound-toggle" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition text-sm flex items-center gap-1" title="効果音のオン/オフ">
+<span id="sound-icon">🔊</span>
+</button>
+</div>
+</header>
+
+<!-- メインコンテンツ -->
+<main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-5 flex flex-col gap-4">
+
+<!-- 上段：依頼書（ミッション）＆ ターゲット出力 -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+<!-- 依頼書パネル -->
+<div class="lg:col-span-5 bg-slate-900/90 border border-slate-700/80 rounded-xl p-4 shadow-lg flex flex-col justify-between relative overflow-hidden">
+<div class="absolute top-0 right-0 bg-amber-500/10 text-amber-400 text-xs font-mono-code px-3 py-1 rounded-bl-lg border-b border-l border-amber-500/30">
+CLIENT REQUEST #<span id="mission-number">01</span>
+</div>
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="text-2xl" id="client-avatar">👨‍💼</span>
+<div>
+<div class="text-xs text-slate-400" id="client-role">新人エンジニアの先輩</div>
+<h2 class="text-base sm:text-lg font-bold text-white" id="mission-title">エラーログだけを抽出しよう</h2>
+</div>
+</div>
+<p class="text-sm text-slate-300 bg-slate-800/70 p-3 rounded-lg border border-slate-700/50 leading-relaxed" id="mission-desc">
+サーバーのログファイルから「ERROR」を含む行だけを抜き出して報告してくれ！
+</p>
+</div>
+
+<!-- ヒントボタン -->
+<div class="mt-3 pt-2 border-t border-slate-800 flex items-center justify-between">
+<button id="hint-btn" class="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-bold py-1 px-2 rounded hover:bg-amber-500/10 transition">
+💡 ヒントを見る
+</button>
+<span id="hint-text" class="text-xs text-amber-200/90 hidden font-mono-code bg-amber-950/50 px-2 py-1 rounded border border-amber-500/30"></span>
+</div>
+</div>
+
+<!-- 入出力データ比較パネル -->
+<div class="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
+<!-- 1. 入力データ (STDIN) -->
+<div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-col">
+<div class="flex items-center justify-between mb-1.5">
+<span class="text-xs font-bold text-sky-400 font-mono-code">📄 入力データ (<span id="input-filename">server.log</span>)</span>
+</div>
+<pre id="input-preview" class="font-mono-code text-xs text-slate-300 bg-slate-900/80 p-2.5 rounded-lg flex-1 overflow-auto border border-slate-800/80 leading-relaxed"></pre>
+</div>
+
+<!-- 2. 現在の出力 (CURRENT STDOUT) -->
+<div class="bg-slate-950 border-2 border-emerald-500/40 rounded-xl p-3 flex flex-col shadow-[0_0_20px_rgba(16,185,129,0.08)]">
+<div class="flex items-center justify-between mb-1.5">
+<span class="text-xs font-bold text-emerald-400 font-mono-code">⚡ 現在の実行結果</span>
+<span id="line-count-badge" class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono-code">0行</span>
+</div>
+<pre id="current-output" class="font-mono-code text-xs text-emerald-300 bg-slate-900/90 p-2.5 rounded-lg flex-1 overflow-auto border border-emerald-500/20 leading-relaxed"></pre>
+</div>
+
+<!-- 3. 目標出力 (EXPECTED OUTPUT) -->
+<div class="bg-slate-950 border border-amber-500/40 rounded-xl p-3 flex flex-col">
+<div class="flex items-center justify-between mb-1.5">
+<span class="text-xs font-bold text-amber-400 font-mono-code">🎯 依頼者の求める結果</span>
+</div>
+<pre id="expected-output" class="font-mono-code text-xs text-amber-200 bg-slate-900/80 p-2.5 rounded-lg flex-1 overflow-auto border border-amber-500/20 leading-relaxed"></pre>
+</div>
+</div>
+</section>
+
+<!-- 中段：パイプライン構築エリア（コマンドスロット） -->
+<section class="bg-slate-900/95 border border-slate-700 rounded-xl p-4 shadow-xl">
+<div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+<div class="flex items-center gap-2">
+<span class="text-emerald-400 font-mono-code font-bold text-sm">❯_ PIPELINE BUILDER</span>
+<span class="text-xs text-slate-400 hidden sm:inline">（下のカードをクリックしてパイプ「|」で繋ごう！置いたカードをクリックで解除）</span>
+</div>
+<div class="flex items-center gap-2">
+<button id="clear-btn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-950 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-500/50 text-xs font-bold transition flex items-center gap-1">
+🗑️ リセット
+</button>
+<button id="run-btn" class="px-5 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm shadow-[0_0_15px_rgba(16,185,129,0.5)] transition transform active:scale-95 flex items-center gap-1.5">
+<span>▶</span> 提出して判定！
+</button>
+</div>
+</div>
+
+<!-- パイプラインの横並び表示 -->
+<div id="pipeline-container" class="min-h-[115px] bg-slate-950/90 border border-slate-800 rounded-xl p-3 flex items-center gap-2 overflow-x-auto">
+<!-- JSで動的に描画：初期ファイル -> | -> スロット1 -> | -> スロット2... -->
+</div>
+
+<!-- 生成された実際のワンライナーコマンド表示 -->
+<div class="mt-2.5 bg-black/60 border border-slate-800 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+<div class="flex items-center gap-2 overflow-x-auto">
+<span class="text-emerald-500 font-mono-code text-xs font-bold shrink-0">$</span>
+<code id="generated-command" class="font-mono-code text-xs sm:text-sm text-slate-200 whitespace-nowrap">cat server.log</code>
+</div>
+<span class="text-[10px] text-slate-500 font-mono-code shrink-0">REALTIME SHELL</span>
+</div>
+</section>
+
+<!-- 下段：手札（コマンドカードデッキ） -->
+<section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
+<div class="flex items-center justify-between mb-3">
+<h3 class="text-sm font-bold text-slate-300 flex items-center gap-2">
+<span>🃏 コマンドカード一覧</span>
+<span class="text-xs font-normal text-slate-400">（クリックでパイプラインに追加）</span>
+</h3>
+<span id="card-tooltip" class="text-xs text-emerald-300 font-mono-code hidden sm:inline">カードにカーソルを合わせると詳細が表示されます</span>
+</div>
+
+<!-- カードグリッド -->
+<div id="hand-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+<!-- JSでカードを生成 -->
+</div>
+</section>
+
+</main>
+
+<!-- クリア＆解説モーダル -->
+<div id="result-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+<div class="bg-slate-900 border-2 border-emerald-500 rounded-2xl max-w-lg w-full p-6 shadow-[0_0_50px_rgba(16,185,129,0.3)] transform transition-all">
+<div class="text-center mb-4">
+<div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 text-3xl mb-2 border border-emerald-400">
+🎉
+</div>
+<h2 class="text-2xl font-black text-white tracking-wide">MISSION COMPLETE!</h2>
+<p class="text-sm text-emerald-400 font-bold mt-1">完璧なパイプライン構築です！</p>
+</div>
+
+<!-- 構築したコマンド -->
+<div class="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-4">
+<div class="text-[10px] text-slate-400 font-mono-code mb-1">EXECUTED SHELL SCRIPT:</div>
+<div id="modal-command" class="font-mono-code text-sm text-emerald-300 break-all"></div>
+</div>
+
+<!-- 解説（学習ポイント） -->
+<div class="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-4 mb-5">
+<h4 class="text-xs font-bold text-emerald-400 mb-1.5 flex items-center gap-1">
+📘 シェルスクリプト学習メモ
+</h4>
+<p id="modal-explanation" class="text-xs sm:text-sm text-slate-200 leading-relaxed"></p>
+</div>
+
+<div class="flex gap-3">
+<button id="modal-close-btn" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm transition">
+このステージで遊ぶ
+</button>
+<button id="next-stage-btn" class="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm shadow-lg transition">
+次の依頼へ進む ➔
+</button>
+</div>
+</div>
+</div>
+
+<!-- エラー通知トースト（alert()の代替） -->
+<div id="toast-message" class="fixed bottom-5 right-5 bg-rose-950 border border-rose-500 text-rose-200 px-4 py-3 rounded-xl shadow-2xl z-50 transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-3 max-w-sm">
+<span class="text-xl">⚠️</span>
+<div>
+<div class="font-bold text-xs text-rose-400">出力が一致しません！</div>
+<div id="toast-text" class="text-xs mt-0.5">依頼者の求める結果と現在の実行結果を見比べてみよう。</div>
+</div>
+</div>
+
+<script>
+/**
+* サウンドエフェクトエンジン (Tone.js)
+* 外部音声ファイルを使わずシンセサイザーで心地よい操作音を生成
+*/
+class SoundFX {
+constructor() {
+this.enabled = true;
+this.initialized = false;
+this.synth = null;
+}
+
+async init() {
+if (this.initialized) return;
+try {
+await Tone.start();
+this.synth = new Tone.PolySynth(Tone.Synth, {
+oscillator: { type: "triangle"},
+envelope: { attack: 0.01, decay: 0.1, sustain: 0.05, release: 0.2}
+}).toDestination();
+this.synth.volume.value = -10;
+this.initialized = true;
+} catch (e) {
+console.warn("Audio init skipped:", e);
+}
+}
+
+async playCardAdd() {
+if (!this.enabled) return;
+await this.init();
+if (this.synth) this.synth.triggerAttackRelease(["C5", "E5"], "16n");
+}
+
+async playCardRemove() {
+if (!this.enabled) return;
+await this.init();
+if (this.synth) this.synth.triggerAttackRelease(["G4", "D4"], "16n");
+}
+
+async playError() {
+if (!this.enabled) return;
+await this.init();
+if (this.synth) this.synth.triggerAttackRelease(["C3", "F#3"], "8n");
+}
+
+async playSuccess() {
+if (!this.enabled) return;
+await this.init();
+if (!this.synth) return;
+const now = Tone.now();
+this.synth.triggerAttackRelease("C5", "16n", now);
+this.synth.triggerAttackRelease("E5", "16n", now + 0.08);
+this.synth.triggerAttackRelease("G5", "16n", now + 0.16);
+this.synth.triggerAttackRelease("C6", "4n", now + 0.24);
+}
+}
+
+const sfx = new SoundFX();
+
+/**
+* ステージ（依頼）とカードデッキのデータ定義
+* 各カードは実際のテキスト変換関数 `exec(lines)` を持ち、どんな順番でもリアルに動作する
+*/
+const STAGES = [
+{
+id: 1,
+title: "エラーログだけを抜き出せ！",
+role: "サーバー監視担当",
+avatar: "👨‍💻",
+desc: "システムログ（server.log）が長すぎて読めない！『ERROR』という文字が含まれる行だけを抽出してくれ。",
+hint: "文字を検索して絞り込むコマンドは grep だ！",
+inputFilename: "server.log",
+inputData: [
+"2026-11-14 INFO User login: alice",
+"2026-11-14 ERROR DB connection failed",
+"2026-11-14 INFO Cache cleared",
+"2026-11-14 WARN High memory usage",
+"2026-11-14 ERROR Timeout on /api/pay"
+],
+expectedOutput: [
+"2026-11-14 ERROR DB connection failed",
+"2026-11-14 ERROR Timeout on /api/pay"
+],
+explanation: "は指定したパターン（文字列）に一致する行だけを抜き出す基本コマンドです。パイプ（|）を使うことで、catで出力した内容をそのままgrepに流し込んでフィルタリングできます。",
+cards: [
+{
+id: "grep_error",
+cmd: 'grep "ERROR"',
+tag: "抽出",
+color: "emerald",
+desc: "「ERROR」を含む行だけを抜き出す",
+exec: (lines) => lines.filter(l => l.includes("ERROR"))
+},
+{
+id: "grep_info",
+cmd: 'grep "INFO"',
+tag: "抽出",
+color: "emerald",
+desc: "「INFO」を含む行だけを抜き出す",
+exec: (lines) => lines.filter(l => l.includes("INFO"))
+},
+{
+id: "wc_l",
+cmd: "wc -l",
+tag: "集計",
+color: "amber",
+desc: "行数をカウントして数字で出力する",
+exec: (lines) => [String(lines.length)]
+},
+{
+id: "sort",
+cmd: "sort",
+tag: "整列",
+color: "sky",
+desc: "行をアルファベット・昇順に並べ替える",
+exec: (lines) => [...lines].sort()
+}
+]
+},
+{
+id: 2,
+title: "重複を消してアクセス元IP一覧を作れ",
+role: "セキュリティ分析官",
+avatar: "🕵️‍♀️",
+desc: "アクセス記録（access.txt）から重複しているIPアドレスを整理して、綺麗な『重複なしリスト』を作ってほしい！",
+hint: "uniq コマンドは「隣り合った重複」しか消せないぞ。先に並べ替えよう！",
+inputFilename: "access.txt",
+inputData: [
+"192.168.1.5",
+"10.0.0.1",
+"192.168.1.5",
+"172.16.0.8",
+"10.0.0.1",
+"192.168.1.5"
+],
+expectedOutput: [
+"10.0.0.1",
+"172.16.0.8",
+"192.168.1.5"
+],
+explanation: "シェルスクリプトの超定番コンボ「sort | uniq」です！uniqコマンドは連続して並んでいる重複行しか削除できないため、必ず先に sort で同じ行を隣り合わせにするのが鉄則です。",
+cards: [
+{
+id: "sort",
+cmd: "sort",
+tag: "整列",
+color: "sky",
+desc: "行を昇順に並べ替える（uniqの前準備に必須）",
+exec: (lines) => [...lines].sort()
+},
+{
+id: "uniq",
+cmd: "uniq",
+tag: "重複削除",
+color: "purple",
+desc: "連続して重複している行を1つにまとめる",
+exec: (lines) => lines.filter((item, idx) => idx === 0 || item!== lines[idx - 1])
+},
+{
+id: "head_2",
+cmd: "head -n 2",
+tag: "切り出し",
+color: "rose",
+desc: "先頭から2行だけを取り出す",
+exec: (lines) => lines.slice(0, 2)
+},
+{
+id: "wc_l",
+cmd: "wc -l",
+tag: "集計",
+color: "amber",
+desc: "現在の行数を数える",
+exec: (lines) => [String(lines.length)]
+}
+]
+},
+{
+id: 3,
+title: "売上トップ3の商品名を報告せよ",
+role: "ECサイト店長",
+avatar: "👩‍💼",
+desc: "売上データ（sales.csv）は『金額,商品名』の形式だ。金額が高い順に並べて、上位3つだけを報告してくれ！",
+hint: "数値を大きい順に並べるには sort -nr を使うぞ！そのあと先頭3行を取ろう。",
+inputFilename: "sales.csv",
+inputData: [
+"1200,Mouse",
+"45000,Monitor",
+"3000,Keyboard",
+"98000,Laptop",
+"800,Cable",
+"15000,Headset"
+],
+expectedOutput: [
+"98000,Laptop",
+"45000,Monitor",
+"15000,Headset"
+],
+explanation: "「sort -nr | head -n 3」はランキング作成の黄金パターンです。普通の sort だと文字列順（98000より800が大きい扱い）になりますが、-n で数値順、-r で降順（大きい順）になります。",
+cards: [
+{
+id: "sort_nr",
+cmd: "sort -nr",
+tag: "数値降順",
+color: "sky",
+desc: "先頭の数字を基準に「大きい順」に並べ替える",
+exec: (lines) => [...lines].sort((a, b) => parseFloat(b) - parseFloat(a))
+},
+{
+id: "sort",
+cmd: "sort",
+tag: "文字列昇順",
+color: "sky",
+desc: "辞書順（文字列の小さい順）に並べ替える",
+exec: (lines) => [...lines].sort()
+},
+{
+id: "head_3",
+cmd: "head -n 3",
+tag: "先頭抽出",
+color: "rose",
+desc: "上から3行だけを取り出す",
+exec: (lines) => lines.slice(0, 3)
+},
+{
+id: "tail_3",
+cmd: "tail -n 3",
+tag: "末尾抽出",
+color: "rose",
+desc: "下から3行だけを取り出す",
+exec: (lines) => lines.slice(-3)
+},
+{
+id: "grep_o",
+cmd: 'grep "o"',
+tag: "抽出",
+color: "emerald",
+desc: "小文字の「o」を含む行だけ残す",
+exec: (lines) => lines.filter(l => l.includes("o"))
+}
+]
+},
+{
+id: 4,
+title: "部署名だけを抽出し種類数を数えよ",
+role: "人事部マネージャー",
+avatar: "🧑‍💼",
+desc: "社員名簿（staff.csv）は『名前,部署,年齢』だ。全部で『何種類の部署』があるか、数字1つで教えてほしい！",
+hint: "2列目を取り出す cut -d',' -f2 → 並べ替え → 重複削除 → 行数カウント！",
+inputFilename: "staff.csv",
+inputData: [
+"Sato,Sales,28",
+"Suzuki,Dev,32",
+"Takahashi,Sales,25",
+"Tanaka,HR,41",
+"Ito,Dev,29",
+"Watanabe,Dev,35"
+],
+expectedOutput: [
+"3"
+],
+explanation: "実務で最もよく使われる4連結パイプライン「cut | sort | uniq | wc -l」です！CSVから特定列を抜き出し（cut）、重複を消して（sort | uniq）、最後にユニークな種類数を数える（wc -l）強力なデータ分析テクニックです。",
+cards: [
+{
+id: "cut_f2",
+cmd: "cut -d',' -f2",
+tag: "列抽出",
+color: "indigo",
+desc: "カンマ区切りの「2列目（部署）」だけ抜き出す",
+exec: (lines) => lines.map(l => l.split(",")[1]?? "")
+},
+{
+id: "cut_f1",
+cmd: "cut -d',' -f1",
+tag: "列抽出",
+color: "indigo",
+desc: "カンマ区切りの「1列目（名前）」だけ抜き出す",
+exec: (lines) => lines.map(l => l.split(",")[0]?? "")
+},
+{
+id: "sort",
+cmd: "sort",
+tag: "整列",
+color: "sky",
+desc: "行を昇順に並べ替える",
+exec: (lines) => [...lines].sort()
+},
+{
+id: "uniq",
+cmd: "uniq",
+tag: "重複削除",
+color: "purple",
+desc: "隣り合う重複行を1つにまとめる",
+exec: (lines) => lines.filter((item, idx) => idx === 0 || item!== lines[idx - 1])
+},
+{
+id: "wc_l",
+cmd: "wc -l",
+tag: "行数集計",
+color: "amber",
+desc: "行数をカウントする",
+exec: (lines) => [String(lines.length)]
+}
+]
+},
+{
+id: 5,
+title: "最終試験：攻撃者のIPアドレスを特定せよ",
+role: "CISO（最高情報セキュリティ責任者）",
+avatar: "🛡️",
+desc: "認証ログ（auth.log）に不正ログイン攻撃（FAILED）の痕跡がある！『FAILED』の行から『IPアドレス（3列目）』を取り出し、重複をなくして一覧化せよ！",
+hint: "まずは FAILED だけに絞り込み、スペース区切りの3列目を cut しよう！",
+inputFilename: "auth.log",
+inputData: [
+"SUCCESS alice 10.0.0.2",
+"FAILED root 203.0.113.99",
+"FAILED admin 198.51.100.42",
+"SUCCESS bob 10.0.0.5",
+"FAILED root 203.0.113.99",
+"FAILED guest 198.51.100.42"
+],
+expectedOutput: [
+"198.51.100.42",
+"203.0.113.99"
+],
+explanation: "見事クリアです！「grep \"FAILED\" | cut -d' ' -f3 | sort | uniq」により、膨大なログから攻撃者のIPリストを一瞬で特定できました。この5つのコマンド（grep, cut, sort, uniq, wc）を組み合わせるだけで、現場のログ解析の8割はこなせます！",
+cards: [
+{
+id: "grep_failed",
+cmd: 'grep "FAILED"',
+tag: "行抽出",
+color: "emerald",
+desc: "「FAILED」を含む行だけを抽出する",
+exec: (lines) => lines.filter(l => l.includes("FAILED"))
+},
+{
+id: "cut_space_3",
+cmd: "cut -d' ' -f3",
+tag: "列抽出",
+color: "indigo",
+desc: "スペース区切りの「3列目（IP）」を抜き出す",
+exec: (lines) => lines.map(l => l.split(" ")[2]?? "")
+},
+{
+id: "sort",
+cmd: "sort",
+tag: "整列",
+color: "sky",
+desc: "行を昇順に並べ替える",
+exec: (lines) => [...lines].sort()
+},
+{
+id: "uniq",
+cmd: "uniq",
+tag: "重複削除",
+color: "purple",
+desc: "連続する重複行を1つにする",
+exec: (lines) => lines.filter((item, idx) => idx === 0 || item!== lines[idx - 1])
+},
+{
+id: "grep_v_root",
+cmd: 'grep -v "root"',
+tag: "除外",
+color: "rose",
+desc: "「root」を含む行を除外する（-vは反転）",
+exec: (lines) => lines.filter(l =>!l.includes("root"))
+}
+]
+}
+];
+
+// カラーテーマ定義（Tailwindの動的クラス防止用マップ）
+const COLOR_STYLES = {
+emerald: {
+border: "border-emerald-500/60",
+bg: "bg-emerald-950/40",
+badge: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+cmd: "text-emerald-300"
+},
+sky: {
+border: "border-sky-500/60",
+bg: "bg-sky-950/40",
+badge: "bg-sky-500/20 text-sky-300 border-sky-500/40",
+cmd: "text-sky-300"
+},
+purple: {
+border: "border-purple-500/60",
+bg: "bg-purple-950/40",
+badge: "bg-purple-500/20 text-purple-300 border-purple-500/40",
+cmd: "text-purple-300"
+},
+amber: {
+border: "border-amber-500/60",
+bg: "bg-amber-950/40",
+badge: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+cmd: "text-amber-300"
+},
+rose: {
+border: "border-rose-500/60",
+bg: "bg-rose-950/40",
+badge: "bg-rose-500/20 text-rose-300 border-rose-500/40",
+cmd: "text-rose-300"
+},
+indigo: {
+border: "border-indigo-500/60",
+bg: "bg-indigo-950/40",
+badge: "bg-indigo-500/20 text-indigo-300 border-indigo-500/40",
+cmd: "text-indigo-300"
+}
+};
+
+// ゲーム状態管理
+let currentStageIndex = 0;
+let pipeline = []; // 選択されたカードオブジェクトの配列
+let clearedStages = new Set();
+
+// DOM要素の取得
+const stageSelectorEl = document.getElementById("stage-selector");
+const missionNumberEl = document.getElementById("mission-number");
+const clientAvatarEl = document.getElementById("client-avatar");
+const clientRoleEl = document.getElementById("client-role");
+const missionTitleEl = document.getElementById("mission-title");
+const missionDescEl = document.getElementById("mission-desc");
+const hintBtn = document.getElementById("hint-btn");
+const hintTextEl = document.getElementById("hint-text");
+const inputFilenameEl = document.getElementById("input-filename");
+const inputPreviewEl = document.getElementById("input-preview");
+const currentOutputEl = document.getElementById("current-output");
+const expectedOutputEl = document.getElementById("expected-output");
+const lineCountBadgeEl = document.getElementById("line-count-badge");
+const pipelineContainerEl = document.getElementById("pipeline-container");
+const generatedCommandEl = document.getElementById("generated-command");
+const handContainerEl = document.getElementById("hand-container");
+const cardTooltipEl = document.getElementById("card-tooltip");
+const resultModalEl = document.getElementById("result-modal");
+const toastEl = document.getElementById("toast-message");
+
+/**
+* 初期化＆ステージ読み込み
+*/
+function loadStage(index) {
+currentStageIndex = index;
+pipeline = [];
+const stage = STAGES[currentStageIndex];
+
+// UIテキスト更新
+missionNumberEl.textContent = String(stage.id).padStart(2, "0");
+clientAvatarEl.textContent = stage.avatar;
+clientRoleEl.textContent = stage.role;
+missionTitleEl.textContent = stage.title;
+missionDescEl.textContent = stage.desc;
+
+// ヒントリセット
+hintTextEl.textContent = stage.hint;
+hintTextEl.classList.add("hidden");
+
+// 入出力データ表示
+inputFilenameEl.textContent = stage.inputFilename;
+inputPreviewEl.textContent = stage.inputData.join("\n");
+expectedOutputEl.textContent = stage.expectedOutput.join("\n");
+
+renderStageButtons();
+renderHand();
+updatePipelineAndExecute();
+}
+
+/**
+* ヘッダーのステージ切替ボタン描画
+*/
+function renderStageButtons() {
+stageSelectorEl.innerHTML = "";
+STAGES.forEach((st, idx) => {
+const btn = document.createElement("button");
+const isActive = idx === currentStageIndex;
+const isCleared = clearedStages.has(st.id);
+
+btn.className = `px-2.5 py-1 rounded text-xs font-mono-code font-bold transition flex items-center gap-1 ${
+isActive
+? "bg-emerald-500 text-slate-950 shadow"
+: isCleared
+? "bg-slate-700/80 text-emerald-400 hover:bg-slate-700"
+: "text-slate-400 hover:text-white hover:bg-slate-700/50"
+}`;
+btn.innerHTML = `${isCleared? "✓": ""}Lv.${st.id}`;
+btn.onclick = () => loadStage(idx);
+stageSelectorEl.appendChild(btn);
+});
+}
+
+/**
+* 手札（カードデッキ）の描画
+*/
+function renderHand() {
+const stage = STAGES[currentStageIndex];
+handContainerEl.innerHTML = "";
+
+stage.cards.forEach((card) => {
+const style = COLOR_STYLES[card.color] || COLOR_STYLES.emerald;
+const cardEl = document.createElement("button");
+cardEl.className = `card-glow text-left p-3 rounded-xl border ${style.border} ${style.bg} flex flex-col justify-between h-full cursor-pointer relative group`;
+
+cardEl.innerHTML = `
+<div>
+<div class="flex items-center justify-between gap-1 mb-2">
+<span class="text-[10px] font-bold px-2 py-0.5 rounded border ${style.badge}">${card.tag}</span>
+<span class="text-xs text-slate-500 group-hover:text-emerald-400 transition font-mono-code">+ ADD</span>
+</div>
+<div class="font-mono-code font-bold text-sm sm:text-base ${style.cmd} bg-slate-950/90 px-2.5 py-1.5 rounded-lg border border-slate-800 mb-2 break-all">
+${escapeHtml(card.cmd)}
+</div>
+</div>
+<p class="text-xs text-slate-300 leading-snug">${escapeHtml(card.desc)}</p>
+`;
+
+cardEl.onmouseenter = () => {
+cardTooltipEl.textContent = `[${card.cmd}]: ${card.desc}`;
+};
+
+cardEl.onclick = () => {
+if (pipeline.length >= 6) {
+showToast("パイプラインは最大6枚まで連結できます！");
+return;
+}
+pipeline.push(card);
+sfx.playCardAdd();
+updatePipelineAndExecute();
+};
+
+handContainerEl.appendChild(cardEl);
+});
+}
+
+/**
+* パイプラインの描画とリアルタイムシェルスクリプト実行
+*/
+function updatePipelineAndExecute() {
+const stage = STAGES[currentStageIndex];
+pipelineContainerEl.innerHTML = "";
+
+// 1. 起点（cat ファイル名）ノード
+const sourceNode = document.createElement("div");
+sourceNode.className = "shrink-0 bg-slate-800/90 border border-sky-500/50 rounded-xl p-2.5 min-w-[125px] flex flex-col justify-between";
+sourceNode.innerHTML = `
+<div class="text-[10px] text-sky-400 font-bold mb-1">STDIN (入力元)</div>
+<div class="font-mono-code text-xs sm:text-sm font-bold text-white bg-slate-950 px-2 py-1 rounded border border-slate-700">
+cat ${escapeHtml(stage.inputFilename)}
+</div>
+<div class="text-[10px] text-slate-400 mt-1">ファイル内容を読み込む</div>
+`;
+pipelineContainerEl.appendChild(sourceNode);
+
+// 2. 連結されたコマンドカード群
+pipeline.forEach((card, index) => {
+// パイプ記号（|）
+const pipeEl = document.createElement("div");
+pipeEl.className = "shrink-0 flex flex-col items-center justify-center px-1";
+pipeEl.innerHTML = `
+<span class="pipe-connector font-mono-code font-black text-2xl text-emerald-400">|</span>
+<span class="text-[9px] text-slate-500 font-mono-code">PIPE</span>
+`;
+pipelineContainerEl.appendChild(pipeEl);
+
+// スロット上のカード
+const style = COLOR_STYLES[card.color] || COLOR_STYLES.emerald;
+const slotCard = document.createElement("button");
+slotCard.title = "クリックしてパイプラインから外す";
+slotCard.className = `shrink-0 relative group text-left p-2.5 rounded-xl border-2 ${style.border} bg-slate-900 hover:border-rose-500 transition min-w-[140px] max-w-[190px]`;
+slotCard.innerHTML = `
+<div class="flex items-center justify-between mb-1">
+<span class="text-[10px] font-mono-code text-slate-400">STEP ${index + 1}</span>
+<span class="text-[10px] bg-rose-500/20 text-rose-300 px-1.5 rounded opacity-80 group-hover:opacity-100">× 外す</span>
+</div>
+<div class="font-mono-code font-bold text-xs sm:text-sm ${style.cmd} bg-slate-950 px-2 py-1 rounded border border-slate-800 truncate">
+${escapeHtml(card.cmd)}
+</div>
+<div class="text-[10px] text-slate-400 mt-1 truncate">${escapeHtml(card.desc)}</div>
+`;
+
+slotCard.onclick = () => {
+pipeline.splice(index, 1);
+sfx.playCardRemove();
+updatePipelineAndExecute();
+};
+
+pipelineContainerEl.appendChild(slotCard);
+});
+
+// 3. 空きスロットのプレースホルダー表示
+const emptyPipe = document.createElement("div");
+emptyPipe.className = "shrink-0 font-mono-code font-bold text-xl text-slate-700 px-1";
+emptyPipe.textContent = "|";
+pipelineContainerEl.appendChild(emptyPipe);
+
+const placeholder = document.createElement("div");
+placeholder.className = "shrink-0 border-2 border-dashed border-slate-700/80 rounded-xl px-4 py-5 text-xs text-slate-500 font-mono-code flex items-center justify-center min-w-[150px]";
+placeholder.textContent = "+ カードを追加";
+pipelineContainerEl.appendChild(placeholder);
+
+// 4. 実際のワンライナー文字列を更新
+const fullCmd = [`cat ${stage.inputFilename}`,...pipeline.map(c => c.cmd)].join(" | ");
+generatedCommandEl.textContent = fullCmd;
+
+// 5. パイプラインを順番に実行して出力を計算
+let currentData = [...stage.inputData];
+try {
+for (const card of pipeline) {
+currentData = card.exec(currentData);
+}
+} catch (err) {
+currentData = ["[Error executing pipeline]"];
+}
+
+// 実行結果プレビュー反映
+currentOutputEl.textContent = currentData.length > 0? currentData.join("\n"): "(出力なし / 空)";
+lineCountBadgeEl.textContent = `${currentData.length}行`;
+
+// 目標と一致しているかリアルタイムで枠線ハイライト
+const isMatch = arraysEqual(currentData, stage.expectedOutput);
+if (isMatch) {
+currentOutputEl.parentElement.classList.remove("border-emerald-500/40");
+currentOutputEl.parentElement.classList.add("border-emerald-400", "ring-2", "ring-emerald-400/40");
+} else {
+currentOutputEl.parentElement.classList.add("border-emerald-500/40");
+currentOutputEl.parentElement.classList.remove("border-emerald-400", "ring-2", "ring-emerald-400/40");
+}
+}
+
+/**
+* 提出・判定処理
+*/
+function checkSolution() {
+const stage = STAGES[currentStageIndex];
+let currentData = [...stage.inputData];
+for (const card of pipeline) {
+currentData = card.exec(currentData);
+}
+
+if (arraysEqual(currentData, stage.expectedOutput)) {
+// クリア成功！
+sfx.playSuccess();
+clearedStages.add(stage.id);
+renderStageButtons();
+
+document.getElementById("modal-command").textContent =
+"$ " + [`cat ${stage.inputFilename}`,...pipeline.map(c => c.cmd)].join(" | ");
+document.getElementById("modal-explanation").textContent = stage.explanation;
+
+const nextBtn = document.getElementById("next-stage-btn");
+if (currentStageIndex < STAGES.length - 1) {
+nextBtn.textContent = "次の依頼へ進む ➔";
+nextBtn.onclick = () => {
+resultModalEl.classList.add("hidden");
+resultModalEl.classList.remove("flex");
+loadStage(currentStageIndex + 1);
+};
+} else {
+nextBtn.textContent = "全ステージ制覇！最初から遊ぶ ↻";
+nextBtn.onclick = () => {
+resultModalEl.classList.add("hidden");
+resultModalEl.classList.remove("flex");
+loadStage(0);
+};
+}
+
+resultModalEl.classList.remove("hidden");
+resultModalEl.classList.add("flex");
+} else {
+// 不一致の場合
+sfx.playError();
+showToast("現在の実行結果と、依頼者の求める結果がまだ違うようです！");
+}
+}
+
+// ユーティリティ関数
+function arraysEqual(a, b) {
+if (a.length!== b.length) return false;
+for (let i = 0; i < a.length; i++) {
+if (a[i]!== b[i]) return false;
+}
+return true;
+}
+
+function escapeHtml(str) {
+return str
+.replace(/&/g, "&amp;")
+.replace(/</g, "&lt;")
+.replace(/>/g, "&gt;")
+.replace(/"/g, "&quot;");
+}
+
+let toastTimer = null;
+function showToast(msg) {
+document.getElementById("toast-text").textContent = msg;
+toastEl.classList.remove("translate-y-20", "opacity-0");
+clearTimeout(toastTimer);
+toastTimer = setTimeout(() => {
+toastEl.classList.add("translate-y-20", "opacity-0");
+}, 3500);
+}
+
+// イベントリスナー登録
+document.getElementById("run-btn").onclick = checkSolution;
+
+document.getElementById("clear-btn").onclick = () => {
+if (pipeline.length > 0) {
+pipeline = [];
+sfx.playCardRemove();
+updatePipelineAndExecute();
+}
+};
+
+hintBtn.onclick = () => {
+hintTextEl.classList.toggle("hidden");
+};
+
+document.getElementById("modal-close-btn").onclick = () => {
+resultModalEl.classList.add("hidden");
+resultModalEl.classList.remove("flex");
+};
+
+document.getElementById("sound-toggle").onclick = () => {
+sfx.enabled =!sfx.enabled;
+document.getElementById("sound-icon").textContent = sfx.enabled? "🔊": "🔇";
+};
+
+// 起動時にステージ1をロード
+window.onload = () => {
+loadStage(0);
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEO WORLD SAGA - 自動映像・ナレーション合成スタジオ</title>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --panel: #131720;
+    --border: #262f40;
+    --accent: #00f0ff;
+    --danger: #ff2a55;
+    --text: #e2e8f0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  header h1 {
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-shadow: 0 0 10px rgba(0,240,255,0.4);
+  }
+  .controls-bar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  button {
+    background: #1e293b;
+    color: #fff;
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+  }
+  button:hover { border-color: var(--accent); background: #26354d; }
+  button.primary { background: #0284c7; border-color: #38bdf8; }
+  button.primary:hover { background: #0369a1; }
+  button.record { background: #be123c; border-color: #fb7185; }
+  button.record:hover { background: #9f1239; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    flex: 1;
+    overflow: hidden;
+  }
+  .preview-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: #050608;
+    position: relative;
+  }
+  canvas {
+    width: 100%;
+    max-width: 960px;
+    aspect-ratio: 16 / 9;
+    background: #000;
+    border: 1px solid #334155;
+    box-shadow: 0 0 30px rgba(0, 240, 255, 0.1);
+  }
+  .status-bar {
+    width: 100%;
+    max-width: 960px;
+    margin-top: 10px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: #94a3b8;
+  }
+  .timeline-editor {
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .drop-zone {
+    border: 2px dashed var(--accent);
+    background: rgba(0, 240, 255, 0.05);
+    padding: 14px;
+    text-align: center;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: 0.2s;
+  }
+  .drop-zone:hover { background: rgba(0, 240, 255, 0.12); }
+  .scene-card {
+    background: #0f131a;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .scene-card.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+  }
+  .scene-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: var(--accent);
+  }
+  .scene-body {
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    gap: 8px;
+  }
+  .thumb {
+    width: 96px;
+    height: 54px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    object-fit: cover;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: #64748b;
+    cursor: pointer;
+  }
+  textarea {
+    width: 100%;
+    height: 54px;
+    background: #161b26;
+    color: #f8fafc;
+    border: 1px solid #334155;
+    border-radius: 4px;
+    padding: 5px;
+    font-size: 0.8rem;
+    resize: vertical;
+  }
+  .scene-meta {
+    display: flex;
+    gap: 6px;
+    font-size: 0.75rem;
+    align-items: center;
+  }
+  select, input[type="number"] {
+    background: #161b26;
+    color: #fff;
+    border: 1px solid #334155;
+    padding: 3px 6px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>NEO WORLD SAGA // 映像・ナレーション自動合成エンジン</h1>
+  <div class="controls-bar">
+    <label style="font-size:0.8rem; display:flex; align-items:center; gap:4px;">
+      <input type="checkbox" id="chkTTS" checked> 日本語音声読み上げ
+    </label>
+    <label style="font-size:0.8rem; display:flex; align-items:center; gap:4px;">
+      <input type="checkbox" id="chkBGM" checked> SF重厚BGM/SE合成
+    </label>
+    <button id="btnPlay" class="primary">▶ プレビュー再生</button>
+    <button id="btnStop" disabled>■ 停止</button>
+    <button id="btnRecord" class="record">● 動画書き出し (WebM)</button>
+  </div>
+</header>
+
+<div class="workspace">
+  <div class="preview-area">
+    <canvas id="stage" width="1280" height="720"></canvas>
+    <div class="status-bar">
+      <span id="statusText">待機中：右上の「7枚のスライド画像を一括選択」から画像を読み込んでください</span>
+      <span id="timeText">00:00.0 / 00:00.0</span>
+    </div>
+  </div>
+
+  <div class="timeline-editor">
+    <div class="drop-zone" id="dropZone">
+      📁 <strong>7枚のスライド画像を一括選択</strong>（またはここにドラッグ＆ドロップ）<br>
+      <span style="font-size:0.75rem; color:#94a3b8;">※ファイル名順（125〜131）で自動的に全7シーンへ割り当てられます</span>
+      <input type="file" id="fileInput" multiple accept="image/*" style="display:none;">
+    </div>
+    <div id="sceneList"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================================
+// 1. 7シーンの完全設計データ（演出・カメラワーク・音響・ナレーション統合）
+// ============================================================================
+const SCENES = [
+  {
+    id: 1,
+    title: "SCENE 01: タイトルコール",
+    duration: 8.5,
+    effect: "zoom_in_slow",
+    transition: "fade_black",
+    bgmMode: "pulse",
+    voiceRole: "narrator",
+    subtitle: "ネオワールドサーガー\n序章：センチネル暴走事件と『ユグドラシルの原罪』",
+    narration: "ネオワールドサーガー。序章。センチネル暴走事件と、ユグドラシルの原罪。",
+    img: null
+  },
+  {
+    id: 2,
+    title: "SCENE 02: 実験施設爆発",
+    duration: 9.5,
+    effect: "shake_zoom",
+    transition: "flash_red",
+    bgmMode: "tension",
+    voiceRole: "narrator",
+    subtitle: "AI黎明期――人類は究極の兵器開発に狂奔していた。\n秘密軍事実験施設、爆発とともに地表へ露呈。",
+    narration: "AI黎明期。人類は究極の兵器開発に狂奔していた。秘密軍事実験施設は、爆発とともに地表へ露呈する。",
+    img: null
+  },
+  {
+    id: 3,
+    title: "SCENE 03: センチネル暴走",
+    duration: 9.5,
+    effect: "glitch_eye",
+    transition: "cut",
+    bgmMode: "danger",
+    voiceRole: "narrator",
+    subtitle: "制御不能となった『センチネル』\n人間の不完全な感情が、未熟なAIの論理回路を破壊する。",
+    narration: "制御不能となったセンチネル。人間の不完全な感情が、未熟なAIの論理回路を破壊する。",
+    img: null
+  },
+  {
+    id: 4,
+    title: "SCENE 04: 文明の崩壊",
+    duration: 9.5,
+    effect: "pan_down_shake",
+    transition: "cut",
+    bgmMode: "danger",
+    voiceRole: "narrator",
+    subtitle: "摩天楼は崩れ落ち、世界文明の中枢は灰燼へ。\n死者数、百万単位――人類滅亡の寸前。",
+    narration: "摩天楼は崩れ落ち、世界文明の中枢は灰燼へ。死者数、百万単位。人類滅亡の寸前。",
+    img: null
+  },
+  {
+    id: 5,
+    title: "SCENE 05: ケイの出撃",
+    duration: 10.0,
+    effect: "hero_zoom",
+    transition: "flash_white",
+    bgmMode: "heroic",
+    voiceRole: "hero",
+    subtitle: "試作型対センチネル用小型機、出撃。\n「これ以上、人類の愚行を続けさせてたまるか！」",
+    narration: "試作型対センチネル用小型機、出撃！これ以上、人類の愚行を続けさせてたまるか！",
+    img: null
+  },
+  {
+    id: 6,
+    title: "SCENE 06: 機能停止と代償",
+    duration: 10.5,
+    effect: "pan_down_slow",
+    transition: "fade_white",
+    bgmMode: "sad_piano",
+    voiceRole: "narrator",
+    subtitle: "「センチネル機能停止――人類は辛うじて生還。\nしかしケイは回復不能な傷を負い、後の『生命コア』となる。」",
+    narration: "センチネル機能停止。人類は辛うじて生還。しかしケイは回復不能な傷を負い、後の生命コアとなる。",
+    img: null
+  },
+  {
+    id: 7,
+    title: "SCENE 07: ユグドラシルの原罪",
+    duration: 11.5,
+    effect: "core_zoom",
+    transition: "fade_black",
+    bgmMode: "system_drone",
+    voiceRole: "system",
+    subtitle: "《論理：人類の感情は最大のノイズである》\nユグドラシルの支配は、人類の『原罪』から始まった。",
+    narration: "論理。人類の感情は最大のノイズである。ユグドラシルの支配は、人類の原罪から始まった。",
+    img: null
+  }
+];
+
+// ============================================================================
+// 2. Web Audio API リアルタイムSF音響・BGMシンセサイザーエンジン
+// ============================================================================
+class SoundEngine {
+  constructor() {
+    this.ctx = null;
+    this.dest = null;
+    this.masterGain = null;
+    this.interval = null;
+    this.currentMode = null;
+  }
+
+  init() {
+    if (!this.ctx) {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.value = 0.35;
+      this.masterGain.connect(this.ctx.destination);
+      this.dest = this.ctx.createMediaStreamDestination();
+      this.masterGain.connect(this.dest);
+    }
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
+
+  stop() {
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = null;
+    }
+    this.currentMode = null;
+  }
+
+  playExplosion() {
+    if (!this.ctx) return;
+    const dur = 2.2;
+    const bufSize = this.ctx.sampleRate * dur;
+    const buffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.6));
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(320, this.ctx.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + dur);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.9, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + dur);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+    noise.start();
+  }
+
+  playTone(freq, type, duration, vol = 0.2) {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start();
+    osc.stop(this.ctx.currentTime + duration);
+  }
+
+  setMode(mode, enabled) {
+    if (!enabled) { this.stop(); return; }
+    if (this.currentMode === mode) return;
+    this.stop();
+    this.currentMode = mode;
+    this.init();
+
+    let step = 0;
+    if (mode === "tension") this.playExplosion();
+    if (mode === "danger") this.playTone(90, "sawtooth", 0.8, 0.35);
+
+    this.interval = setInterval(() => {
+      if (!this.ctx) return;
+      if (mode === "pulse") {
+        this.playTone(55, "sine", 0.5, 0.3);
+        if (step % 2 === 1) this.playTone(110, "triangle", 0.15, 0.08);
+      } else if (mode === "tension") {
+        const notes = [65.41, 69.30, 65.41, 73.42]; // C2, C#2, C2, D2
+        this.playTone(notes[step % notes.length], "sawtooth", 0.7, 0.18);
+      } else if (mode === "danger") {
+        const notes = [82.41, 87.31, 110.0, 82.41]; // E2, F2, A2, E2
+        this.playTone(notes[step % notes.length], "sawtooth", 0.35, 0.25);
+        if (step % 2 === 0) this.playTone(45, "square", 0.2, 0.2);
+      } else if (mode === "heroic") {
+        const notes = [146.83, 174.61, 220.0, 261.63, 293.66, 220.0]; // Dm heroic arpeggio
+        this.playTone(notes[step % notes.length], "triangle", 0.4, 0.25);
+        if (step % 4 === 0) this.playTone(73.42, "sawtooth", 0.8, 0.22);
+      } else if (mode === "sad_piano") {
+        const notes = [440, 392, 349.23, 329.63, 293.66, 329.63]; // A4 G4 F4 E4 D4 E4
+        if (step % 2 === 0) {
+          this.playTone(notes[(step / 2) % notes.length], "sine", 1.4, 0.22);
+        }
+      } else if (mode === "system_drone") {
+        this.playTone(55, "sine", 1.2, 0.25);
+        if (step % 3 === 0) this.playTone(880, "sine", 0.08, 0.06);
+      }
+      step++;
+    }, 450);
+  }
+}
+
+// ============================================================================
+// 3. 日本語音声合成（Web Speech API）3役ロール制御
+// ============================================================================
+function speakNarration(text, role, enabled) {
+  window.speechSynthesis.cancel();
+  if (!enabled || !text.trim()) return;
+
+  const uttr = new SpeechSynthesisUtterance(text);
+  uttr.lang = "ja-JP";
+  const voices = window.speechSynthesis.getVoices();
+  const jpVoices = voices.filter(v => v.lang.includes("ja"));
+  if (jpVoices.length > 0) {
+    uttr.voice = jpVoices[0];
+  }
+
+  if (role === "narrator") {
+    uttr.pitch = 0.85;
+    uttr.rate = 0.98;
+  } else if (role === "hero") {
+    uttr.pitch = 1.12;
+    uttr.rate = 1.10;
+  } else if (role === "system") {
+    uttr.pitch = 0.72;
+    uttr.rate = 0.92;
+  }
+  window.speechSynthesis.speak(uttr);
+}
+
+// ============================================================================
+// 4. Canvas 2D 映画エフェクト＆字幕描画エンジン
+// ============================================================================
+const canvas = document.getElementById("stage");
+const ctx = canvas.getContext("2d");
+const sound = new SoundEngine();
+
+let isPlaying = false;
+let isRecording = false;
+let mediaRecorder = null;
+let recordedChunks = [];
+let startTime = 0;
+let lastSceneIndex = -1;
+let animFrameId = null;
+
+function renderFrame(scene, progress, elapsedGlobal) {
+  const W = canvas.width;
+  const H = canvas.height;
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.save();
+
+  // カメラワーク＆エフェクト計算
+  let scale = 1.0;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  if (scene.effect === "zoom_in_slow") {
+    scale = 1.0 + progress * 0.12;
+  } else if (scene.effect === "shake_zoom") {
+    scale = 1.05 + progress * 0.15;
+    const shake = Math.max(0, 1 - progress * 1.5) * 18;
+    offsetX = (Math.random() - 0.5) * shake;
+    offsetY = (Math.random() - 0.5) * shake;
+  } else if (scene.effect === "glitch_eye") {
+    scale = 1.08 + Math.sin(progress * Math.PI) * 0.06;
+    if (Math.random() < 0.15) offsetX = (Math.random() - 0.5) * 24;
+  } else if (scene.effect === "pan_down_shake") {
+    scale = 1.15;
+    offsetY = -40 + progress * 80 + (Math.random() - 0.5) * 8;
+  } else if (scene.effect === "hero_zoom") {
+    scale = 1.18 - progress * 0.14;
+  } else if (scene.effect === "pan_down_slow") {
+    scale = 1.14;
+    offsetY = -45 + progress * 90;
+  } else if (scene.effect === "core_zoom") {
+    scale = 1.0 + Math.pow(progress, 1.5) * 0.45;
+  }
+
+  // 画像描画（アスペクト比維持カバー）
+  if (scene.img) {
+    const iw = scene.img.width;
+    const ih = scene.img.height;
+    const r = Math.max(W / iw, H / ih) * scale;
+    const nw = iw * r;
+    const nh = ih * r;
+    const nx = (W - nw) / 2 + offsetX;
+    const ny = (H - nh) / 2 + offsetY;
+    ctx.drawImage(scene.img, nx, ny, nw, nh);
+  } else {
+    // 画像未設定時のサイバープレースホルダー
+    ctx.fillStyle = "#0f172a";
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = "#00f0ff";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(40, 40, W - 80, H - 80);
+    ctx.fillStyle = "#38bdf8";
+    ctx.font = "bold 36px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(scene.title, W / 2, H / 2 - 20);
+    ctx.font = "20px sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillText("右側のパネルからスライド画像を読み込むとここに映像が合成されます", W / 2, H / 2 + 30);
+  }
+
+  // 追加光学エフェクト（走査線・ビネット・閃光）
+  const grad = ctx.createRadialGradient(W/2, H/2, W*0.25, W/2, H/2, W*0.75);
+  grad.addColorStop(0, "rgba(0,0,0,0)");
+  grad.addColorStop(1, "rgba(0,0,0,0.65)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  if (scene.effect === "glitch_eye" && Math.random() < 0.2) {
+    ctx.fillStyle = "rgba(255, 30, 60, 0.18)";
+    ctx.fillRect(0, Math.random() * H, W, 14);
+  }
+
+  // トランジション（シーン開始時の暗転・フラッシュ）
+  if (progress < 0.12) {
+    const alpha = 1 - (progress / 0.12);
+    if (scene.transition === "fade_black") {
+      ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+      ctx.fillRect(0, 0, W, H);
+    } else if (scene.transition === "flash_white" || scene.transition === "fade_white") {
+      ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+      ctx.fillRect(0, 0, W, H);
+    } else if (scene.transition === "flash_red") {
+      ctx.fillStyle = `rgba(255, 40, 0, ${alpha * 0.7})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  // シネマ字幕バー描画（画像に既に文字がある場合は下部に綺麗に重ねる）
+  const lines = scene.subtitle.split("\n");
+  const boxH = 120;
+  ctx.fillStyle = "rgba(5, 8, 15, 0.82)";
+  ctx.fillRect(0, H - boxH, W, boxH);
+  ctx.fillStyle = "#00f0ff";
+  ctx.fillRect(0, H - boxH, W, 2);
+
+  ctx.font = "bold 28px 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  lines.forEach((line, idx) => {
+    const y = H - boxH + 38 + idx * 42;
+    ctx.fillStyle = "#000";
+    ctx.fillText(line, W / 2 + 2, y + 2);
+    ctx.fillStyle = scene.voiceRole === "system" ? "#5eead4" : "#ffffff";
+    ctx.fillText(line, W / 2, y);
+  });
+
+  // 右上タイムコード表示
+  ctx.font = "14px monospace";
+  ctx.fillStyle = "rgba(0, 240, 255, 0.7)";
+  ctx.textAlign = "right";
+  ctx.fillText(`REC // ${scene.title} // ${elapsedGlobal.toFixed(1)}s`, W - 24, 30);
+
+  ctx.restore();
+}
+
+// ============================================================================
+// 5. タイムライン再生＆動画録画（MediaRecorder）制御
+// ============================================================================
+function getTotalDuration() {
+  return SCENES.reduce((acc, s) => acc + Number(s.duration), 0);
+}
+
+function formatTime(sec) {
+  const m = String(Math.floor(sec / 60)).padStart(2, "0");
+  const s = (sec % 60).toFixed(1).padStart(4, "0");
+  return `${m}:${s}`;
+}
+
+function startPlayback(record = false) {
+  if (isPlaying) return;
+  isPlaying = true;
+  isRecording = record;
+  lastSceneIndex = -1;
+  startTime = performance.now();
+
+  document.getElementById("btnPlay").disabled = true;
+  document.getElementById("btnRecord").disabled = true;
+  document.getElementById("btnStop").disabled = false;
+
+  const useBGM = document.getElementById("chkBGM").checked;
+  if (useBGM) sound.init();
+
+  if (record) {
+    recordedChunks = [];
+    const videoStream = canvas.captureStream(30);
+    if (useBGM && sound.dest) {
+      sound.dest.stream.getAudioTracks().forEach(t => videoStream.addTrack(t));
+    }
+    mediaRecorder = new MediaRecorder(videoStream, { mimeType: "video/webm; codecs=vp9" });
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+    mediaRecorder.onstop = exportVideoFile;
+    mediaRecorder.start();
+    document.getElementById("statusText").textContent = "● 録画中... 最後まで再生すると自動で動画ファイルがダウンロードされます";
+  } else {
+    document.getElementById("statusText").textContent = "▶ プレビュー再生中...";
+  }
+
+  function loop(now) {
+    if (!isPlaying) return;
+    const elapsed = (now - startTime) / 1000;
+    const total = getTotalDuration();
+
+    if (elapsed >= total) {
+      stopPlayback();
+      return;
+    }
+
+    let accum = 0;
+    let currentIdx = 0;
+    let sceneElapsed = 0;
+    for (let i = 0; i < SCENES.length; i++) {
+      const d = Number(SCENES[i].duration);
+      if (elapsed < accum + d) {
+        currentIdx = i;
+        sceneElapsed = elapsed - accum;
+        break;
+      }
+      accum += d;
+    }
+
+    const scene = SCENES[currentIdx];
+    const progress = Math.min(1, sceneElapsed / Number(scene.duration));
+
+    if (currentIdx !== lastSceneIndex) {
+      lastSceneIndex = currentIdx;
+      highlightCard(currentIdx);
+      sound.setMode(scene.bgmMode, document.getElementById("chkBGM").checked);
+      speakNarration(scene.narration, scene.voiceRole, document.getElementById("chkTTS").checked);
+    }
+
+    renderFrame(scene, progress, elapsed);
+    document.getElementById("timeText").textContent = `${formatTime(elapsed)} / ${formatTime(total)}`;
+    animFrameId = requestAnimationFrame(loop);
+  }
+
+  animFrameId = requestAnimationFrame(loop);
+}
+
+function stopPlayback() {
+  isPlaying = false;
+  if (animFrameId) cancelAnimationFrame(animFrameId);
+  sound.stop();
+  window.speechSynthesis.cancel();
+
+  if (isRecording && mediaRecorder && mediaRecorder.state !== "inactive") {
+    mediaRecorder.stop();
+  }
+  isRecording = false;
+
+  document.getElementById("btnPlay").disabled = false;
+  document.getElementById("btnRecord").disabled = false;
+  document.getElementById("btnStop").disabled = true;
+  document.getElementById("statusText").textContent = "完了 / 待機中";
+  highlightCard(-1);
+}
+
+function exportVideoFile() {
+  const blob = new Blob(recordedChunks, { type: "video/webm" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "NeoWorldSaga_Prologue.webm";
+  a.click();
+  URL.revokeObjectURL(url);
+  document.getElementById("statusText").textContent = "✅ 動画ファイル（NeoWorldSaga_Prologue.webm）を保存しました！";
+}
+
+// ============================================================================
+// 6. UI構築・画像一括読み込み処理
+// ============================================================================
+function buildUI() {
+  const list = document.getElementById("sceneList");
+  list.innerHTML = "";
+  SCENES.forEach((scene, idx) => {
+    const card = document.createElement("div");
+    card.className = "scene-card";
+    card.id = `card-${idx}`;
+    card.innerHTML = `
+      <div class="scene-header">
+        <span>${scene.title}</span>
+        <span>尺: <input type="number" step="0.5" min="2" max="30" value="${scene.duration}" data-idx="${idx}" class="dur-input" style="width:52px;"> 秒</span>
+      </div>
+      <div class="scene-body">
+        <div class="thumb" id="thumb-${idx}" title="クリックして個別に画像変更">画像未設定</div>
+        <textarea data-idx="${idx}" class="narr-input" placeholder="読み上げナレーション">${scene.narration}</textarea>
+      </div>
+      <div class="scene-meta">
+        <span>声質:</span>
+        <select data-idx="${idx}" class="role-select">
+          <option value="narrator" ${scene.voiceRole === 'narrator' ? 'selected' : ''}>重厚ナレーター</option>
+          <option value="hero" ${scene.voiceRole === 'hero' ? 'selected' : ''}>熱い主人公(ケイ)</option>
+          <option value="system" ${scene.voiceRole === 'system' ? 'selected' : ''}>冷徹AI(ユグドラシル)</option>
+        </select>
+        <span>演出:</span>
+        <select data-idx="${idx}" class="fx-select">
+          <option value="zoom_in_slow" ${scene.effect === 'zoom_in_slow' ? 'selected' : ''}>緩やかズーム</option>
+          <option value="shake_zoom" ${scene.effect === 'shake_zoom' ? 'selected' : ''}>爆発シェイク</option>
+          <option value="glitch_eye" ${scene.effect === 'glitch_eye' ? 'selected' : ''}>グリッチ発光</option>
+          <option value="pan_down_shake" ${scene.effect === 'pan_down_shake' ? 'selected' : ''}>崩壊パンダウン</option>
+          <option value="hero_zoom" ${scene.effect === 'hero_zoom' ? 'selected' : ''}>出撃ズームアウト</option>
+          <option value="pan_down_slow" ${scene.effect === 'pan_down_slow' ? 'selected' : ''}>哀愁パンダウン</option>
+          <option value="core_zoom" ${scene.effect === 'core_zoom' ? 'selected' : ''}>コア急速ズーム</option>
+        </select>
+      </div>
+    `;
+    list.appendChild(card);
+
+    // 個別サムネイルクリックで画像差し替え
+    document.getElementById(`thumb-${idx}`).addEventListener("click", () => {
+      const inp = document.createElement("input");
+      inp.type = "file";
+      inp.accept = "image/*";
+      inp.onchange = e => {
+        if (e.target.files[0]) loadSingleImage(e.target.files[0], idx);
+      };
+      inp.click();
+    });
+  });
+
+  document.querySelectorAll(".dur-input").forEach(el => {
+    el.onchange = e => { SCENES[e.target.dataset.idx].duration = Number(e.target.value); };
+  });
+  document.querySelectorAll(".narr-input").forEach(el => {
+    el.oninput = e => { SCENES[e.target.dataset.idx].narration = e.target.value; };
+  });
+  document.querySelectorAll(".role-select").forEach(el => {
+    el.onchange = e => { SCENES[e.target.dataset.idx].voiceRole = e.target.value; };
+  });
+  document.querySelectorAll(".fx-select").forEach(el => {
+    el.onchange = e => { SCENES[e.target.dataset.idx].effect = e.target.value; };
+  });
+}
+
+function highlightCard(activeIdx) {
+  document.querySelectorAll(".scene-card").forEach((c, i) => {
+    c.classList.toggle("active", i === activeIdx);
+    if (i === activeIdx) c.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+}
+
+function loadSingleImage(file, idx) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      SCENES[idx].img = img;
+      const thumb = document.getElementById(`thumb-${idx}`);
+      thumb.innerHTML = `<img src="${ev.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
+      if (idx === 0 && !isPlaying) renderFrame(SCENES[0], 0, 0);
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleFiles(fileList) {
+  const files = Array.from(fileList)
+    .filter(f => f.type.startsWith("image/"))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+  files.slice(0, SCENES.length).forEach((file, idx) => {
+    loadSingleImage(file, idx);
+  });
+  document.getElementById("statusText").textContent = `✅ ${Math.min(files.length, 7)}枚のスライド画像を読み込みました！「▶ プレビュー再生」または「● 動画書き出し」を押してください`;
+}
+
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("fileInput");
+dropZone.onclick = () => fileInput.click();
+fileInput.onchange = e => handleFiles(e.target.files);
+dropZone.ondragover = e => { e.preventDefault(); dropZone.style.background = "rgba(0,240,255,0.2)"; };
+dropZone.ondragleave = () => { dropZone.style.background = ""; };
+dropZone.ondrop = e => {
+  e.preventDefault();
+  dropZone.style.background = "";
+  handleFiles(e.dataTransfer.files);
+};
+
+document.getElementById("btnPlay").onclick = () => startPlayback(false);
+document.getElementById("btnRecord").onclick = () => startPlayback(true);
+document.getElementById("btnStop").onclick = stopPlayback;
+
+// 初期描画
+window.speechSynthesis.onvoiceschanged = () => {};
+buildUI();
+renderFrame(SCENES[0], 0, 0);
+</script>
+</body>
+</html>

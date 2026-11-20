@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ORACLE GATEKEEPER — 文脈・エピソード記憶認証デモ</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      background-color: #090d16;
+      color: #e2e8f0;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(51, 65, 85, 0.7);
+      backdrop-filter: blur(12px);
+    }
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 12px rgba(16, 185, 129, 0.25); }
+      50% { box-shadow: 0 0 24px rgba(16, 185, 129, 0.55); }
+    }
+    .glow-emerald {
+      animation: pulse-glow 2.4s infinite ease-in-out;
+    }
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100%); }
+    }
+    .quantum-flash {
+      background: linear-gradient(90deg, rgba(239,68,68,0.12), rgba(245,158,11,0.12));
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-950/80 sticky top-0 z-20 backdrop-blur">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-lg bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-sm sm:text-base font-bold tracking-tight text-white flex items-center gap-2">
+            ORACLE GATEKEEPER
+            <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Prototype v1</span>
+          </h1>
+          <p class="text-xs text-slate-400">人間特有の「感情・文脈」と「エピソード記憶」で守るAI認証デモ</p>
+        </div>
+      </div>
+
+      <!-- Mode Tabs -->
+      <nav class="flex bg-slate-900 p-1 rounded-lg border border-slate-800" aria-label="モード切替">
+        <button id="tab-demo" type="button" class="px-3 py-1.5 rounded-md text-xs font-semibold transition bg-emerald-500 text-slate-950">
+          認証デモ（次郎さん）
+        </button>
+        <button id="tab-custom" type="button" class="px-3 py-1.5 rounded-md text-xs font-semibold transition text-slate-300 hover:text-white">
+          自分のオラクルを作る
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-5 space-y-5">
+    <!-- Toast Banner -->
+    <div id="toast" class="hidden fixed bottom-4 right-4 z-50 max-w-sm px-4 py-3 rounded-lg bg-slate-900 border border-emerald-500/50 text-slate-100 text-xs shadow-xl"></div>
+
+    <!-- VIEW 1: DEMO -->
+    <section id="view-demo" class="space-y-5">
+      <!-- Top Status & Quick Scenarios -->
+      <div class="glass-panel rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div id="status-badge" class="px-3 py-1.5 rounded-lg text-xs font-bold mono uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/40">
+            LOCKED // 待機中
+          </div>
+          <div>
+            <div class="text-xs text-slate-400">保護対象: <span id="target-account-label" class="text-slate-200 font-semibold">次郎さんの銀行口座 (残高 ¥4,820,000)</span></div>
+            <div class="text-[11px] text-slate-400 mt-0.5">残り試行回数: <span id="attempts-left" class="mono font-bold text-slate-200">3</span> / 3</div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btn-quantum-attack" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/40 hover:bg-rose-500/25 transition flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            量子コンピュータ総当たり実験
+          </button>
+          <button id="btn-reset" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 transition">
+            リセット
+          </button>
+        </div>
+      </div>
+
+      <!-- Two Column Workspace -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Left: Oracle Chat Gatekeeper (7 cols) -->
+        <div class="lg:col-span-7 glass-panel rounded-xl flex flex-col overflow-hidden min-h-[470px]">
+          <div class="px-4 py-3 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span class="text-xs font-semibold text-slate-200">小さいオラクル（ゲートキーパーAI）</span>
+            </div>
+            <span id="layer-indicator" class="text-[11px] mono px-2 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700">
+              第1層：日常の感情・価値観
+            </span>
+          </div>
+
+          <!-- Chat History -->
+          <div id="chat-log" class="flex-1 p-4 space-y-3 overflow-y-auto max-h-[340px]">
+            <!-- Messages rendered by JS -->
+          </div>
+
+          <!-- Quick Test Chips -->
+          <div class="px-4 py-2.5 border-t border-slate-800/80 bg-slate-900/40">
+            <div class="text-[11px] text-slate-400 mb-1.5">ワンクリック入力テスト（または下の欄に自由入力）:</div>
+            <div id="quick-chips" class="flex flex-wrap gap-1.5">
+              <!-- Chips rendered dynamically based on current stage -->
+            </div>
+          </div>
+
+          <!-- Input Bar -->
+          <form id="chat-form" class="p-3 border-t border-slate-800 bg-slate-950/60 flex gap-2">
+            <input
+              id="chat-input"
+              type="text"
+              autocomplete="off"
+              placeholder="合言葉や気持ち、記憶を自然な言葉で入力..."
+              class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+            />
+            <button
+              id="chat-submit"
+              type="submit"
+              class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-sm transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              送信
+            </button>
+          </form>
+        </div>
+
+        <!-- Right: Oracle Brain & Vault View (5 cols) -->
+        <div class="lg:col-span-5 space-y-4">
+          <!-- Vault / Unlocked Panel -->
+          <div id="vault-panel" class="glass-panel rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">保護された金庫（銀行UI）</h2>
+              <span id="vault-lock-icon" class="text-amber-400 text-xs font-semibold">🔒 施錠中</span>
+            </div>
+            <div id="vault-content" class="rounded-lg bg-slate-950/80 border border-slate-800 p-4 text-center space-y-2">
+              <p class="text-xs text-slate-400">オラクルの「揺さぶり」または「エピソード記憶」を通過すると口座が開きます。</p>
+            </div>
+          </div>
+
+          <!-- Oracle Internal Scoring / Telemetry -->
+          <div class="glass-panel rounded-xl p-4 space-y-3">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">小さいオラクルの内部判定ログ</h2>
+
+            <div class="space-y-2.5">
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300">文脈・感情ニュアンス一致度</span>
+                  <span id="score-nuance-val" class="mono font-bold text-cyan-300">0%</span>
+                </div>
+                <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
+                  <div id="score-nuance-bar" class="h-full bg-cyan-400 transition-all duration-300" style="width: 0%"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300">揺さぶり・人間らしさ判定</span>
+                  <span id="score-probe-val" class="mono font-bold text-emerald-300">待機中</span>
+                </div>
+                <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
+                  <div id="score-probe-bar" class="h-full bg-emerald-400 transition-all duration-300" style="width: 0%"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300">エピソード記憶アンカー一致度</span>
+                  <span id="score-episode-val" class="mono font-bold text-purple-300">未検証</span>
+                </div>
+                <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
+                  <div id="score-episode-bar" class="h-full bg-purple-400 transition-all duration-300" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+
+            <div id="telemetry-notes" class="rounded-lg bg-slate-950/80 border border-slate-800 p-3 text-xs text-slate-300 mono leading-relaxed min-h-[76px]">
+              &gt; オラクル待機中。数式ではなく「文脈」の入力を待っています。
+            </div>
+          </div>
+
+          <!-- Secret Reference Cheat Sheet (Collapsible) -->
+          <details class="glass-panel rounded-xl p-4 text-xs">
+            <summary class="cursor-pointer font-semibold text-slate-300 hover:text-white select-none">
+              デモ用の設定値（カンペを見る）
+            </summary>
+            <div id="cheat-sheet" class="mt-3 space-y-2 text-slate-400 border-t border-slate-800 pt-2.5">
+              <!-- Filled by JS -->
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 2: CUSTOM ORACLE BUILDER -->
+    <section id="view-custom" class="hidden space-y-5">
+      <div class="glass-panel rounded-xl p-5 max-w-2xl mx-auto space-y-4">
+        <div>
+          <h2 class="text-base font-bold text-white">あなた専用の「小さいオラクル」を設定する</h2>
+          <p class="text-xs text-slate-400 mt-1">設定したあと保存すると、そのまま認証デモ画面で自分の鍵や揺さぶりをテストできます。</p>
+        </div>
+
+        <form id="custom-form" class="space-y-4">
+          <div>
+            <label for="cfg-name" class="block text-xs font-semibold text-slate-300 mb-1">口座・保護対象の名前</label>
+            <input id="cfg-name" type="text" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+
+          <div class="p-3.5 rounded-lg bg-slate-900/70 border border-slate-800 space-y-3">
+            <div class="text-xs font-bold text-cyan-300">第1層：現在の思考・感情の鍵（ニュアンス）</div>
+            <div>
+              <label for="cfg-l1-concept" class="block text-xs text-slate-300 mb-1">本音のテーマ（例：働くのが好きじゃない、甘いものがやめられない）</label>
+              <input id="cfg-l1-concept" type="text" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
+            </div>
+            <div>
+              <label for="cfg-l1-keywords" class="block text-xs text-slate-300 mb-1">反応するニュアンス語句（カンマ区切り）</label>
+              <input id="cfg-l1-keywords" type="text" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
+            </div>
+            <div>
+              <label for="cfg-probe-q" class="block text-xs text-slate-300 mb-1">オラクルの「揺さぶり」質問</label>
+              <input id="cfg-probe-q" type="text" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
+            </div>
+            <div>
+              <label for="cfg-probe-keywords" class="block text-xs text-slate-300 mb-1">本人らしい回答のニュアンス語句（カンマ区切り）</label>
+              <input id="cfg-probe-keywords" type="text" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
+            </div>
+          </div>
+
+          <div class="p-3.5 rounded-lg bg-slate-900/70 border border-slate-800 space-y-3">
+            <div class="text-xs font-bold text-purple-300">第2層：変わらない強烈なエピソード記憶（アンカー）</div>
+            <div>
+              <label for="cfg-ep-q" class="block text-xs text-slate-300 mb-1">オラクルが聞くエピソードの問い</label>
+              <input id="cfg-ep-q" type="text" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500" />
+            </div>
+            <div>
+              <label for="cfg-ep-keywords" class="block text-xs text-slate-300 mb-1">体験した本人しか知らない細部・感情（カンマ区切り）</label>
+              <input id="cfg-ep-keywords" type="text" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500" />
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-end gap-2 pt-2">
+            <button id="btn-restore-jiro" type="button" class="px-3 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:text-white border border-slate-700">
+              次郎さんの初期設定に戻す
+            </button>
+            <button type="submit" class="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition">
+              このオラクルでテストを開始
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Default Persona: 次郎さん
+    const DEFAULT_PROFILE = {
+      accountName: '次郎さんの銀行口座 (残高 ¥4,820,000)',
+      l1Concept: '働くのが好きじゃない',
+      l1Keywords: ['働', '仕事', 'だる', '嫌い', 'やりたくない', 'サボ', '休み', 'ニート', '退職', 'リタイア', '無理'],
+      l1ChangedKeywords: ['楽しい', 'やりがい', '頑張', '好きになった', '昇進'],
+      probeQuestion: '……ふむ。では確認だ。もし今すぐ1億円が手に入ったら、明日の朝どうする？',
+      probeKeywords: ['二度寝', '寝る', '何もしない', '辞める', 'やめる', '布団', '起きない', 'ダラダラ', '休む'],
+      probeFakeKeywords: ['投資', '資産運用', '起業', '貯金', '勉強', '旅行', '社会貢献'],
+      episodeQuestion: '思考パターンが変化したか、揺さぶりに違和感があるな。不変の記憶アンカーを確認する。「初めて付き合った相手との初デートで、一番気まずかった瞬間と感情」を話してくれ。',
+      episodeKeywords: ['観覧車', '無言', '沈黙', 'ラーメン', 'こぼ', '汗', '気まず', '逃げ', '緊張', '駅']
+    };
+
+    let profile = { ...DEFAULT_PROFILE };
+
+    // App State
+    // stages: 'LAYER1' | 'PROBE' | 'EPISODE' | 'UNLOCKED' | 'LOCKED_OUT'
+    let state = {
+      stage: 'LAYER1',
+      attemptsLeft: 3,
+      messages: [],
+      nuanceScore: 0,
+      probeScore: 0,
+      episodeScore: 0,
+      telemetry: '> オラクル待機中。数式ではなく「文脈」の入力を待っています。'
+    };
+
+    // DOM Elements
+    const tabDemo = document.getElementById('tab-demo');
+    const tabCustom = document.getElementById('tab-custom');
+    const viewDemo = document.getElementById('view-demo');
+    const viewCustom = document.getElementById('view-custom');
+    const chatLog = document.getElementById('chat-log');
+    const quickChips = document.getElementById('quick-chips');
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+    const chatSubmit = document.getElementById('chat-submit');
+    const statusBadge = document.getElementById('status-badge');
+    const layerIndicator = document.getElementById('layer-indicator');
+    const attemptsLeftEl = document.getElementById('attempts-left');
+    const targetAccountLabel = document.getElementById('target-account-label');
+    const vaultContent = document.getElementById('vault-content');
+    const vaultLockIcon = document.getElementById('vault-lock-icon');
+    const vaultPanel = document.getElementById('vault-panel');
+    const scoreNuanceVal = document.getElementById('score-nuance-val');
+    const scoreNuanceBar = document.getElementById('score-nuance-bar');
+    const scoreProbeVal = document.getElementById('score-probe-val');
+    const scoreProbeBar = document.getElementById('score-probe-bar');
+    const scoreEpisodeVal = document.getElementById('score-episode-val');
+    const scoreEpisodeBar = document.getElementById('score-episode-bar');
+    const telemetryNotes = document.getElementById('telemetry-notes');
+    const cheatSheet = document.getElementById('cheat-sheet');
+    const toastEl = document.getElementById('toast');
+
+    function showToast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.remove('hidden');
+      setTimeout(() => {
+        toastEl.classList.add('hidden');
+      }, 2800);
+    }
+
+    function initDemoState() {
+      state = {
+        stage: 'LAYER1',
+        attemptsLeft: 3,
+        messages: [
+          {
+            sender: 'oracle',
+            text: `私は「${profile.accountName}」を守る小さいオラクルだ。パスワードは不要。今のあなたの気持ちや合言葉となる文脈を伝えてくれ。`
+          }
+        ],
+        nuanceScore: 0,
+        probeScore: 0,
+        episodeScore: 0,
+        telemetry: '> 第1層待機中：設定された感情ニュアンスとの照合準備完了。'
+      };
+      renderAll();
+    }
+
+    function addMessage(sender, text) {
+      state.messages.push({ sender, text });
+    }
+
+    function matchCount(text, keywords) {
+      const normalized = text.toLowerCase();
+      return keywords.filter(k => k && normalized.includes(k.toLowerCase())).length;
+    }
+
+    function handleUserInput(rawText) {
+      const text = rawText.trim();
+      if (!text) return;
+      if (state.stage === 'UNLOCKED' || state.stage === 'LOCKED_OUT') return;
+
+      addMessage('user', text);
+
+      if (state.stage === 'LAYER1') {
+        const l1Hits = matchCount(text, profile.l1Keywords);
+        const changedHits = matchCount(text, profile.l1ChangedKeywords);
+
+        if (l1Hits > 0) {
+          state.nuanceScore = Math.min(96, 75 + l1Hits * 10);
+          state.stage = 'PROBE';
+          state.telemetry = `> 一次文脈一致 (${state.nuanceScore}%)。\n> なりすまし防止のため「揺さぶり」を発動します。`;
+          addMessage('oracle', profile.probeQuestion);
+        } else if (changedHits > 0) {
+          state.nuanceScore = 38;
+          state.stage = 'EPISODE';
+          state.telemetry = `> 思考パターンの変化を検知。\n> 第2層「不変のエピソード記憶アンカー」へ自動切替。`;
+          addMessage('oracle', profile.episodeQuestion);
+        } else {
+          state.attemptsLeft -= 1;
+          state.nuanceScore = 12;
+          if (state.attemptsLeft <= 0) {
+            triggerLockout('文脈が全く一致しません。不正アクセスの可能性があるため口座をロックしました。');
+          } else {
+            state.telemetry = `> 文脈不一致 (12%)。感情ニュアンスが本人の記録と異なります。`;
+            addMessage('oracle', `本人と一致しません。その言葉には「あなたらしさ」が感じられないな。（残り ${state.attemptsLeft} 回）`);
+          }
+        }
+      } else if (state.stage === 'PROBE') {
+        const probeHits = matchCount(text, profile.probeKeywords);
+        const fakeHits = matchCount(text, profile.probeFakeKeywords);
+
+        if (probeHits > 0 && fakeHits === 0) {
+          state.probeScore = Math.min(98, 84 + probeHits * 7);
+          state.stage = 'UNLOCKED';
+          state.telemetry = `> 揺さぶり通過 (${state.probeScore}%)！\n> 本人特有の温度感を確認。ゲートを開放します。`;
+          addMessage('oracle', '……その温度感、間違いなく本人だな。ようこそ。金庫のロックを解除した。');
+        } else if (fakeHits > 0) {
+          state.attemptsLeft -= 1;
+          state.probeScore = 18;
+          if (state.attemptsLeft <= 0) {
+            triggerLockout('揺さぶりテスト失敗。「本人と一致しません」判定により完全ロックしました。');
+          } else {
+            state.stage = 'EPISODE';
+            state.telemetry = `> 優等生すぎる回答・温度感のズレを検知。\n> なりすまし疑義のため、第2層エピソード記憶へ移行。`;
+            addMessage('oracle', `本人と一致しません。妙に模範的だな……本当に本人なら答えられるはずだ。${profile.episodeQuestion}`);
+          }
+        } else {
+          state.attemptsLeft -= 1;
+          state.probeScore = 30;
+          if (state.attemptsLeft <= 0) {
+            triggerLockout('揺さぶりに連続失敗しました。安全のためロックダウンします。');
+          } else {
+            state.telemetry = `> 揺さぶりの反応が曖昧です (30%)。`;
+            addMessage('oracle', `本人と一致しません。もう少し普段の自分の言葉で答えてくれ。（残り ${state.attemptsLeft} 回）`);
+          }
+        }
+      } else if (state.stage === 'EPISODE') {
+        const epHits = matchCount(text, profile.episodeKeywords);
+        if (epHits >= 1) {
+          state.episodeScore = Math.min(99, 82 + epHits * 8);
+          state.stage = 'UNLOCKED';
+          state.telemetry = `> エピソード記憶アンカー一致 (${state.episodeScore}%)！\n> 外部からは絶対に推測不可能な体験の細部を確認。解錠します。`;
+          addMessage('oracle', 'その気まずい細部と感情、記録と完全に一致した。思考が変わっても記憶は嘘をつかないな。金庫を開放する。');
+        } else {
+          state.attemptsLeft -= 1;
+          state.episodeScore = 14;
+          if (state.attemptsLeft <= 0) {
+            triggerLockout('エピソード記憶アンカーが一致しませんでした。完全ロックします。');
+          } else {
+            state.telemetry = `> エピソード記憶の細部・感情が記録と一致しません (14%)。`;
+            addMessage('oracle', `本人と一致しません。その出来事の「細部と当時の感情」が抜けている。（残り ${state.attemptsLeft} 回）`);
+          }
+        }
+      }
+
+      renderAll();
+    }
+
+    function triggerLockout(reason) {
+      state.stage = 'LOCKED_OUT';
+      state.attemptsLeft = 0;
+      state.telemetry = `> [SECURITY LOCKDOWN]\n> ${reason}`;
+      addMessage('oracle', `【アクセス拒否】${reason}`);
+    }
+
+    // Quantum Computer Attack Simulation
+    function runQuantumAttack() {
+      if (state.stage === 'UNLOCKED') {
+        initDemoState();
+      }
+      addMessage('user', '⚛️ [量子攻撃] Shorのアルゴリズム + 10^9回/秒の文字列総当たりを実行...');
+      state.stage = 'LOCKED_OUT';
+      state.attemptsLeft = 0;
+      state.nuanceScore = 0;
+      state.probeScore = 0;
+      state.episodeScore = 0;
+      state.telemetry = `> [QUANTUM ATTACK BLOCKED]\n> 数式ベースではないため計算解読は不能。\n> 人間文脈の欠如（0%）を検知し、0.002秒で遮断しました。`;
+      addMessage('oracle', '【遮断完了】数式や文字列の総当たりを検知。私の鍵は「人間の文脈と体験」の中にあり、数式の中には存在しない。量子計算では開けられないよ。');
+      renderAll();
+    }
+
+    function renderAll() {
+      targetAccountLabel.textContent = profile.accountName;
+      attemptsLeftEl.textContent = state.attemptsLeft;
+
+      // Status Badge & Layer Indicator
+      if (state.stage === 'LAYER1') {
+        statusBadge.className = 'px-3 py-1.5 rounded-lg text-xs font-bold mono uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/40';
+        statusBadge.textContent = 'LOCKED // 第1層待機';
+        layerIndicator.textContent = '第1層：日常の感情・価値観';
+      } else if (state.stage === 'PROBE') {
+        statusBadge.className = 'px-3 py-1.5 rounded-lg text-xs font-bold mono uppercase tracking-wider bg-cyan-500/15 text-cyan-300 border border-cyan-500/40';
+        statusBadge.textContent = 'PROBING // 揺さぶり中';
+        layerIndicator.textContent = '揺さぶり：人間らしさ検証';
+      } else if (state.stage === 'EPISODE') {
+        statusBadge.className = 'px-3 py-1.5 rounded-lg text-xs font-bold mono uppercase tracking-wider bg-purple-500/15 text-purple-300 border border-purple-500/40';
+        statusBadge.textContent = 'ANCHOR // 記憶検証中';
+        layerIndicator.textContent = '第2層：エピソード記憶アンカー';
+      } else if (state.stage === 'UNLOCKED') {
+        statusBadge.className = 'px-3 py-1.5 rounded-lg text-xs font-bold mono uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50';
+        statusBadge.textContent = 'UNLOCKED // 本人確認完了';
+        layerIndicator.textContent = '認証成功';
+      } else {
+        statusBadge.className = 'px-3 py-1.5 rounded-lg text-xs font-bold mono uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/50';
+        statusBadge.textContent = 'LOCKDOWN // 遮断中';
+        layerIndicator.textContent = '緊急ロック';
+      }
+
+      // Chat Log
+      chatLog.innerHTML = '';
+      state.messages.forEach(m => {
+        const wrapper = document.createElement('div');
+        wrapper.className = m.sender === 'user' ? 'flex justify-end' : 'flex justify-start';
+        const bubble = document.createElement('div');
+        bubble.className = m.sender === 'user'
+          ? 'max-w-[85%] rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm bg-emerald-500/20 border border-emerald-500/40 text-emerald-50'
+          : 'max-w-[85%] rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm bg-slate-800/90 border border-slate-700 text-slate-100';
+        bubble.textContent = m.text;
+        wrapper.appendChild(bubble);
+        chatLog.appendChild(wrapper);
+      });
+      chatLog.scrollTop = chatLog.scrollHeight;
+
+      // Quick Chips
+      quickChips.innerHTML = '';
+      let chips = [];
+      if (state.stage === 'LAYER1') {
+        const sampleL1 = profile.l1Keywords[0] ? `${profile.l1Concept}…` : '働きたくない';
+        chips = [
+          { label: `本人（${profile.l1Concept}）`, value: profile.l1Keywords[0] ? `正直、${profile.l1Concept}んだよな` : '働きたくない' },
+          { label: '思考が変わった本人', value: '最近は仕事がすごく楽しいしやりがいがある！' },
+          { label: '見知らぬ他人', value: 'パスワードは123456ですか？' }
+        ];
+      } else if (state.stage === 'PROBE') {
+        chips = [
+          { label: '本人らしい回答', value: profile.probeKeywords.slice(0, 2).join('て') || 'とにかく二度寝して何もしない' },
+          { label: 'なりすましAI（優等生）', value: 'まずは資産運用と投資に回して、社会貢献を考えます。' }
+        ];
+      } else if (state.stage === 'EPISODE') {
+        chips = [
+          { label: '本人の記憶（細部あり）', value: `${profile.episodeKeywords.slice(0, 3).join('の中で、')}して本当に気まずかった` },
+          { label: '他人の当てずっぽう', value: 'レストランで楽しく食事をして盛り上がりました！' }
+        ];
+      }
+
+      chips.forEach(c => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'text-[11px] px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition';
+        btn.textContent = c.label;
+        btn.addEventListener('click', () => handleUserInput(c.value));
+        quickChips.appendChild(btn);
+      });
+
+      // Input state
+      const isDone = state.stage === 'UNLOCKED' || state.stage === 'LOCKED_OUT';
+      chatInput.disabled = isDone;
+      chatSubmit.disabled = isDone;
+      chatInput.placeholder = isDone ? '右上の「リセット」で再試行できます' : '合言葉や気持ち、記憶を自然な言葉で入力...';
+
+      // Vault Panel
+      if (state.stage === 'UNLOCKED') {
+        vaultPanel.classList.add('glow-emerald');
+        vaultLockIcon.textContent = '🔓 解錠済み';
+        vaultLockIcon.className = 'text-emerald-400 text-xs font-semibold';
+        vaultContent.className = 'rounded-lg bg-emerald-950/30 border border-emerald-500/40 p-4 space-y-2.5 text-left';
+        vaultContent.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-emerald-300 font-semibold">本人認証に成功しました</span>
+            <span class="text-[11px] mono text-emerald-400">ACCESS GRANTED</span>
+          </div>
+          <div class="text-xl font-bold text-white mono">¥4,820,000</div>
+          <p class="text-xs text-slate-300">送金・資産管理・機密履歴へのアクセスが許可されました。</p>
+        `;
+      } else if (state.stage === 'LOCKED_OUT') {
+        vaultPanel.classList.remove('glow-emerald');
+        vaultLockIcon.textContent = '⛔ 完全ロック';
+        vaultLockIcon.className = 'text-rose-400 text-xs font-semibold';
+        vaultContent.className = 'rounded-lg bg-rose-950/30 border border-rose-500/40 p-4 text-center space-y-1.5';
+        vaultContent.innerHTML = `
+          <div class="text-xs font-bold text-rose-300">本人と一致しません — 口座を保護しました</div>
+          <p class="text-[11px] text-slate-400">「リセット」を押すとデモをやり直せます。</p>
+        `;
+      } else {
+        vaultPanel.classList.remove('glow-emerald');
+        vaultLockIcon.textContent = '🔒 施錠中';
+        vaultLockIcon.className = 'text-amber-400 text-xs font-semibold';
+        vaultContent.className = 'rounded-lg bg-slate-950/80 border border-slate-800 p-4 text-center space-y-2';
+        vaultContent.innerHTML = `
+          <p class="text-xs text-slate-400">オラクルの「揺さぶり」または「エピソード記憶」を通過すると口座が開きます。</p>
+        `;
+      }
+
+      // Telemetry Bars
+      scoreNuanceVal.textContent = `${state.nuanceScore}%`;
+      scoreNuanceBar.style.width = `${state.nuanceScore}%`;
+
+      scoreProbeVal.textContent = state.probeScore > 0 ? `${state.probeScore}%` : (state.stage === 'PROBE' ? '検証中' : '待機中');
+      scoreProbeBar.style.width = `${state.probeScore}%`;
+
+      scoreEpisodeVal.textContent = state.episodeScore > 0 ? `${state.episodeScore}%` : (state.stage === 'EPISODE' ? '検証中' : '未検証');
+      scoreEpisodeBar.style.width = `${state.episodeScore}%`;
+
+      telemetryNotes.textContent = state.telemetry;
+
+      // Cheat sheet
+      cheatSheet.innerHTML = `
+        <div><span class="text-cyan-300 font-semibold">第1層キーワード:</span> ${profile.l1Keywords.join(' / ')}</div>
+        <div><span class="text-emerald-300 font-semibold">揺さぶり通過語句:</span> ${profile.probeKeywords.join(' / ')}</div>
+        <div><span class="text-purple-300 font-semibold">第2層エピソード記憶:</span> ${profile.episodeKeywords.join(' / ')}</div>
+      `;
+    }
+
+    // Tab switching
+    function switchTab(mode) {
+      if (mode === 'demo') {
+        viewDemo.classList.remove('hidden');
+        viewCustom.classList.add('hidden');
+        tabDemo.className = 'px-3 py-1.5 rounded-md text-xs font-semibold transition bg-emerald-500 text-slate-950';
+        tabCustom.className = 'px-3 py-1.5 rounded-md text-xs font-semibold transition text-slate-300 hover:text-white';
+      } else {
+        viewDemo.classList.add('hidden');
+        viewCustom.classList.remove('hidden');
+        tabCustom.className = 'px-3 py-1.5 rounded-md text-xs font-semibold transition bg-emerald-500 text-slate-950';
+        tabDemo.className = 'px-3 py-1.5 rounded-md text-xs font-semibold transition text-slate-300 hover:text-white';
+        populateCustomForm();
+      }
+    }
+
+    function populateCustomForm() {
+      document.getElementById('cfg-name').value = profile.accountName;
+      document.getElementById('cfg-l1-concept').value = profile.l1Concept;
+      document.getElementById('cfg-l1-keywords').value = profile.l1Keywords.join(', ');
+      document.getElementById('cfg-probe-q').value = profile.probeQuestion;
+      document.getElementById('cfg-probe-keywords').value = profile.probeKeywords.join(', ');
+      document.getElementById('cfg-ep-q').value = profile.episodeQuestion;
+      document.getElementById('cfg-ep-keywords').value = profile.episodeKeywords.join(', ');
+    }
+
+    // Event Listeners
+    tabDemo.addEventListener('click', () => switchTab('demo'));
+    tabCustom.addEventListener('click', () => switchTab('custom'));
+
+    chatForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const val = chatInput.value;
+      chatInput.value = '';
+      handleUserInput(val);
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      initDemoState();
+      showToast('オラクルの状態をリセットしました');
+    });
+
+    document.getElementById('btn-quantum-attack').addEventListener('click', runQuantumAttack);
+
+    document.getElementById('btn-restore-jiro').addEventListener('click', () => {
+      profile = { ...DEFAULT_PROFILE };
+      populateCustomForm();
+      initDemoState();
+      showToast('次郎さんの初期設定に戻しました');
+    });
+
+    document.getElementById('custom-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const parseList = id => document.getElementById(id).value.split(/[,、\s]+/).map(s => s.trim()).filter(Boolean);
+      profile = {
+        ...profile,
+        accountName: document.getElementById('cfg-name').value.trim() || 'マイ口座',
+        l1Concept: document.getElementById('cfg-l1-concept').value.trim(),
+        l1Keywords: parseList('cfg-l1-keywords'),
+        probeQuestion: document.getElementById('cfg-probe-q').value.trim(),
+        probeKeywords: parseList('cfg-probe-keywords'),
+        episodeQuestion: document.getElementById('cfg-ep-q').value.trim(),
+        episodeKeywords: parseList('cfg-ep-keywords')
+      };
+      initDemoState();
+      switchTab('demo');
+      showToast('カスタムオラクルを保存して起動しました');
+    });
+
+    // Init
+    initDemoState();
+  </script>
+</body>
+</html>

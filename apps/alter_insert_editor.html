@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>オルターインサート型エディタ｜リ研工業 プロトタイプ</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background-color: #0b1120;
+      color: #e2e8f0;
+    }
+    .font-mono-code {
+      font-family: 'JetBrains Mono', 'Noto Sans JP', monospace;
+    }
+    .token-item {
+      transition: background-color 0.12s ease, transform 0.1s ease, box-shadow 0.12s ease;
+    }
+    .token-active {
+      background-color: rgba(245, 158, 11, 0.22);
+      border-color: #f59e0b;
+      color: #fef3c7;
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.35);
+    }
+    .token-flash-alter {
+      animation: flashAlter 0.45s ease;
+    }
+    .token-flash-insert {
+      animation: flashInsert 0.45s ease;
+    }
+    @keyframes flashAlter {
+      0% { background-color: rgba(16, 185, 129, 0.65); transform: scale(1.06); }
+      100% { background-color: rgba(245, 158, 11, 0.22); transform: scale(1); }
+    }
+    @keyframes flashInsert {
+      0% { background-color: rgba(56, 189, 248, 0.65); transform: scale(1.06); }
+      100% { background-color: rgba(245, 158, 11, 0.22); transform: scale(1); }
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-slate-900/95 border-b border-slate-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 font-mono-code font-bold text-sm">
+        NC
+      </div>
+      <div>
+        <h1 class="text-sm sm:text-base font-bold text-slate-100 tracking-wide">
+          オルターインサート型エディタ <span class="text-xs font-normal text-amber-400 ml-1">Prototype v1.0</span>
+        </h1>
+        <p class="text-xs text-slate-400 hidden sm:block">リ研工業｜「検索ジャンプ × 入力バッファ × 2択確定」高速・低ミス編集コンソール</p>
+      </div>
+    </div>
+
+    <!-- Preset & Mode Controls -->
+    <div class="flex flex-wrap items-center gap-1.5">
+      <span class="text-xs text-slate-400 mr-1 hidden md:inline">サンプル:</span>
+      <button type="button" data-preset="nc" class="preset-btn px-2.5 py-1 text-xs rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 font-medium hover:bg-amber-500/30 transition">
+        NCフライス (XY)
+      </button>
+      <button type="button" data-preset="config" class="preset-btn px-2.5 py-1 text-xs rounded-md bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition">
+        設定・CSS数値
+      </button>
+      <button type="button" data-preset="script" class="preset-btn px-2.5 py-1 text-xs rounded-md bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition">
+        動画台本
+      </button>
+      <button type="button" id="btn-raw-edit" class="px-2.5 py-1 text-xs rounded-md bg-slate-800 text-sky-300 border border-slate-700 hover:bg-slate-700 transition">
+        自由テキスト貼付
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 flex flex-col lg:flex-row overflow-hidden max-w-7xl w-full mx-auto p-3 gap-3">
+
+    <!-- Left / Top: Editor Document Area -->
+    <section class="flex-1 flex flex-col bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg min-h-[300px]">
+      <!-- Editor Toolbar -->
+      <div class="bg-slate-950/60 border-b border-slate-800 px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div class="flex items-center gap-3">
+          <span class="text-slate-400">選択中ワード: <strong id="selected-token-preview" class="font-mono-code text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded">-</strong></span>
+          <span class="text-slate-500 hidden sm:inline">|</span>
+          <span class="text-slate-400 hidden sm:inline">位置: <span id="cursor-pos-label" class="font-mono-code text-slate-200">1 / 1</span></span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-emerald-400 font-mono-code">ALTER: <strong id="stat-alter">0</strong></span>
+          <span class="text-sky-400 font-mono-code">INSERT: <strong id="stat-insert">0</strong></span>
+          <button type="button" id="btn-copy-all" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+            全文コピー
+          </button>
+        </div>
+      </div>
+
+      <!-- Tokenized Document View -->
+      <div id="editor-canvas" class="flex-1 p-4 overflow-y-auto font-mono-code text-sm sm:text-base leading-relaxed select-none" tabindex="0">
+        <!-- Lines rendered by JS -->
+      </div>
+
+      <!-- Status / Toast Bar -->
+      <div id="status-bar" class="bg-slate-950/80 border-t border-slate-800 px-3 py-1.5 text-xs flex items-center justify-between text-slate-400">
+        <span id="status-message">ヒント: 下の入力欄に「X」と打って ↓ を押すと、次の X に一発ジャンプします</span>
+        <span id="last-search-badge" class="hidden font-mono-code text-amber-400/90 bg-amber-500/10 px-2 py-0.5 rounded"></span>
+      </div>
+    </section>
+
+    <!-- Right: Quick Guide & Operation Log (Collapsible/Compact on mobile) -->
+    <aside class="w-full lg:w-72 flex flex-col gap-3 shrink-0">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 text-xs space-y-2.5">
+        <h2 class="font-bold text-slate-200 text-sm flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>
+          爆速編集の3ステップ
+        </h2>
+        <ol class="space-y-1.5 text-slate-300 list-decimal list-inside">
+          <li>下の入力欄に探したい頭文字（例: <code class="text-amber-300 bg-slate-800 px-1 rounded">X</code>）を打つ</li>
+          <li><kbd class="bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded text-slate-200">↓</kbd> で次の該当箇所へジャンプ</li>
+          <li>続けて新しい値（例: <code class="text-amber-300 bg-slate-800 px-1 rounded">25.0</code> → <code class="text-amber-300 bg-slate-800 px-1 rounded">X25.0</code>）を打ち、<strong class="text-emerald-400">ALTER</strong>（置換）か <strong class="text-sky-400">INSERT</strong>（挿入）！</li>
+        </ol>
+        <div class="pt-2 border-t border-slate-800 grid grid-cols-2 gap-1.5 text-[11px] text-slate-400">
+          <div><kbd class="bg-slate-800 px-1 rounded text-slate-200">Enter</kbd> : ALTER</div>
+          <div><kbd class="bg-slate-800 px-1 rounded text-slate-200">Shift+Enter</kbd> : INSERT</div>
+          <div><kbd class="bg-slate-800 px-1 rounded text-slate-200">↓ / ↑</kbd> : 検索ジャンプ</div>
+          <div><kbd class="bg-slate-800 px-1 rounded text-slate-200">Ctrl+Z</kbd> : 元に戻す</div>
+        </div>
+      </div>
+
+      <!-- Operation History -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex-1 flex flex-col min-h-[140px] max-h-60 lg:max-h-none">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="font-bold text-slate-200 text-xs uppercase tracking-wider">操作履歴 (ログ)</h2>
+          <button type="button" id="btn-undo" class="px-2 py-0.5 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 disabled:opacity-40 transition" disabled>
+            ↶ UNDO
+          </button>
+        </div>
+        <ul id="history-log" class="flex-1 overflow-y-auto space-y-1 text-xs font-mono-code text-slate-400">
+          <li class="text-slate-500 italic">まだ変更はありません</li>
+        </ul>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Bottom: NC Console Input Corner -->
+  <footer class="bg-slate-900 border-t-2 border-slate-700 px-3 py-3 shadow-2xl">
+    <div class="max-w-7xl mx-auto flex flex-col gap-2.5">
+      <!-- Input Buffer Row -->
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <div class="flex-1 flex items-center bg-slate-950 border-2 border-amber-500/60 focus-within:border-amber-400 rounded-lg px-3 py-2 gap-2">
+          <span class="text-amber-400 font-mono-code font-bold text-sm shrink-0">INPUT &gt;</span>
+          <input
+            type="text"
+            id="console-input"
+            class="w-full bg-transparent text-slate-100 font-mono-code text-base sm:text-lg focus:outline-none placeholder-slate-600"
+            placeholder="例: X と打って ↓ でジャンプ → 続けて 25.0 を打って ALTER"
+            autocomplete="off"
+          />
+          <button type="button" id="btn-clear-input" class="text-slate-500 hover:text-slate-300 text-xs px-1.5 py-0.5 rounded bg-slate-800/80 shrink-0" title="入力欄をクリア (Esc)">
+            CLR
+          </button>
+        </div>
+
+        <!-- Jump Controls -->
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button type="button" id="btn-jump-up" class="flex-1 sm:flex-none px-3.5 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-100 font-mono-code font-bold text-sm border border-slate-600 transition" title="前を検索 / 前へ移動 (↑)">
+            ↑ 前へ
+          </button>
+          <button type="button" id="btn-jump-down" class="flex-1 sm:flex-none px-3.5 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-100 font-mono-code font-bold text-sm border border-slate-600 transition" title="次を検索 / 次へ移動 (↓)">
+            ↓ 次へ
+          </button>
+        </div>
+      </div>
+
+      <!-- Action Keys Row (ALTER / INSERT / DELETE / NEWLINE) -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <button type="button" id="btn-alter" class="py-2.5 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold text-sm sm:text-base shadow-md shadow-emerald-950/50 transition flex items-center justify-center gap-2">
+          <span>ALTER</span>
+          <span class="text-xs font-normal opacity-85">置換 (Enter)</span>
+        </button>
+        <button type="button" id="btn-insert" class="py-2.5 px-4 rounded-lg bg-sky-600 hover:bg-sky-500 active:scale-[0.98] text-white font-bold text-sm sm:text-base shadow-md shadow-sky-950/50 transition flex items-center justify-center gap-2">
+          <span>INSERT</span>
+          <span class="text-xs font-normal opacity-85">挿入 (Shift+Enter)</span>
+        </button>
+        <button type="button" id="btn-insert-newline" class="py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-[0.98] text-slate-200 font-medium text-xs sm:text-sm border border-slate-700 transition">
+          ↵ 改行を挿入 (EOB)
+        </button>
+        <button type="button" id="btn-delete" class="py-2 px-3 rounded-lg bg-rose-950/70 hover:bg-rose-900/80 active:scale-[0.98] text-rose-200 font-medium text-xs sm:text-sm border border-rose-800/60 transition">
+          DELETE (選択ワード削除)
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Raw Text Modal -->
+  <div id="raw-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-xl w-full p-4 flex flex-col gap-3 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-slate-100 text-sm">自由テキストを読み込む</h3>
+        <button type="button" id="btn-close-modal" class="text-slate-400 hover:text-slate-200 text-lg leading-none">&times;</button>
+      </div>
+      <p class="text-xs text-slate-400">スペースや改行区切りで自動的にワード（ブロック）に分解されます。</p>
+      <textarea id="raw-textarea" rows="8" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 font-mono-code text-xs text-slate-200 focus:outline-none focus:border-amber-400"></textarea>
+      <div class="flex justify-end gap-2">
+        <button type="button" id="btn-cancel-modal" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs hover:bg-slate-700">キャンセル</button>
+        <button type="button" id="btn-apply-raw" class="px-4 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs hover:bg-amber-400">エディタに反映</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PRESETS = {
+      nc: [
+        "O0001 (RIKEN_KOGYO_SAMPLE)",
+        "G90 G54 G00 X10.0 Y20.0",
+        "G43 Z50.0 H01 M03 S3000",
+        "G01 Z-2.0 F150",
+        "G01 X50.0 Y20.0 F300",
+        "G01 X50.0 Y60.0",
+        "G01 X10.0 Y60.0",
+        "G01 X10.0 Y20.0",
+        "G00 Z50.0 M05",
+        "M30"
+      ].join("\n"),
+      config: [
+        "panel_width: 320px",
+        "panel_height: 180px",
+        "accent_color: #3186ff",
+        "border_radius: 12px",
+        "animation_speed: 250ms",
+        "font_size: 16px",
+        "grid_gap: 16px",
+        "max_items: 10"
+      ].join("\n"),
+      script: [
+        "ずんだもん: 今日は画期的な発明を紹介するのだ！",
+        "めたん: 今度はどんな発明ですの？",
+        "ずんだもん: NCフライス盤からヒントを得たエディタなのだ",
+        "めたん: 普通のエディタと何が違うんですの？",
+        "ずんだもん: 下の入力欄に打ってから一発で置換できるのだ！"
+      ].join("\n")
+    };
+
+    // State: lines[lineIdx] = array of word strings
+    let lines = [];
+    let cursor = { line: 0, col: 0 };
+    let undoStack = [];
+    let stats = { alter: 0, insert: 0 };
+    let lastSearchQuery = "";
+    let flashTarget = null; // { line, col, type: 'alter'|'insert' }
+
+    const editorCanvas = document.getElementById("editor-canvas");
+    const consoleInput = document.getElementById("console-input");
+    const selectedPreview = document.getElementById("selected-token-preview");
+    const cursorPosLabel = document.getElementById("cursor-pos-label");
+    const statAlterEl = document.getElementById("stat-alter");
+    const statInsertEl = document.getElementById("stat-insert");
+    const statusMessageEl = document.getElementById("status-message");
+    const lastSearchBadge = document.getElementById("last-search-badge");
+    const historyLogEl = document.getElementById("history-log");
+    const btnUndo = document.getElementById("btn-undo");
+
+    function parseTextToLines(text) {
+      return text.split(/\r?\n/).map(line => {
+        const trimmed = line.trim();
+        return trimmed === "" ? [] : trimmed.split(/\s+/);
+      });
+    }
+
+    function linesToText() {
+      return lines.map(tokens => tokens.join(" ")).join("\n");
+    }
+
+    function getFlatPositions() {
+      const pos = [];
+      for (let l = 0; l < lines.length; l++) {
+        if (lines[l].length === 0) {
+          pos.push({ line: l, col: -1 }); // empty line marker
+        } else {
+          for (let c = 0; c < lines[l].length; c++) {
+            pos.push({ line: l, col: c });
+          }
+        }
+      }
+      return pos;
+    }
+
+    function saveUndo(actionLabel) {
+      undoStack.push({
+        lines: lines.map(row => [...row]),
+        cursor: { ...cursor },
+        stats: { ...stats },
+        actionLabel
+      });
+      if (undoStack.length > 50) undoStack.shift();
+      btnUndo.disabled = false;
+    }
+
+    function addLog(type, detail) {
+      if (historyLogEl.querySelector(".italic")) {
+        historyLogEl.innerHTML = "";
+      }
+      const li = document.createElement("li");
+      const colorClass = type === "ALTER" ? "text-emerald-400" : type === "INSERT" ? "text-sky-400" : type === "DELETE" ? "text-rose-400" : "text-amber-400";
+      li.innerHTML = `<span class="${colorClass} font-bold">[${type}]</span> <span class="text-slate-300">${escapeHtml(detail)}</span>`;
+      historyLogEl.prepend(li);
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function setStatus(msg, isAlert = false) {
+      statusMessageEl.textContent = msg;
+      statusMessageEl.className = isAlert ? "text-amber-300 font-medium" : "text-slate-400";
+    }
+
+    function clampCursor() {
+      if (lines.length === 0) lines = [[]];
+      cursor.line = Math.max(0, Math.min(cursor.line, lines.length - 1));
+      const row = lines[cursor.line];
+      if (row.length === 0) {
+        cursor.col = -1;
+      } else {
+        cursor.col = Math.max(0, Math.min(cursor.col, row.length - 1));
+      }
+    }
+
+    function render() {
+      clampCursor();
+      editorCanvas.innerHTML = "";
+
+      const flat = getFlatPositions();
+      let activeFlatIdx = flat.findIndex(p => p.line === cursor.line && p.col === cursor.col);
+      if (activeFlatIdx === -1) activeFlatIdx = 0;
+
+      lines.forEach((tokens, lIdx) => {
+        const lineDiv = document.createElement("div");
+        lineDiv.className = "flex items-start gap-3 py-1 px-2 rounded hover:bg-slate-800/30";
+
+        const lineNum = document.createElement("span");
+        lineNum.className = "text-slate-600 select-none w-7 text-right shrink-0 text-xs pt-1";
+        lineNum.textContent = String(lIdx + 1).padStart(2, "0");
+        lineDiv.appendChild(lineNum);
+
+        const contentDiv = document.createElement("div");
+        contentDiv.className = "flex flex-wrap items-center gap-1.5 flex-1 min-h-[28px]";
+
+        if (tokens.length === 0) {
+          const emptySpan = document.createElement("span");
+          const isActive = cursor.line === lIdx && cursor.col === -1;
+          emptySpan.className = `token-item px-2 py-0.5 rounded border text-xs cursor-pointer ${
+            isActive ? "token-active" : "border-slate-800 text-slate-600 hover:border-slate-700"
+          }`;
+          emptySpan.textContent = "(空行 / EOB)";
+          emptySpan.addEventListener("click", () => {
+            cursor = { line: lIdx, col: -1 };
+            render();
+            consoleInput.focus();
+          });
+          contentDiv.appendChild(emptySpan);
+        } else {
+          tokens.forEach((tok, cIdx) => {
+            const span = document.createElement("span");
+            const isActive = cursor.line === lIdx && cursor.col === cIdx;
+            let flashClass = "";
+            if (flashTarget && flashTarget.line === lIdx && flashTarget.col === cIdx) {
+              flashClass = flashTarget.type === "alter" ? "token-flash-alter" : "token-flash-insert";
+            }
+            span.className = `token-item px-2 py-0.5 rounded border cursor-pointer ${flashClass} ${
+              isActive
+                ? "token-active font-semibold"
+                : "border-slate-800/80 bg-slate-800/40 text-slate-200 hover:border-slate-600 hover:bg-slate-800"
+            }`;
+            span.textContent = tok;
+            span.addEventListener("click", () => {
+              cursor = { line: lIdx, col: cIdx };
+              render();
+              consoleInput.focus();
+            });
+            contentDiv.appendChild(span);
+          });
+        }
+
+        lineDiv.appendChild(contentDiv);
+        editorCanvas.appendChild(lineDiv);
+      });
+
+      flashTarget = null;
+
+      // Update header indicators
+      const currentTok = cursor.col >= 0 ? lines[cursor.line][cursor.col] : "(空行)";
+      selectedPreview.textContent = currentTok;
+      cursorPosLabel.textContent = `${activeFlatIdx + 1} / ${flat.length}`;
+      statAlterEl.textContent = stats.alter;
+      statInsertEl.textContent = stats.insert;
+
+      // Scroll active token into view
+      const activeEl = editorCanvas.querySelector(".token-active");
+      if (activeEl) {
+        activeEl.scrollIntoView({ block: "nearest", inline: "nearest" });
+      }
+    }
+
+    function jumpSearch(direction) {
+      const rawQuery = consoleInput.value.trim();
+      const query = rawQuery !== "" ? rawQuery : lastSearchQuery;
+      const flat = getFlatPositions();
+      if (flat.length === 0) return;
+
+      let curIdx = flat.findIndex(p => p.line === cursor.line && p.col === cursor.col);
+      if (curIdx === -1) curIdx = 0;
+
+      // If no query at all, just step 1 token
+      if (query === "") {
+        const nextIdx = (curIdx + direction + flat.length) % flat.length;
+        cursor = { line: flat[nextIdx].line, col: flat[nextIdx].col };
+        render();
+        setStatus(direction > 0 ? "次のワードへ移動しました" : "前のワードへ移動しました");
+        return;
+      }
+
+      if (rawQuery !== "") {
+        lastSearchQuery = rawQuery;
+        lastSearchBadge.textContent = `検索キー: ${lastSearchQuery}`;
+        lastSearchBadge.classList.remove("hidden");
+      }
+
+      const lowerQ = query.toLowerCase();
+      // Search prefix match first, fallback to substring match
+      let foundIdx = -1;
+      for (let step = 1; step <= flat.length; step++) {
+        const idx = (curIdx + direction * step + flat.length) % flat.length;
+        const p = flat[idx];
+        if (p.col < 0) continue;
+        const tok = lines[p.line][p.col].toLowerCase();
+        if (tok.startsWith(lowerQ)) {
+          foundIdx = idx;
+          break;
+        }
+      }
+
+      if (foundIdx === -1) {
+        for (let step = 1; step <= flat.length; step++) {
+          const idx = (curIdx + direction * step + flat.length) % flat.length;
+          const p = flat[idx];
+          if (p.col < 0) continue;
+          const tok = lines[p.line][p.col].toLowerCase();
+          if (tok.includes(lowerQ)) {
+            foundIdx = idx;
+            break;
+          }
+        }
+      }
+
+      if (foundIdx !== -1) {
+        cursor = { line: flat[foundIdx].line, col: flat[foundIdx].col };
+        render();
+        const matched = lines[cursor.line][cursor.col];
+        setStatus(`「${query}」で「${matched}」へジャンプしました（続けて値を入力して ALTER / INSERT）`);
+      } else {
+        setStatus(`「${query}」に一致するワードが見つかりません`, true);
+      }
+    }
+
+    function doAlter() {
+      const val = consoleInput.value.trim();
+      if (!val) {
+        setStatus("入力欄に置換したい文字を入力してください", true);
+        consoleInput.focus();
+        return;
+      }
+      const newTokens = val.split(/\s+/);
+      saveUndo("ALTER");
+
+      const row = lines[cursor.line];
+      const oldTok = cursor.col >= 0 ? row[cursor.col] : "(空行)";
+      if (cursor.col < 0) {
+        lines[cursor.line] = newTokens;
+        cursor.col = 0;
+      } else {
+        row.splice(cursor.col, 1, ...newTokens);
+      }
+
+      stats.alter += 1;
+      flashTarget = { line: cursor.line, col: cursor.col, type: "alter" };
+      addLog("ALTER", `${oldTok} → ${val}`);
+      consoleInput.value = "";
+      render();
+      setStatus(`ALTER完了: 「${oldTok}」を「${val}」に置換しました`);
+      consoleInput.focus();
+    }
+
+    function doInsert() {
+      const val = consoleInput.value.trim();
+      if (!val) {
+        setStatus("入力欄に挿入したい文字を入力してください", true);
+        consoleInput.focus();
+        return;
+      }
+      const newTokens = val.split(/\s+/);
+      saveUndo("INSERT");
+
+      const row = lines[cursor.line];
+      if (cursor.col < 0) {
+        lines[cursor.line] = newTokens;
+        cursor.col = 0;
+      } else {
+        row.splice(cursor.col + 1, 0, ...newTokens);
+        cursor.col += 1;
+      }
+
+      stats.insert += 1;
+      flashTarget = { line: cursor.line, col: cursor.col, type: "insert" };
+      addLog("INSERT", `+ ${val}`);
+      consoleInput.value = "";
+      render();
+      setStatus(`INSERT完了: 「${val}」を直後に挿入しました`);
+      consoleInput.focus();
+    }
+
+    function doInsertNewline() {
+      saveUndo("EOB");
+      const row = lines[cursor.line];
+      if (cursor.col < 0 || cursor.col >= row.length - 1) {
+        lines.splice(cursor.line + 1, 0, []);
+        cursor.line += 1;
+        cursor.col = -1;
+      } else {
+        const after = row.splice(cursor.col + 1);
+        lines.splice(cursor.line + 1, 0, after);
+        cursor.line += 1;
+        cursor.col = 0;
+      }
+      addLog("EOB", "改行を挿入");
+      render();
+      setStatus("選択ワードの直後に改行を挿入しました");
+      consoleInput.focus();
+    }
+
+    function doDelete() {
+      saveUndo("DELETE");
+      const row = lines[cursor.line];
+      if (cursor.col < 0) {
+        if (lines.length > 1) {
+          lines.splice(cursor.line, 1);
+          if (cursor.line >= lines.length) cursor.line = lines.length - 1;
+          cursor.col = lines[cursor.line].length > 0 ? 0 : -1;
+          addLog("DELETE", "空行を削除");
+        }
+      } else {
+        const removed = row.splice(cursor.col, 1)[0];
+        if (row.length === 0) {
+          cursor.col = -1;
+        } else if (cursor.col >= row.length) {
+          cursor.col = row.length - 1;
+        }
+        addLog("DELETE", `削除: ${removed}`);
+        setStatus(`DELETE完了: 「${removed}」を削除しました`);
+      }
+      render();
+      consoleInput.focus();
+    }
+
+    function doUndo() {
+      if (undoStack.length === 0) return;
+      const prev = undoStack.pop();
+      lines = prev.lines;
+      cursor = prev.cursor;
+      stats = prev.stats;
+      btnUndo.disabled = undoStack.length === 0;
+      addLog("UNDO", `${prev.actionLabel} を取り消し`);
+      render();
+      setStatus("直前の操作を取り消しました");
+      consoleInput.focus();
+    }
+
+    function loadPreset(key) {
+      lines = parseTextToLines(PRESETS[key]);
+      cursor = { line: 0, col: 0 };
+      undoStack = [];
+      stats = { alter: 0, insert: 0 };
+      lastSearchQuery = "";
+      lastSearchBadge.classList.add("hidden");
+      btnUndo.disabled = true;
+      historyLogEl.innerHTML = `<li class="text-slate-500 italic">プリセット「${key}」を読み込みました</li>`;
+
+      document.querySelectorAll(".preset-btn").forEach(btn => {
+        const active = btn.dataset.preset === key;
+        btn.className = active
+          ? "preset-btn px-2.5 py-1 text-xs rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 font-medium hover:bg-amber-500/30 transition"
+          : "preset-btn px-2.5 py-1 text-xs rounded-md bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition";
+      });
+
+      render();
+      consoleInput.focus();
+    }
+
+    // Event Listeners
+    document.getElementById("btn-jump-down").addEventListener("click", () => jumpSearch(1));
+    document.getElementById("btn-jump-up").addEventListener("click", () => jumpSearch(-1));
+    document.getElementById("btn-alter").addEventListener("click", doAlter);
+    document.getElementById("btn-insert").addEventListener("click", doInsert);
+    document.getElementById("btn-insert-newline").addEventListener("click", doInsertNewline);
+    document.getElementById("btn-delete").addEventListener("click", doDelete);
+    btnUndo.addEventListener("click", doUndo);
+
+    document.getElementById("btn-clear-input").addEventListener("click", () => {
+      consoleInput.value = "";
+      lastSearchQuery = "";
+      lastSearchBadge.classList.add("hidden");
+      consoleInput.focus();
+    });
+
+    document.querySelectorAll(".preset-btn").forEach(btn => {
+      btn.addEventListener("click", () => loadPreset(btn.dataset.preset));
+    });
+
+    document.getElementById("btn-copy-all").addEventListener("click", () => {
+      const text = linesToText();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          setStatus("全文をクリップボードにコピーしました！");
+        }).catch(() => fallbackCopy(text));
+      } else {
+        fallbackCopy(text);
+      }
+    });
+
+    function fallbackCopy(text) {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        setStatus("全文をクリップボードにコピーしました！");
+      } catch (e) {
+        setStatus("コピーに失敗しました", true);
+      }
+      document.body.removeChild(ta);
+    }
+
+    // Raw text modal
+    const rawModal = document.getElementById("raw-modal");
+    const rawTextarea = document.getElementById("raw-textarea");
+    document.getElementById("btn-raw-edit").addEventListener("click", () => {
+      rawTextarea.value = linesToText();
+      rawModal.classList.remove("hidden");
+      rawTextarea.focus();
+    });
+    const closeModal = () => rawModal.classList.add("hidden");
+    document.getElementById("btn-close-modal").addEventListener("click", closeModal);
+    document.getElementById("btn-cancel-modal").addEventListener("click", closeModal);
+    document.getElementById("btn-apply-raw").addEventListener("click", () => {
+      lines = parseTextToLines(rawTextarea.value);
+      cursor = { line: 0, col: 0 };
+      undoStack = [];
+      btnUndo.disabled = true;
+      closeModal();
+      render();
+      setStatus("自由テキストを読み込みました");
+      consoleInput.focus();
+    });
+
+    // Keyboard shortcuts inside consoleInput
+    consoleInput.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        jumpSearch(1);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        jumpSearch(-1);
+      } else if (e.key === "Enter" && e.shiftKey) {
+        e.preventDefault();
+        doInsert();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        doAlter();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        consoleInput.value = "";
+        lastSearchQuery = "";
+        lastSearchBadge.classList.add("hidden");
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        doUndo();
+      }
+    });
+
+    // Global undo shortcut
+    document.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && document.activeElement !== rawTextarea) {
+        e.preventDefault();
+        doUndo();
+      }
+    });
+
+    // Init
+    loadPreset("nc");
+  </script>
+</body>
+</html>

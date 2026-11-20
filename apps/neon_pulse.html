@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NEON PULSE — 録画機能付きアーケードゲーム</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #070a12;
+      color: #f1f5f9;
+      overflow-x: hidden;
+    }
+    .font-mono-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    @keyframes pulse-rec {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.85); }
+    }
+    .rec-dot {
+      animation: pulse-rec 1.1s infinite ease-in-out;
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-[#070a12] text-slate-100 selection:bg-cyan-500/30">
+
+  <!-- Top Studio Header -->
+  <header class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-3 sm:px-5 h-14 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-cyan-500/20 shrink-0">
+          <i data-lucide="video" class="w-4 h-4 text-slate-950"></i>
+        </div>
+        <div class="truncate">
+          <h1 class="text-sm sm:text-base font-bold tracking-tight text-white truncate">NEON PULSE <span class="text-cyan-400 font-semibold text-xs ml-1">REC STUDIO</span></h1>
+        </div>
+      </div>
+
+      <!-- Live Recording Status Badge & Quick Controls -->
+      <div class="flex items-center gap-2 shrink-0">
+        <div id="recBadge" class="hidden items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-500/15 border border-rose-500/40 text-rose-400 text-xs font-mono-num font-bold">
+          <span class="w-2 h-2 rounded-full bg-rose-500 rec-dot"></span>
+          <span>REC</span>
+          <span id="recTimer">00:00</span>
+        </div>
+
+        <button id="btnRecordToggle" type="button"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/25 active:scale-95">
+          <i id="recBtnIcon" data-lucide="circle-dot" class="w-4 h-4"></i>
+          <span id="recBtnText">録画開始</span>
+        </button>
+
+        <button id="btnMute" type="button" title="サウンド切替"
+          class="p-2 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/70 transition-colors">
+          <i id="muteIcon" data-lucide="volume-2" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start">
+
+    <!-- Left/Center: Game Stage -->
+    <section class="lg:col-span-8 flex flex-col gap-3">
+      <!-- Stage Wrapper -->
+      <div class="relative rounded-2xl bg-slate-950 border border-slate-800/90 shadow-2xl overflow-hidden flex flex-col items-center justify-center p-2 sm:p-4">
+        <!-- Aspect Ratio & Canvas Container -->
+        <div id="canvasFrame" class="relative w-full flex items-center justify-center bg-black rounded-xl overflow-hidden shadow-inner border border-slate-800/60" style="max-height: 70vh;">
+          <canvas id="gameCanvas" class="block max-w-full max-h-[68vh] object-contain cursor-crosshair touch-none"></canvas>
+
+          <!-- Start / Game Over Overlay (HTML overlay for crisp UI, NOT burned into recording unless user wants) -->
+          <div id="gameOverlay" class="absolute inset-0 bg-slate-950/75 backdrop-blur-sm flex flex-col items-center justify-center p-5 text-center transition-opacity duration-200">
+            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-semibold mb-3">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+              <span>動画素材キャプチャ対応アクション</span>
+            </div>
+            <h2 id="overlayTitle" class="text-2xl sm:text-4xl font-extrabold tracking-tight text-white mb-2">NEON PULSE</h2>
+            <p id="overlayDesc" class="text-xs sm:text-sm text-slate-300 max-w-md mb-5 leading-relaxed">
+              光のオーブを操作して赤いレーザー障害物を避け、シアン・ゴールドのコアを集めよう。録画機能でそのまま動画ファイルとして保存できます。
+            </p>
+
+            <!-- Final Score Card (shown on Game Over) -->
+            <div id="gameOverStats" class="hidden grid grid-cols-3 gap-2.5 sm:gap-4 mb-5 w-full max-w-sm bg-slate-900/90 border border-slate-700/80 rounded-xl p-3">
+              <div>
+                <div class="text-[11px] text-slate-400">SCORE</div>
+                <div id="finalScore" class="text-lg sm:text-xl font-bold font-mono-num text-cyan-400">0</div>
+              </div>
+              <div>
+                <div class="text-[11px] text-slate-400">MAX COMBO</div>
+                <div id="finalCombo" class="text-lg sm:text-xl font-bold font-mono-num text-fuchsia-400">0</div>
+              </div>
+              <div>
+                <div class="text-[11px] text-slate-400">BEST</div>
+                <div id="finalBest" class="text-lg sm:text-xl font-bold font-mono-num text-amber-400">0</div>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-center gap-3">
+              <button id="btnStartGame" type="button"
+                class="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm sm:text-base bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-lg shadow-cyan-500/25 active:scale-95 transition-all">
+                <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+                <span id="startBtnLabel">ゲームスタート</span>
+              </button>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-4">操作: マウス / タッチドラッグ / 矢印キー・WASD ｜ 録画ショートカット: <kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">R</kbd></p>
+          </div>
+        </div>
+
+        <!-- Bottom Live Telemetry Bar (outside canvas so it doesn't clutter clean video if HUD off) -->
+        <div class="w-full mt-3 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-slate-400">
+          <div class="flex items-center gap-4">
+            <span>SCORE: <strong id="hudScore" class="text-cyan-400 font-mono-num text-sm">0</strong></span>
+            <span>COMBO: <strong id="hudCombo" class="text-fuchsia-400 font-mono-num text-sm">x1</strong></span>
+            <span>BEST: <strong id="hudBest" class="text-amber-400 font-mono-num text-sm">0</strong></span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="resInfo" class="font-mono-num bg-slate-900 border border-slate-800 px-2 py-0.5 rounded text-[11px] text-slate-300">1280×720 (16:9)</span>
+            <span id="codecInfo" class="font-mono-num bg-slate-900 border border-slate-800 px-2 py-0.5 rounded text-[11px] text-slate-400">WebM</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- On-screen Touch D-Pad (helpful on mobile/tablet) -->
+      <div class="sm:hidden flex items-center justify-center gap-3 py-1">
+        <button data-dir="left" type="button" class="dpad-btn w-12 h-12 rounded-xl bg-slate-800/90 border border-slate-700 flex items-center justify-center active:bg-cyan-600"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
+        <div class="flex flex-col gap-2">
+          <button data-dir="up" type="button" class="dpad-btn w-12 h-10 rounded-xl bg-slate-800/90 border border-slate-700 flex items-center justify-center active:bg-cyan-600"><i data-lucide="arrow-up" class="w-5 h-5"></i></button>
+          <button data-dir="down" type="button" class="dpad-btn w-12 h-10 rounded-xl bg-slate-800/90 border border-slate-700 flex items-center justify-center active:bg-cyan-600"><i data-lucide="arrow-down" class="w-5 h-5"></i></button>
+        </div>
+        <button data-dir="right" type="button" class="dpad-btn w-12 h-12 rounded-xl bg-slate-800/90 border border-slate-700 flex items-center justify-center active:bg-cyan-600"><i data-lucide="arrow-right" class="w-5 h-5"></i></button>
+      </div>
+    </section>
+
+    <!-- Right: Video Recording Studio Controls & Clips -->
+    <aside class="lg:col-span-4 flex flex-col gap-4">
+
+      <!-- Recording Settings Card -->
+      <div class="rounded-2xl bg-slate-900/70 border border-slate-800 p-4 flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold text-white flex items-center gap-2">
+            <i data-lucide="sliders-horizontal" class="w-4 h-4 text-cyan-400"></i>
+            <span>録画スタジオ設定</span>
+          </h2>
+          <span class="text-[11px] text-slate-400">動画出力用</span>
+        </div>
+
+        <!-- Aspect Ratio Selector -->
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1.5">画面サイズ（動画アスペクト比）</label>
+          <div class="grid grid-cols-3 gap-1.5">
+            <button type="button" data-ratio="16:9" class="ratio-btn px-2 py-2 rounded-lg text-xs font-semibold border transition-all bg-cyan-500/20 border-cyan-500 text-cyan-300">
+              16:9 横<br><span class="text-[10px] opacity-75">YouTube</span>
+            </button>
+            <button type="button" data-ratio="9:16" class="ratio-btn px-2 py-2 rounded-lg text-xs font-semibold border transition-all bg-slate-800/70 border-slate-700 text-slate-300 hover:border-slate-600">
+              9:16 縦<br><span class="text-[10px] opacity-75">Shorts/TikTok</span>
+            </button>
+            <button type="button" data-ratio="1:1" class="ratio-btn px-2 py-2 rounded-lg text-xs font-semibold border transition-all bg-slate-800/70 border-slate-700 text-slate-300 hover:border-slate-600">
+              1:1 正方<br><span class="text-[10px] opacity-75">SNS投稿</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- FPS & Theme -->
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label for="fpsSelect" class="block text-xs font-medium text-slate-400 mb-1">フレームレート</label>
+            <select id="fpsSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+              <option value="60" selected>60 fps (滑らか)</option>
+              <option value="30">30 fps (軽量)</option>
+            </select>
+          </div>
+          <div>
+            <label for="themeSelect" class="block text-xs font-medium text-slate-400 mb-1">背景テーマ</label>
+            <select id="themeSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+              <option value="cyber" selected>サイバーネオン</option>
+              <option value="sunset">シンセウェーブ</option>
+              <option value="chroma">グリーンバック風</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Toggles -->
+        <div class="space-y-2.5 pt-1 border-t border-slate-800/80">
+          <label class="flex items-center justify-between cursor-pointer group">
+            <div>
+              <div class="text-xs font-semibold text-slate-200 group-hover:text-white">プレイ連動オート録画</div>
+              <div class="text-[11px] text-slate-400">開始で自動REC・ゲームオーバーで自動保存</div>
+            </div>
+            <input id="chkAutoRec" type="checkbox" checked class="w-4 h-4 accent-cyan-500 rounded cursor-pointer" />
+          </label>
+
+          <label class="flex items-center justify-between cursor-pointer group">
+            <div>
+              <div class="text-xs font-semibold text-slate-200 group-hover:text-white">動画内にスコアHUDを描画</div>
+              <div class="text-[11px] text-slate-400">OFFにするとゲーム映像のみ綺麗に録画</div>
+            </div>
+            <input id="chkCanvasHud" type="checkbox" checked class="w-4 h-4 accent-cyan-500 rounded cursor-pointer" />
+          </label>
+
+          <label class="flex items-center justify-between cursor-pointer group">
+            <div>
+              <div class="text-xs font-semibold text-slate-200 group-hover:text-white">効果音を動画に録音する</div>
+              <div class="text-[11px] text-slate-400">Web Audio合成音を動画トラックにミックス</div>
+            </div>
+            <input id="chkRecordAudio" type="checkbox" checked class="w-4 h-4 accent-cyan-500 rounded cursor-pointer" />
+          </label>
+        </div>
+      </div>
+
+      <!-- Recorded Clips Gallery -->
+      <div class="rounded-2xl bg-slate-900/70 border border-slate-800 p-4 flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold text-white flex items-center gap-2">
+            <i data-lucide="film" class="w-4 h-4 text-fuchsia-400"></i>
+            <span>録画クリップ一覧</span>
+          </h2>
+          <span id="clipCount" class="text-xs font-mono-num px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">0本</span>
+        </div>
+
+        <div id="clipList" class="flex flex-col gap-2.5 max-h-80 overflow-y-auto pr-1">
+          <div id="emptyClips" class="text-center py-6 px-3 rounded-xl border border-dashed border-slate-800 text-slate-500 text-xs leading-relaxed">
+            まだ録画がありません。<br>「録画開始」または「オート録画ON」でプレイすると、ここに動画が保存されます。
+          </div>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-4 right-4 z-50 pointer-events-none opacity-0 translate-y-2 transition-all duration-200">
+    <div class="bg-slate-900/95 border border-slate-700 text-slate-100 px-4 py-2.5 rounded-xl shadow-2xl text-xs font-medium flex items-center gap-2">
+      <i data-lucide="info" class="w-4 h-4 text-cyan-400 shrink-0"></i>
+      <span id="toastMsg">通知</span>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      // ---------- Constants & State ----------
+      const RATIOS = {
+        '16:9': { w: 1280, h: 720, label: '1280×720 (16:9)' },
+        '9:16': { w: 720, h: 1280, label: '720×1280 (9:16)' },
+        '1:1':  { w: 1080, h: 1080, label: '1080×1080 (1:1)' }
+      };
+
+      const THEMES = {
+        cyber: { bg1: '#050814', bg2: '#0f172a', grid: 'rgba(34, 211, 238, 0.08)', player: '#22d3ee', orb: '#38bdf8', gold: '#fbbf24', hazard: '#f43f5e' },
+        sunset: { bg1: '#14051a', bg2: '#2e1065', grid: 'rgba(232, 121, 249, 0.10)', player: '#f472b6', orb: '#a78bfa', gold: '#facc15', hazard: '#fb7185' },
+        chroma: { bg1: '#00b140', bg2: '#009933', grid: 'rgba(255, 255, 255, 0.06)', player: '#ffffff', orb: '#22d3ee', gold: '#fde047', hazard: '#ef4444' }
+      };
+
+      let currentRatio = '16:9';
+      let currentTheme = 'cyber';
+      let fpsSetting = 60;
+      let isMuted = false;
+
+      // DOM refs
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+      const gameOverlay = document.getElementById('gameOverlay');
+      const overlayTitle = document.getElementById('overlayTitle');
+      const overlayDesc = document.getElementById('overlayDesc');
+      const gameOverStats = document.getElementById('gameOverStats');
+      const startBtnLabel = document.getElementById('startBtnLabel');
+      const btnStartGame = document.getElementById('btnStartGame');
+      const btnRecordToggle = document.getElementById('btnRecordToggle');
+      const recBtnIcon = document.getElementById('recBtnIcon');
+      const recBtnText = document.getElementById('recBtnText');
+      const recBadge = document.getElementById('recBadge');
+      const recTimerEl = document.getElementById('recTimer');
+      const btnMute = document.getElementById('btnMute');
+      const muteIcon = document.getElementById('muteIcon');
+
+      const hudScore = document.getElementById('hudScore');
+      const hudCombo = document.getElementById('hudCombo');
+      const hudBest = document.getElementById('hudBest');
+      const finalScore = document.getElementById('finalScore');
+      const finalCombo = document.getElementById('finalCombo');
+      const finalBest = document.getElementById('finalBest');
+      const resInfo = document.getElementById('resInfo');
+      const codecInfo = document.getElementById('codecInfo');
+
+      const fpsSelect = document.getElementById('fpsSelect');
+      const themeSelect = document.getElementById('themeSelect');
+      const chkAutoRec = document.getElementById('chkAutoRec');
+      const chkCanvasHud = document.getElementById('chkCanvasHud');
+      const chkRecordAudio = document.getElementById('chkRecordAudio');
+      const clipList = document.getElementById('clipList');
+      const emptyClips = document.getElementById('emptyClips');
+      const clipCount = document.getElementById('clipCount');
+      const toastEl = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+
+      // ---------- Toast Helper ----------
+      let toastTimer = null;
+      function showToast(msg) {
+        toastMsg.textContent = msg;
+        toastEl.classList.remove('opacity-0', 'translate-y-2');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          toastEl.classList.add('opacity-0', 'translate-y-2');
+        }, 3000);
+      }
+
+      // ---------- Web Audio Synthesizer (with Recording Stream Routing) ----------
+      let audioCtx = null;
+      let masterGain = null;
+      let recDest = null;
+
+      function initAudio() {
+        if (!audioCtx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return;
+          audioCtx = new AC();
+          masterGain = audioCtx.createGain();
+          masterGain.gain.value = isMuted ? 0 : 0.35;
+          masterGain.connect(audioCtx.destination);
+          if (audioCtx.createMediaStreamDestination) {
+            recDest = audioCtx.createMediaStreamDestination();
+          }
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume().catch(() => {});
+        }
+      }
+
+      function playTone(freq, type = 'sine', duration = 0.12, vol = 0.25, slideTo = null) {
+        if (!audioCtx) return;
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, now);
+        if (slideTo) {
+          osc.frequency.exponentialRampToValueAtTime(slideTo, now + duration);
+        }
+        gain.gain.setValueAtTime(vol, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        osc.connect(gain);
+        gain.connect(masterGain);
+        if (recDest && chkRecordAudio.checked) {
+          gain.connect(recDest);
+        }
+        osc.start(now);
+        osc.stop(now + duration + 0.02);
+      }
+
+      function sfxCollect(combo, isGold) {
+        const base = isGold ? 660 : 440;
+        const pitch = Math.min(base + combo * 28, 1320);
+        playTone(pitch, 'triangle', 0.14, 0.28, pitch * 1.35);
+        if (isGold) {
+          setTimeout(() => playTone(pitch * 1.5, 'sine', 0.18, 0.22), 55);
+        }
+      }
+
+      function sfxStart() {
+        playTone(330, 'sine', 0.1, 0.25);
+        setTimeout(() => playTone(440, 'sine', 0.1, 0.25), 70);
+        setTimeout(() => playTone(660, 'triangle', 0.2, 0.3), 140);
+      }
+
+      function sfxHit() {
+        playTone(180, 'sawtooth', 0.35, 0.35, 45);
+        setTimeout(() => playTone(110, 'square', 0.3, 0.25, 35), 60);
+      }
+
+      // ---------- Best Score Persistence ----------
+      let bestScore = 0;
+      try {
+        bestScore = parseInt(localStorage.getItem('neon_pulse_best') || '0', 10) || 0;
+      } catch (e) {
+        bestScore = 0;
+      }
+      hudBest.textContent = bestScore;
+
+      // ---------- Game State ----------
+      let gameState = 'IDLE'; // IDLE, PLAYING, GAMEOVER
+      let score = 0;
+      let combo = 1;
+      let maxCombo = 1;
+      let comboTimer = 0;
+      let elapsed = 0;
+      let shakeTime = 0;
+      let flashAlpha = 0;
+      let gridOffset = 0;
+
+      const player = {
+        x: 640,
+        y: 360,
+        vx: 0,
+        vy: 0,
+        r: 18,
+        targetX: null,
+        targetY: null,
+        trail: []
+      };
+
+      let orbs = [];
+      let hazards = [];
+      let particles = [];
+      let floatingTexts = [];
+      let spawnOrbTimer = 0;
+      let spawnHazardTimer = 0;
+      let autoStopTimeout = null;
+
+      const keys = { up: false, down: false, left: false, right: false };
+
+      function applyCanvasResolution() {
+        const spec = RATIOS[currentRatio];
+        canvas.width = spec.w;
+        canvas.height = spec.h;
+        resInfo.textContent = spec.label;
+        if (gameState === 'IDLE') {
+          player.x = canvas.width / 2;
+          player.y = canvas.height / 2;
+        } else {
+          player.x = Math.max(player.r, Math.min(canvas.width - player.r, player.x));
+          player.y = Math.max(player.r, Math.min(canvas.height - player.r, player.y));
+        }
+      }
+
+      // ---------- Recording Engine (MediaRecorder) ----------
+      let mediaRecorder = null;
+      let recordedChunks = [];
+      let isRecording = false;
+      let recStartTime = 0;
+      let recTimerInterval = null;
+      let clips = [];
+      let selectedMime = '';
+
+      function detectBestMimeType() {
+        if (typeof MediaRecorder === 'undefined') return '';
+        const candidates = [
+          'video/mp4;codecs=avc1,mp4a.40.2',
+          'video/mp4',
+          'video/webm;codecs=vp9,opus',
+          'video/webm;codecs=vp8,opus',
+          'video/webm;codecs=vp9',
+          'video/webm;codecs=vp8',
+          'video/webm'
+        ];
+        for (const m of candidates) {
+          if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) {
+            return m;
+          }
+        }
+        return '';
+      }
+
+      selectedMime = detectBestMimeType();
+      codecInfo.textContent = selectedMime.includes('mp4') ? 'MP4' : (selectedMime ? 'WebM' : '非対応');
+
+      function updateRecUI() {
+        if (isRecording) {
+          btnRecordToggle.classList.remove('bg-rose-600', 'hover:bg-rose-500');
+          btnRecordToggle.classList.add('bg-slate-700', 'hover:bg-slate-600', 'ring-2', 'ring-rose-500');
+          recBtnText.textContent = '録画停止';
+          recBtnIcon.setAttribute('data-lucide', 'square');
+          recBadge.classList.remove('hidden');
+          recBadge.classList.add('flex');
+        } else {
+          btnRecordToggle.classList.add('bg-rose-600', 'hover:bg-rose-500');
+          btnRecordToggle.classList.remove('bg-slate-700', 'hover:bg-slate-600', 'ring-2', 'ring-rose-500');
+          recBtnText.textContent = '録画開始';
+          recBtnIcon.setAttribute('data-lucide', 'circle-dot');
+          recBadge.classList.add('hidden');
+          recBadge.classList.remove('flex');
+          recTimerEl.textContent = '00:00';
+        }
+        if (window.lucide) lucide.createIcons();
+      }
+
+      function formatDuration(ms) {
+        const totalSec = Math.floor(ms / 1000);
+        const m = String(Math.floor(totalSec / 60)).padStart(2, '0');
+        const s = String(totalSec % 60).padStart(2, '0');
+        return `${m}:${s}`;
+      }
+
+      function startRecording() {
+        if (isRecording) return;
+        if (!canvas.captureStream || typeof MediaRecorder === 'undefined') {
+          showToast('このブラウザは録画APIに対応していません');
+          return;
+        }
+        initAudio();
+        try {
+          const videoStream = canvas.captureStream(fpsSetting);
+          const tracks = [...videoStream.getVideoTracks()];
+          if (chkRecordAudio.checked && recDest && recDest.stream) {
+            const audioTracks = recDest.stream.getAudioTracks();
+            tracks.push(...audioTracks);
+          }
+          const combinedStream = new MediaStream(tracks);
+          const options = selectedMime ? { mimeType: selectedMime, videoBitsPerSecond: 6000000 } : { videoBitsPerSecond: 6000000 };
+          mediaRecorder = new MediaRecorder(combinedStream, options);
+          recordedChunks = [];
+
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+          };
+
+          const captureRatio = currentRatio;
+          mediaRecorder.onstop = () => {
+            const mime = mediaRecorder.mimeType || selectedMime || 'video/webm';
+            const blob = new Blob(recordedChunks, { type: mime });
+            const durationMs = Date.now() - recStartTime;
+            addClip(blob, mime, durationMs, captureRatio, score);
+          };
+
+          mediaRecorder.start(250);
+          isRecording = true;
+          recStartTime = Date.now();
+          recTimerInterval = setInterval(() => {
+            recTimerEl.textContent = formatDuration(Date.now() - recStartTime);
+          }, 250);
+          updateRecUI();
+          showToast(`録画を開始しました (${fpsSetting}fps / ${currentRatio})`);
+        } catch (err) {
+          console.error(err);
+          showToast('録画の開始に失敗しました');
+          isRecording = false;
+          updateRecUI();
+        }
+      }
+
+      function stopRecording() {
+        if (!isRecording || !mediaRecorder) return;
+        isRecording = false;
+        clearInterval(recTimerInterval);
+        try {
+          if (mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+          }
+        } catch (e) {
+          console.error(e);
+        }
+        updateRecUI();
+      }
+
+      function addClip(blob, mime, durationMs, ratio, clipScore) {
+        const url = URL.createObjectURL(blob);
+        const ext = mime.includes('mp4') ? 'mp4' : 'webm';
+        const id = Date.now();
+        const sizeMB = (blob.size / (1024 * 1024)).toFixed(2);
+        const filename = `neon-pulse_${ratio.replace(':', 'x')}_score${clipScore}_${id}.${ext}`;
+        const clip = { id, url, filename, duration: formatDuration(durationMs), sizeMB, ratio, clipScore, ext };
+        clips.unshift(clip);
+        renderClips();
+        showToast('録画クリップを保存しました！');
+      }
+
+      function renderClips() {
+        clipCount.textContent = `${clips.length}本`;
+        if (clips.length === 0) {
+          clipList.innerHTML = '';
+          clipList.appendChild(emptyClips);
+          emptyClips.classList.remove('hidden');
+          return;
+        }
+        clipList.innerHTML = clips.map((c) => `
+          <div class="rounded-xl bg-slate-950 border border-slate-800 p-2.5 flex flex-col gap-2">
+            <video src="${c.url}" controls playsinline class="w-full rounded-lg bg-black max-h-40 object-contain"></video>
+            <div class="flex items-center justify-between gap-2 text-[11px]">
+              <div class="text-slate-300 font-mono-num truncate">
+                <span class="px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 mr-1">${c.ratio}</span>
+                <span>${c.duration}</span> · <span>${c.sizeMB}MB</span>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <a href="${c.url}" download="${c.filename}"
+                  class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors">
+                  <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                  <span>保存</span>
+                </a>
+                <button type="button" data-del-clip="${c.id}"
+                  class="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-600/80 text-slate-400 hover:text-white transition-colors" title="削除">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `).join('');
+        if (window.lucide) lucide.createIcons();
+      }
+
+      clipList.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-del-clip]');
+        if (!btn) return;
+        const id = Number(btn.getAttribute('data-del-clip'));
+        const target = clips.find((c) => c.id === id);
+        if (target) URL.revokeObjectURL(target.url);
+        clips = clips.filter((c) => c.id !== id);
+        renderClips();
+      });
+
+      // ---------- Game Logic ----------
+      function resetGame() {
+        clearTimeout(autoStopTimeout);
+        score = 0;
+        combo = 1;
+        maxCombo = 1;
+        comboTimer = 0;
+        elapsed = 0;
+        shakeTime = 0;
+        flashAlpha = 0;
+        orbs = [];
+        hazards = [];
+        particles = [];
+        floatingTexts = [];
+        spawnOrbTimer = 0.2;
+        spawnHazardTimer = 0.9;
+
+        player.x = canvas.width / 2;
+        player.y = canvas.height / 2;
+        player.vx = 0;
+        player.vy = 0;
+        player.targetX = null;
+        player.targetY = null;
+        player.trail = [];
+
+        hudScore.textContent = '0';
+        hudCombo.textContent = 'x1';
+      }
+
+      function startGame() {
+        initAudio();
+        resetGame();
+        gameState = 'PLAYING';
+        gameOverlay.classList.add('opacity-0', 'pointer-events-none');
+        sfxStart();
+
+        if (chkAutoRec.checked && !isRecording) {
+          startRecording();
+        }
+      }
+
+      function triggerGameOver() {
+        if (gameState !== 'PLAYING') return;
+        gameState = 'GAMEOVER';
+        sfxHit();
+        shakeTime = 0.45;
+        flashAlpha = 0.65;
+
+        const theme = THEMES[currentTheme];
+        for (let i = 0; i < 45; i++) {
+          const ang = Math.random() * Math.PI * 2;
+          const spd = 120 + Math.random() * 420;
+          particles.push({
+            x: player.x,
+            y: player.y,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
+            life: 0.7 + Math.random() * 0.5,
+            maxLife: 1.2,
+            r: 3 + Math.random() * 5,
+            color: i % 2 === 0 ? theme.player : theme.hazard
+          });
+        }
+
+        if (score > bestScore) {
+          bestScore = score;
+          hudBest.textContent = bestScore;
+          try { localStorage.setItem('neon_pulse_best', String(bestScore)); } catch (e) {}
+        }
+
+        finalScore.textContent = score;
+        finalCombo.textContent = `x${maxCombo}`;
+        finalBest.textContent = bestScore;
+        overlayTitle.textContent = 'GAME OVER';
+        overlayDesc.textContent = 'ナイスプレイ！もう一度挑戦するか、録画クリップを保存してください。';
+        startBtnLabel.textContent = 'もう一度プレイ';
+        gameOverStats.classList.remove('hidden');
+
+        setTimeout(() => {
+          if (gameState === 'GAMEOVER') {
+            gameOverlay.classList.remove('opacity-0', 'pointer-events-none');
+          }
+        }, 600);
+
+        if (chkAutoRec.checked && isRecording) {
+          autoStopTimeout = setTimeout(() => {
+            stopRecording();
+          }, 900);
+        }
+      }
+
+      function spawnOrb() {
+        const margin = 60;
+        const isGold = Math.random() < 0.22;
+        orbs.push({
+          x: margin + Math.random() * (canvas.width - margin * 2),
+          y: margin + Math.random() * (canvas.height - margin * 2),
+          r: isGold ? 13 : 15,
+          isGold,
+          pulse: Math.random() * Math.PI * 2,
+          life: isGold ? 6.5 : 10
+        });
+      }
+
+      function spawnHazard() {
+        const difficulty = 1 + Math.min(elapsed / 25, 2.2);
+        const speed = (170 + Math.random() * 140) * difficulty;
+        const side = Math.floor(Math.random() * 4);
+        let x, y, vx, vy;
+        const pad = 40;
+
+        if (side === 0) { // top
+          x = Math.random() * canvas.width; y = -pad;
+          const tx = player.x + (Math.random() - 0.5) * 260;
+          const ang = Math.atan2(player.y - y, tx - x);
+          vx = Math.cos(ang) * speed; vy = Math.sin(ang) * speed;
+        } else if (side === 1) { // right
+          x = canvas.width + pad; y = Math.random() * canvas.height;
+          const ty = player.y + (Math.random() - 0.5) * 260;
+          const ang = Math.atan2(ty - y, player.x - x);
+          vx = Math.cos(ang) * speed; vy = Math.sin(ang) * speed;
+        } else if (side === 2) { // bottom
+          x = Math.random() * canvas.width; y = canvas.height + pad;
+          const tx = player.x + (Math.random() - 0.5) * 260;
+          const ang = Math.atan2(player.y - y, tx - x);
+          vx = Math.cos(ang) * speed; vy = Math.sin(ang) * speed;
+        } else { // left
+          x = -pad; y = Math.random() * canvas.height;
+          const ty = player.y + (Math.random() - 0.5) * 260;
+          const ang = Math.atan2(ty - y, player.x - x);
+          vx = Math.cos(ang) * speed; vy = Math.sin(ang) * speed;
+        }
+
+        const isSpinner = Math.random() < 0.35;
+        hazards.push({
+          x, y, vx, vy,
+          r: isSpinner ? 18 : 14,
+          rot: 0,
+          rotSpeed: (Math.random() > 0.5 ? 1 : -1) * (3 + Math.random() * 3),
+          isSpinner
+        });
+      }
+
+      function update(dt) {
+        gridOffset = (gridOffset + dt * 45) % 60;
+        if (shakeTime > 0) shakeTime = Math.max(0, shakeTime - dt);
+        if (flashAlpha > 0) flashAlpha = Math.max(0, flashAlpha - dt * 2.2);
+
+        // Update particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.vx *= 0.96;
+          p.vy *= 0.96;
+          p.life -= dt;
+          if (p.life <= 0) particles.splice(i, 1);
+        }
+
+        for (let i = floatingTexts.length - 1; i >= 0; i--) {
+          const ft = floatingTexts[i];
+          ft.y -= 45 * dt;
+          ft.life -= dt;
+          if (ft.life <= 0) floatingTexts.splice(i, 1);
+        }
+
+        if (gameState !== 'PLAYING') {
+          // Idle ambient animation
+          if (gameState === 'IDLE') {
+            elapsed += dt;
+            player.x = canvas.width / 2 + Math.cos(elapsed * 1.4) * 80;
+            player.y = canvas.height / 2 + Math.sin(elapsed * 2.1) * 45;
+            player.trail.push({ x: player.x, y: player.y });
+            if (player.trail.length > 18) player.trail.shift();
+          }
+          return;
+        }
+
+        elapsed += dt;
+        if (comboTimer > 0) {
+          comboTimer -= dt;
+          if (comboTimer <= 0) {
+            combo = 1;
+            hudCombo.textContent = 'x1';
+          }
+        }
+
+        // Player Movement
+        const kbSpeed = 580;
+        let dx = 0, dy = 0;
+        if (keys.left) dx -= 1;
+        if (keys.right) dx += 1;
+        if (keys.up) dy -= 1;
+        if (keys.down) dy += 1;
+
+        if (dx !== 0 || dy !== 0) {
+          const len = Math.hypot(dx, dy);
+          player.targetX = null;
+          player.targetY = null;
+          player.x += (dx / len) * kbSpeed * dt;
+          player.y += (dy / len) * kbSpeed * dt;
+        } else if (player.targetX !== null && player.targetY !== null) {
+          const lerp = 1 - Math.exp(-16 * dt);
+          player.x += (player.targetX - player.x) * lerp;
+          player.y += (player.targetY - player.y) * lerp;
+        }
+
+        player.x = Math.max(player.r, Math.min(canvas.width - player.r, player.x));
+        player.y = Math.max(player.r, Math.min(canvas.height - player.r, player.y));
+        player.trail.push({ x: player.x, y: player.y });
+        if (player.trail.length > 18) player.trail.shift();
+
+        // Spawning
+        spawnOrbTimer -= dt;
+        if (spawnOrbTimer <= 0 && orbs.length < 5) {
+          spawnOrb();
+          spawnOrbTimer = 0.85;
+        }
+
+        spawnHazardTimer -= dt;
+        const hazardInterval = Math.max(0.28, 0.95 - elapsed * 0.015);
+        if (spawnHazardTimer <= 0) {
+          spawnHazard();
+          spawnHazardTimer = hazardInterval;
+        }
+
+        const theme = THEMES[currentTheme];
+
+        // Orbs collision
+        for (let i = orbs.length - 1; i >= 0; i--) {
+          const o = orbs[i];
+          o.pulse += dt * 5;
+          o.life -= dt;
+          if (o.life <= 0) {
+            orbs.splice(i, 1);
+            continue;
+          }
+          const dist = Math.hypot(player.x - o.x, player.y - o.y);
+          if (dist < player.r + o.r + 4) {
+            const pts = (o.isGold ? 50 : 20) * combo;
+            score += pts;
+            combo = Math.min(combo + 1, 20);
+            if (combo > maxCombo) maxCombo = combo;
+            comboTimer = 3.2;
+
+            hudScore.textContent = score;
+            hudCombo.textContent = `x${combo}`;
+            sfxCollect(combo, o.isGold);
+
+            floatingTexts.push({
+              x: o.x,
+              y: o.y - 10,
+              text: `+${pts}`,
+              color: o.isGold ? theme.gold : theme.orb,
+              life: 0.75
+            });
+
+            const pCol = o.isGold ? theme.gold : theme.orb;
+            for (let k = 0; k < 16; k++) {
+              const ang = Math.random() * Math.PI * 2;
+              const spd = 80 + Math.random() * 220;
+              particles.push({
+                x: o.x, y: o.y,
+                vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
+                life: 0.45 + Math.random() * 0.25, maxLife: 0.7,
+                r: 2.5 + Math.random() * 3.5, color: pCol
+              });
+            }
+            orbs.splice(i, 1);
+          }
+        }
+
+        // Hazards update & collision
+        for (let i = hazards.length - 1; i >= 0; i--) {
+          const h = hazards[i];
+          h.x += h.vx * dt;
+          h.y += h.vy * dt;
+          h.rot += h.rotSpeed * dt;
+
+          if (h.x < -120 || h.x > canvas.width + 120 || h.y < -120 || h.y > canvas.height + 120) {
+            hazards.splice(i, 1);
+            continue;
+          }
+
+          const dist = Math.hypot(player.x - h.x, player.y - h.y);
+          if (dist < player.r + h.r - 4) {
+            triggerGameOver();
+            break;
+          }
+        }
+      }
+
+      function draw() {
+        const theme = THEMES[currentTheme];
+        const w = canvas.width;
+        const h = canvas.height;
+
+        ctx.save();
+        if (shakeTime > 0) {
+          const mag = shakeTime * 22;
+          ctx.translate((Math.random() - 0.5) * mag, (Math.random() - 0.5) * mag);
+        }
+
+        // Background Gradient
+        const grad = ctx.createLinearGradient(0, 0, 0, h);
+        grad.addColorStop(0, theme.bg1);
+        grad.addColorStop(1, theme.bg2);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+
+        // Moving Synth Grid
+        ctx.strokeStyle = theme.grid;
+        ctx.lineWidth = 1;
+        const step = 60;
+        ctx.beginPath();
+        for (let x = gridOffset; x < w; x += step) {
+          ctx.moveTo(x, 0); ctx.lineTo(x, h);
+        }
+        for (let y = gridOffset; y < h; y += step) {
+          ctx.moveTo(0, y); ctx.lineTo(w, y);
+        }
+        ctx.stroke();
+
+        // Orbs
+        for (const o of orbs) {
+          const col = o.isGold ? theme.gold : theme.orb;
+          const rr = o.r + Math.sin(o.pulse) * 2.5;
+          ctx.save();
+          ctx.shadowBlur = 22;
+          ctx.shadowColor = col;
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          ctx.arc(o.x, o.y, rr, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(o.x, o.y, rr * 0.42, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Hazards
+        for (const hz of hazards) {
+          ctx.save();
+          ctx.translate(hz.x, hz.y);
+          ctx.rotate(hz.rot);
+          ctx.shadowBlur = 18;
+          ctx.shadowColor = theme.hazard;
+          ctx.fillStyle = theme.hazard;
+          ctx.strokeStyle = '#ffe4e6';
+          ctx.lineWidth = 2;
+
+          ctx.beginPath();
+          const sides = hz.isSpinner ? 4 : 3;
+          for (let s = 0; s < sides; s++) {
+            const a = (s * Math.PI * 2) / sides;
+            const px = Math.cos(a) * hz.r;
+            const py = Math.sin(a) * hz.r;
+            if (s === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Player Trail & Core
+        if (gameState !== 'GAMEOVER') {
+          for (let i = 0; i < player.trail.length; i++) {
+            const t = player.trail[i];
+            const ratio = (i + 1) / player.trail.length;
+            ctx.fillStyle = theme.player;
+            ctx.globalAlpha = ratio * 0.28;
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, player.r * ratio * 0.85, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+
+          ctx.save();
+          ctx.shadowBlur = 26;
+          ctx.shadowColor = theme.player;
+          ctx.fillStyle = theme.player;
+          ctx.beginPath();
+          ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(player.x, player.y, player.r * 0.48, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Particles
+        for (const p of particles) {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+          ctx.fillStyle = p.color;
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Floating Score Texts
+        for (const ft of floatingTexts) {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, ft.life / 0.75);
+          ctx.font = '800 22px Inter, sans-serif';
+          ctx.fillStyle = ft.color;
+          ctx.textAlign = 'center';
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = '#000000';
+          ctx.fillText(ft.text, ft.x, ft.y);
+          ctx.restore();
+        }
+
+        // In-Canvas HUD (included in video recording if toggled ON)
+        if (chkCanvasHud.checked && gameState === 'PLAYING') {
+          ctx.save();
+          ctx.font = '800 26px "JetBrains Mono", monospace';
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = 'rgba(0,0,0,0.8)';
+          ctx.textAlign = 'left';
+          ctx.fillText(`SCORE ${score}`, 26, 44);
+
+          if (combo > 1) {
+            ctx.fillStyle = theme.gold;
+            ctx.font = '800 22px "JetBrains Mono", monospace';
+            ctx.fillText(`COMBO x${combo}`, 26, 76);
+          }
+          ctx.restore();
+        }
+
+        // Impact Flash
+        if (flashAlpha > 0) {
+          ctx.fillStyle = `rgba(244, 63, 94, ${flashAlpha})`;
+          ctx.fillRect(0, 0, w, h);
+        }
+
+        ctx.restore();
+      }
+
+      let lastTs = 0;
+      let rafId = null;
+      function loop(ts) {
+        if (!lastTs) lastTs = ts;
+        const dt = Math.min((ts - lastTs) / 1000, 0.05);
+        lastTs = ts;
+        update(dt);
+        draw();
+        rafId = requestAnimationFrame(loop);
+      }
+
+      // ---------- Input & UI Event Listeners ----------
+      function getCanvasCoords(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: ((clientX - rect.left) / rect.width) * canvas.width,
+          y: ((clientY - rect.top) / rect.height) * canvas.height
+        };
+      }
+
+      canvas.addEventListener('pointerdown', (e) => {
+        if (gameState !== 'PLAYING') return;
+        const pos = getCanvasCoords(e.clientX, e.clientY);
+        player.targetX = pos.x;
+        player.targetY = pos.y;
+      });
+
+      canvas.addEventListener('pointermove', (e) => {
+        if (gameState !== 'PLAYING') return;
+        const pos = getCanvasCoords(e.clientX, e.clientY);
+        player.targetX = pos.x;
+        player.targetY = pos.y;
+      });
+
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.up = true;
+        if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keys.down = true;
+        if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+        if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
+        if ((e.key === 'r' || e.key === 'R') && !e.repeat) {
+          if (isRecording) stopRecording();
+          else startRecording();
+        }
+      });
+
+      window.addEventListener('keyup', (e) => {
+        if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.up = false;
+        if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keys.down = false;
+        if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+        if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+      });
+
+      // On-screen mobile D-pad
+      document.querySelectorAll('.dpad-btn').forEach((btn) => {
+        const dir = btn.getAttribute('data-dir');
+        const setDir = (val) => { keys[dir] = val; };
+        btn.addEventListener('pointerdown', (e) => { e.preventDefault(); setDir(true); });
+        btn.addEventListener('pointerup', () => setDir(false));
+        btn.addEventListener('pointerleave', () => setDir(false));
+        btn.addEventListener('pointercancel', () => setDir(false));
+      });
+
+      btnStartGame.addEventListener('click', startGame);
+
+      btnRecordToggle.addEventListener('click', () => {
+        if (isRecording) stopRecording();
+        else startRecording();
+      });
+
+      btnMute.addEventListener('click', () => {
+        initAudio();
+        isMuted = !isMuted;
+        if (masterGain && audioCtx) {
+          masterGain.gain.setValueAtTime(isMuted ? 0 : 0.35, audioCtx.currentTime);
+        }
+        muteIcon.setAttribute('data-lucide', isMuted ? 'volume-x' : 'volume-2');
+        if (window.lucide) lucide.createIcons();
+        showToast(isMuted ? 'スピーカー音をミュートしました' : 'サウンドをONにしました');
+      });
+
+      document.querySelectorAll('.ratio-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          if (isRecording) {
+            showToast('録画中は画面サイズを変更できません');
+            return;
+          }
+          currentRatio = btn.getAttribute('data-ratio');
+          document.querySelectorAll('.ratio-btn').forEach((b) => {
+            const active = b.getAttribute('data-ratio') === currentRatio;
+            b.className = active
+              ? 'ratio-btn px-2 py-2 rounded-lg text-xs font-semibold border transition-all bg-cyan-500/20 border-cyan-500 text-cyan-300'
+              : 'ratio-btn px-2 py-2 rounded-lg text-xs font-semibold border transition-all bg-slate-800/70 border-slate-700 text-slate-300 hover:border-slate-600';
+          });
+          applyCanvasResolution();
+        });
+      });
+
+      fpsSelect.addEventListener('change', () => {
+        fpsSetting = Number(fpsSelect.value) || 60;
+      });
+
+      themeSelect.addEventListener('change', () => {
+        currentTheme = themeSelect.value;
+      });
+
+      window.addEventListener('resize', () => {
+        draw();
+      });
+
+      window.onload = () => {
+        applyCanvasResolution();
+        if (window.lucide) lucide.createIcons();
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(loop);
+      };
+    })();
+  </script>
+</body>
+</html>

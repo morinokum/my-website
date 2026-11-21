@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Androidアプリ ダウンロード | AI Game Portfolio</title>
+<style>
+  body { background:#121212; color:#e6edf3; font-family:sans-serif; margin:0; padding:24px 16px 48px; }
+  .wrap { max-width:560px; margin:0 auto; }
+  h1 { font-size:1.3em; margin:0 0 6px; }
+  .sub { color:#9aa7b1; font-size:0.9em; margin:0 0 20px; }
+  .card { background:#12241a; border:1px solid #3fb950; border-radius:12px; padding:18px; }
+  .card p { color:#c9d4cc; font-size:0.92em; line-height:1.7; margin:0 0 12px; }
+  #dlbtn { display:block; width:100%; box-sizing:border-box; text-align:center; background:#238636; color:#fff; text-decoration:none; font-weight:bold; font-size:1.05em; padding:14px; border-radius:8px; border:none; cursor:pointer; }
+  #dlbtn:disabled { background:#2c4a34; color:#9aa7b1; cursor:wait; }
+  #status { color:#9aa7b1; font-size:0.85em; min-height:1.4em; margin:10px 0 0; text-align:center; }
+  .note { color:#8b98a5; font-size:0.8em; line-height:1.7; margin-top:18px; }
+  .back { display:inline-block; margin-top:24px; color:#007acc; text-decoration:none; font-weight:bold; }
+  code { color:#7ee787; word-break:break-all; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📱 AI Game Portfolio アプリ（Android）</h1>
+  <p class="sub">バージョン 1.0 ／ 約7MB ／ Android 8.0以降</p>
+  <div class="card">
+    <p>このサイトの全作品（ゲーム78本・アプリ18本）を一覧で見られるアプリです。カテゴリ絞り込みとお気に入り機能つき。一覧はサイトと連動して自動で更新されるので、アプリを入れ直す必要はありません。</p>
+    <button id="dlbtn">⬇ ダウンロードを開始</button>
+    <p id="status"></p>
+    <p class="note">※ダウンロード後、ファイルをタップするとインストールできます。初回のみ、ブラウザに対して「この提供元からのインストールを許可」が必要です。<br>
+    ※Google Playではなくこのサイトからの直接配布です。</p>
+  </div>
+  <p class="note">検証用 MD5: <code>a22f5fd0932a5e5db4c4833007696d3c</code></p>
+  <a class="back" href="index.html">← トップページへ戻る</a>
+</div>
+<script>
+const PARTS = 11;
+const btn = document.getElementById('dlbtn');
+const status = document.getElementById('status');
+btn.addEventListener('click', async () => {
+  btn.disabled = true;
+  try {
+    let b64 = '';
+    for (let i = 0; i < PARTS; i++) {
+      status.textContent = 'ダウンロード中… ' + (i + 1) + ' / ' + PARTS;
+      const res = await fetch('apk/part' + String(i).padStart(2, '0') + '.b64');
+      if (!res.ok) throw new Error('part ' + i);
+      b64 += (await res.text()).trim();
+    }
+    status.textContent = 'ファイルを準備中…';
+    const bin = atob(b64);
+    const chunks = [];
+    const STEP = 0x8000;
+    for (let i = 0; i < bin.length; i += STEP) {
+      const slice = bin.slice(i, i + STEP);
+      const arr = new Uint8Array(slice.length);
+      for (let j = 0; j < slice.length; j++) arr[j] = slice.charCodeAt(j);
+      chunks.push(arr);
+    }
+    const blob = new Blob(chunks, { type: 'application/vnd.android.package-archive' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ai-game-portfolio.apk';
+    a.textContent = '⬇ ai-game-portfolio.apk を保存する';
+    a.id = 'dlbtn';
+    btn.replaceWith(a);
+    status.textContent = '準備できました。上のボタンをタップして保存してください。';
+  } catch (e) {
+    status.textContent = '失敗しました。通信環境のよい場所で、もう一度お試しください。';
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

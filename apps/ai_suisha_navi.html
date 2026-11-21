@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI水車ナビ｜ワンタッチでわかる「今のAI」全図鑑（2026年11月版）</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    .tap-btn {
+      transition: transform 0.12s ease, box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+    }
+    .tap-btn:active {
+      transform: scale(0.98);
+    }
+    .card-hover {
+      transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 4px 10px -6px rgba(15, 23, 42, 0.05);
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-28">
+  <!-- Header -->
+  <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-xl" aria-hidden="true">
+          ⚙️
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg sm:text-xl font-extrabold tracking-tight">AI水車ナビ</h1>
+            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">2026年11月版</span>
+          </div>
+          <p class="text-xs text-slate-300">水車（AI）の回し方がワンタッチでわかる・無料〜課金ガイド</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btnResetAll" type="button" class="tap-btn text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">
+          選択をリセット
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 pt-5 space-y-6">
+    <!-- Step 1: ワンタッチ用途ボタン -->
+    <section class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div>
+          <span class="inline-block text-[11px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">STEP 1：ワンタッチ診断</span>
+          <h2 class="text-base sm:text-lg font-bold text-slate-900 mt-1">今、AIに何をさせたい？</h2>
+        </div>
+        <div class="relative w-full sm:w-64">
+          <input id="searchInput" type="search" placeholder="キーワード検索（例：商用、PDF、動画）"
+            class="w-full text-sm px-3.5 py-2 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+        </div>
+      </div>
+
+      <div id="purposeButtons" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+        <!-- JSで描画 -->
+      </div>
+
+      <!-- 用途別の結論バナー -->
+      <div id="purposeInsight" class="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <!-- JSで描画 -->
+      </div>
+    </section>
+
+    <!-- Step 2: 予算ライン（無料〜課金）切り替え -->
+    <section class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div class="flex flex-wrap items-center gap-2" id="budgetButtons">
+        <!-- JSで描画 -->
+      </div>
+      <div class="text-xs font-medium text-slate-500 flex items-center gap-2">
+        <span id="resultCount">表示中: 10件</span>
+        <span>・</span>
+        <span>カードを押すと「回し方・出典」を表示</span>
+      </div>
+    </section>
+
+    <!-- ツール一覧グリッド -->
+    <section id="toolsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- JSで描画 -->
+    </section>
+
+    <!-- 見つからない場合のフォールバック -->
+    <div id="emptyState" class="hidden bg-white rounded-2xl border border-slate-200 p-8 text-center">
+      <p class="text-slate-700 font-bold text-base">条件に一致するAIが見つかりませんでした</p>
+      <p class="text-slate-500 text-sm mt-1">検索ワードを消すか、「すべて表示」に戻してみてください。</p>
+      <button id="btnEmptyReset" type="button" class="tap-btn mt-4 px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">
+        すべて表示に戻す
+      </button>
+    </div>
+
+    <!-- 落とし穴・基本ルールまとめ -->
+    <section class="bg-amber-50/80 border border-amber-200 rounded-2xl p-4 sm:p-5">
+      <h3 class="text-sm sm:text-base font-bold text-amber-950 flex items-center gap-2">
+        <span>⚠️</span>
+        <span>課金する前に知っておきたい「水車選び」3つの鉄則（2026年11月時点）</span>
+      </h3>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 text-xs sm:text-sm text-amber-900">
+        <div class="bg-white/80 rounded-xl p-3 border border-amber-200/70">
+          <p class="font-bold text-amber-950">① 最初は必ず「無料版」で壁に当たる</p>
+          <p class="mt-1 leading-relaxed">ChatGPT・Gemini・Claude・Perplexityはすべて無料で試せます。「回数制限に何度も引っかかる作業」が見つかってから月払いで課金するのが一番ムダがありません。</p>
+        </div>
+        <div class="bg-white/80 rounded-xl p-3 border border-amber-200/70">
+          <p class="font-bold text-amber-950">② 商用利用の境界線に注意</p>
+          <p class="mt-1 leading-relaxed">Suno AIは無料版だと商用利用不可（権利はSuno社）で、有料プラン加入中のダウンロード曲のみ商用利用が可能です。Midjourneyは無料プラン自体が廃止されています。</p>
+        </div>
+        <div class="bg-white/80 rounded-xl p-3 border border-amber-200/70">
+          <p class="font-bold text-amber-950">③ 年払いより「1ヶ月だけ月払い」</p>
+          <p class="mt-1 leading-relaxed">AIは数ヶ月単位で主役が入れ替わります。まずは月額$8〜$20（または725円〜2,900円）の月払いで試し、合わなければ翌月別のAIに乗り換えるのが安全です。</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 課金シミュレーター（画面下部固定バー） -->
+  <div id="simulatorBar" class="fixed bottom-0 inset-x-0 z-30 bg-slate-900/95 backdrop-blur border-t border-slate-700 text-white shadow-2xl">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="px-2.5 py-1 rounded-lg bg-indigo-500/20 border border-indigo-400/40 text-xs font-bold text-indigo-200 shrink-0">
+          月額シミュレーター
+        </div>
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-baseline gap-x-2">
+            <span class="text-xs text-slate-300">選択中 <strong id="simCount" class="text-white">0</strong> 件：</span>
+            <span id="simTotalText" class="text-base sm:text-lg font-extrabold text-emerald-400">¥0 / 月</span>
+            <span id="simUsdNote" class="text-[11px] text-slate-400"></span>
+          </div>
+          <div id="simCapabilities" class="flex flex-wrap gap-1.5 mt-1">
+            <!-- カバー領域バッジ -->
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="btnSimDetail" type="button" class="tap-btn px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white disabled:opacity-40 disabled:cursor-not-allowed">
+          組み合わせを確認
+        </button>
+        <button id="btnSimClear" type="button" class="tap-btn px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 border border-slate-700">
+          クリア
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 詳細モーダル -->
+  <div id="detailModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
+      <div class="sticky top-0 bg-white/95 backdrop-blur border-b border-slate-200 px-5 py-4 flex items-center justify-between gap-3">
+        <div>
+          <span id="modalMaker" class="text-xs font-bold text-slate-500"></span>
+          <h3 id="modalTitle" class="text-lg sm:text-xl font-extrabold text-slate-900"></h3>
+        </div>
+        <button id="btnCloseModal" type="button" class="tap-btn w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center" aria-label="閉じる">
+          ✕
+        </button>
+      </div>
+      <div id="modalBody" class="p-5 space-y-4 text-sm text-slate-700">
+        <!-- JSで描画 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 組み合わせ確認モーダル -->
+  <div id="simModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="simModalTitle">
+    <div class="bg-white rounded-2xl max-w-xl w-full max-h-[85vh] overflow-y-auto shadow-2xl border border-slate-200">
+      <div class="sticky top-0 bg-white border-b border-slate-200 px-5 py-4 flex items-center justify-between">
+        <h3 id="simModalTitle" class="text-lg font-extrabold text-slate-900">選んだAIの組み合わせ診断</h3>
+        <button id="btnCloseSimModal" type="button" class="tap-btn w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center" aria-label="閉じる">
+          ✕
+        </button>
+      </div>
+      <div id="simModalBody" class="p-5 space-y-4 text-sm text-slate-700">
+        <!-- JSで描画 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- トースト通知 -->
+  <div id="toast" class="hidden fixed top-16 right-4 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-lg border border-slate-700"></div>
+
+  <script>
+    const USD_TO_JPY = 150;
+
+    const PURPOSES = [
+      {
+        id: 'all',
+        icon: '🧭',
+        label: 'すべて見る',
+        sub: '全10サービス',
+        summary: '主要10サービスの「無料できること」と「有料の壁」を一覧比較できます。気になるサービスにチェックを入れると下のシミュレーターで月額合計を計算できます。',
+        topPick: '迷ったら「Gemini」か「ChatGPT」の無料版から触るのが鉄板です。'
+      },
+      {
+        id: 'writing',
+        icon: '✍️',
+        label: '文章・企画',
+        sub: 'メール/要約/台本',
+        summary: '文章作成やアイデア出しは「無料版」だけでも実用的。長文の契約書や仕様書を丸ごと読ませて整理するならClaude、万能さならChatGPTが強い領域です。',
+        topPick: 'おすすめ：ChatGPT（万能）／ Claude（長文・正確さ）／ Gemini（Google連携）'
+      },
+      {
+        id: 'research',
+        icon: '🔍',
+        label: '調べもの・資料',
+        sub: '検索/PDF整理',
+        summary: '「嘘（ハルシネーション）を減らしたい」なら出典リンク付きで答えるPerplexityや、手持ちのPDFだけから答えるNotebookLMが無料から非常に強力です。',
+        topPick: 'おすすめ：Perplexity（Web検索）／ NotebookLM（自分の資料）／ Gemini（Deep Research）'
+      },
+      {
+        id: 'image',
+        icon: '🎨',
+        label: '画像・立ち絵',
+        sub: '挿絵/サムネ作成',
+        summary: '画像生成はGeminiとChatGPTなら無料枠から試せます。プロ品質のイラストやアートにこだわるMidjourneyは無料版が廃止されており、月額$10〜の課金が必要です。',
+        topPick: 'おすすめ：Gemini（無料から生成・編集）／ ChatGPT（会話で修正）／ Midjourney（有料・高品質）'
+      },
+      {
+        id: 'video_music',
+        icon: '🎵',
+        label: '動画・音楽',
+        sub: 'BGM/動画生成',
+        summary: '音楽生成はSuno AIやGeminiの無料版でも体験可能。ただしYouTube収益化や商用利用をするなら、Sunoの有料プラン（$10/月〜）への加入が必須になります。',
+        topPick: 'おすすめ：Suno AI（歌・BGM生成）／ Gemini（Google AI Proで動画生成も対応）'
+      },
+      {
+        id: 'coding',
+        icon: '💻',
+        label: 'プログラム・自動化',
+        sub: 'ツール/アプリ作成',
+        summary: 'プログラミングは2026年現在、AIが自律的にコードを書くエージェント時代。無料で試すならGitHub Copilot FreeやCodexデスクトップ、本格開発ならClaude Code（$20〜）やCursor（$20）が主流です。',
+        topPick: 'おすすめ：Claude Code（複雑開発）／ Cursor（エディタ統合）／ GitHub Copilot（$10〜）'
+      },
+      {
+        id: 'google',
+        icon: '📧',
+        label: 'Google連携',
+        sub: 'Gmail/Docs活用',
+        summary: '普段GmailやGoogleドキュメント、ドライブを使っているならGemini一択。月額725円のPlusでGmail連携、2,900円のProでDocs連携＋5TBストレージが付きます。',
+        topPick: 'おすすめ：Gemini（Google AI Plus 725円〜）／ NotebookLM（無料〜）'
+      }
+    ];
+
+    const BUDGETS = [
+      { id: 'all', label: 'すべて表示' },
+      { id: 'free', label: '完全無料 (¥0)' },
+      { id: 'low', label: 'お手頃課金 (〜¥1,500/月)' },
+      { id: 'mid', label: '標準プロ (¥2,900〜$20/月)' },
+      { id: 'pro', label: 'ヘビー級 ($100〜/月)' }
+    ];
+
+    const CAPABILITY_LABELS = {
+      writing: '文章・企画',
+      research: 'Web・資料検索',
+      image: '画像生成',
+      video_music: '動画・音楽',
+      coding: '開発・自動化',
+      google: 'Google連携'
+    };
+
+    const AI_TOOLS = [
+      {
+        id: 'chatgpt',
+        name: 'ChatGPT',
+        maker: 'OpenAI',
+        badge: '万能の王道',
+        badgeColor: 'bg-emerald-100 text-emerald-800',
+        purposes: ['writing', 'image', 'coding'],
+        hasFree: true,
+        freeLimit: '日常会話・一部機能（回数制限あり）・Codexデスクトップアプリで簡易開発',
+        paidHighlight: 'Go ($8/月) ／ Plus ($20/月) ／ Pro ($100〜$500/月)',
+        paidUnlock: '上位モデル（GPT-6系）の回数拡大、高品質な画像生成、Codexの本格利用やPC作業自動化',
+        plans: [
+          { id: 'chatgpt-free', name: 'Free（無料）', priceUsd: 0, priceJpy: 0, tier: 'free', note: '回数制限あり' },
+          { id: 'chatgpt-go', name: 'Go（月額$8）', priceUsd: 8, priceJpy: 8 * USD_TO_JPY, tier: 'low', note: '手頃な有料枠' },
+          { id: 'chatgpt-plus', name: 'Plus（月額$20）', priceUsd: 20, priceJpy: 20 * USD_TO_JPY, tier: 'mid', note: '画像・Codex・自動化' },
+          { id: 'chatgpt-pro', name: 'Pro（月額$100〜）', priceUsd: 100, priceJpy: 100 * USD_TO_JPY, tier: 'pro', note: '最上位・$200/$500も有' }
+        ],
+        caution: 'Plusでも最上位モデルの利用回数には上限があります。まずはFreeでどこに制限がかかるか試すのがおすすめです。',
+        firstStep: '一番時間のかかっている「メールの下書き」か「議事録の箇条書き」を1つだけ投げてみる。',
+        sources: [
+          { title: 'AI Academy 料金比較（2026年10月）', url: 'https://aiacademy.jp/media/?p=8206' },
+          { title: 'ChatGPT料金プラン解説（2026年11月）', url: 'https://genai-ai.co.jp/ai-kanri/blog/cc-chatgpt-pricing-guide/' }
+        ]
+      },
+      {
+        id: 'gemini',
+        name: 'Gemini',
+        maker: 'Google',
+        badge: 'コスパ＆連携最強',
+        badgeColor: 'bg-sky-100 text-sky-800',
+        purposes: ['writing', 'research', 'image', 'video_music', 'coding', 'google'],
+        hasFree: true,
+        freeLimit: '文章やり取り・画像の生成と編集・Deep Research（深掘り調査）・音楽生成',
+        paidHighlight: 'AI Plus (¥725/月) ／ AI Pro (¥2,900/月) ／ Ultra (¥14,500〜/月)',
+        paidUnlock: 'Plusで上限2倍＆Gmail内Gemini。Proで上限4倍・動画生成・Docs内Gemini・5TB容量・YouTube Premium Lite付き',
+        plans: [
+          { id: 'gemini-free', name: '無料プラン（¥0）', priceUsd: 0, priceJpy: 0, tier: 'free', note: '画像・Deep Research可' },
+          { id: 'gemini-plus', name: 'Google AI Plus（¥725）', priceUsd: 0, priceJpy: 725, tier: 'low', note: '上限2倍・Gmail連携' },
+          { id: 'gemini-pro', name: 'Google AI Pro（¥2,900）', priceUsd: 0, priceJpy: 2900, tier: 'mid', note: '動画生成・5TB・YT Lite付' },
+          { id: 'gemini-ultra', name: 'Google AI Ultra（¥14,500〜）', priceUsd: 0, priceJpy: 14500, tier: 'pro', note: '最上位プラン' }
+        ],
+        caution: 'Googleサービスをよく使う人ほど割安ですが、アプリ内の機能や上限はプランごとに段階が分かれています。',
+        firstStep: '無料版で「Deep Research」を使って業界調査を1本丸ごとレポート化させてみる。',
+        sources: [
+          { title: 'AI Academy 料金比較（2026年10月）', url: 'https://aiacademy.jp/media/?p=8206' }
+        ]
+      },
+      {
+        id: 'claude',
+        name: 'Claude',
+        maker: 'Anthropic',
+        badge: '長文＆開発の鬼',
+        badgeColor: 'bg-amber-100 text-amber-800',
+        purposes: ['writing', 'research', 'coding'],
+        hasFree: true,
+        freeLimit: '文章のやり取り・Web検索・ファイル作成（回数・長文上限あり）',
+        paidHighlight: 'Pro ($20/月・年払$17/月) ／ Max ($100〜/月)',
+        paidUnlock: '上位モデル（Opus/Sonnet系）、PCやプロジェクト全体を自律操作する「Claude Code」が利用可能に',
+        plans: [
+          { id: 'claude-free', name: 'Free（無料）', priceUsd: 0, priceJpy: 0, tier: 'free', note: 'Web検索・ファイル作成可' },
+          { id: 'claude-pro', name: 'Pro（月額$20）', priceUsd: 20, priceJpy: 20 * USD_TO_JPY, tier: 'mid', note: 'Claude Code対応' },
+          { id: 'claude-max', name: 'Max（月額$100〜）', priceUsd: 100, priceJpy: 100 * USD_TO_JPY, tier: 'pro', note: 'Proの5倍・20倍利用量' }
+        ],
+        caution: '無料版は長い資料や連続会話ですぐ回数制限に達しやすいです。開発や長文業務に使うならProが実質スタートライン。',
+        firstStep: '長いPDFや仕様書をそのまま貼り、「見落としがちなリスクを3点だけ抜き出して」と頼む。',
+        sources: [
+          { title: 'AI Academy 料金比較（2026年10月）', url: 'https://aiacademy.jp/media/?p=8206' },
+          { title: 'Claude料金プラン解説（2026年11月）', url: 'https://shift-ai.co.jp/blog/10854/' }
+        ]
+      },
+      {
+        id: 'notebooklm',
+        name: 'NotebookLM (Gemini Notebook)',
+        maker: 'Google',
+        badge: '資料特化の頭脳',
+        badgeColor: 'bg-teal-100 text-teal-800',
+        purposes: ['research', 'google'],
+        hasFree: true,
+        freeLimit: '自分のPDF・Web記事・YouTubeを読み込ませて、その資料だけを根拠に要約・質問応答',
+        paidHighlight: 'Google AI Plus (¥725/月) ／ Pro (¥2,900/月) ／ Workspace (¥800〜/月)',
+        paidUnlock: 'ノートブック数・ソース読み込み上限の拡大、チームでの共有・業務利用向け管理機能',
+        plans: [
+          { id: 'nb-free', name: '無料版（¥0）', priceUsd: 0, priceJpy: 0, tier: 'free', note: '個人利用なら十分強力' },
+          { id: 'nb-plus', name: 'AI Plus経由（¥725）', priceUsd: 0, priceJpy: 725, tier: 'low', note: 'Gemini Plusと共通' },
+          { id: 'nb-pro', name: 'AI Pro経由（¥2,900）', priceUsd: 0, priceJpy: 2900, tier: 'mid', note: '上限大幅アップ' }
+        ],
+        caution: '「ネット全体の検索」ではなく「自分が渡した資料の中だけ」から答える道具です。Google AI Plus/Proを契約すれば枠がセットで広がります。',
+        firstStep: '取扱説明書や社内マニュアルのPDFを1つ放り込んで「初心者向けに手順だけ教えて」と聞く。',
+        sources: [
+          { title: 'NotebookLM料金比較（2026年10月）', url: 'https://uravation.com/media/notebooklm-pricing-plans-2026/' }
+        ]
+      },
+      {
+        id: 'perplexity',
+        name: 'Perplexity AI',
+        maker: 'Perplexity',
+        badge: '出典付き検索',
+        badgeColor: 'bg-cyan-100 text-cyan-800',
+        purposes: ['research'],
+        hasFree: true,
+        freeLimit: 'リアルタイムWeb検索＋出典リンク付き回答（高度なPro検索は回数制限付き）',
+        paidHighlight: 'Pro ($20/月・年$200) ／ Max ($200/月・年$2,000)',
+        paidUnlock: '最新AIモデル（GPT・Claude等）の自由な切り替え、ほぼ無制限のPro検索、AIブラウザ「Comet」活用',
+        plans: [
+          { id: 'perp-free', name: 'Standard（無料）', priceUsd: 0, priceJpy: 0, tier: 'free', note: '通常の検索ならこれでOK' },
+          { id: 'perp-pro', name: 'Pro（月額$20）', priceUsd: 20, priceJpy: 20 * USD_TO_JPY, tier: 'mid', note: '最新モデル切替・無制限級' },
+          { id: 'perp-max', name: 'Max（月額$200）', priceUsd: 200, priceJpy: 200 * USD_TO_JPY, tier: 'pro', note: 'ヘビーリサーチ向け' }
+        ],
+        caution: '日本の携帯キャリア（ソフトバンク・ワイモバイル等）のキャンペーン対象になる場合があるため、契約前に確認するとお得です。',
+        firstStep: 'Google検索の代わりに「〇〇の2026年最新ルールと公的出典を教えて」とそのまま聞いてみる。',
+        sources: [
+          { title: 'Perplexity料金比較（2026年10月）', url: 'https://nocoderi.co.jp/2025/05/03/perplexity-free-paid-plan-comparison/' },
+          { title: 'Perplexity Pro解説（2026年7月）', url: 'https://biz.moneyforward.com/ai/basic/6292/' }
+        ]
+      },
+      {
+        id: 'grok',
+        name: 'Grok',
+        maker: 'xAI',
+        badge: 'Xリアルタイム連携',
+        badgeColor: 'bg-slate-200 text-slate-800',
+        purposes: ['writing', 'research'],
+        hasFree: true,
+        freeLimit: 'X（旧Twitter）上のリアルタイム情報を含むチャット・画像生成（回数制限あり）',
+        paidHighlight: 'Plus ($8/月) ／ Premium ($30/月) ／ Super ($100/月) ／ Ultra ($200/月)',
+        paidUnlock: 'X連携の深いトレンド分析、音声機能「Grok Voice」、利用上限の大幅拡大（2026年10月より4段階プランに再編）',
+        plans: [
+          { id: 'grok-free', name: '無料プラン（$0）', priceUsd: 0, priceJpy: 0, tier: 'free', note: '制限付きで試用可' },
+          { id: 'grok-plus', name: 'Plus（月額$8）', priceUsd: 8, priceJpy: 8 * USD_TO_JPY, tier: 'low', note: '手頃な有料枠' },
+          { id: 'grok-prem', name: 'Premium（月額$30）', priceUsd: 30, priceJpy: 30 * USD_TO_JPY, tier: 'mid', note: 'X活用・本格利用' },
+          { id: 'grok-super', name: 'Super（月額$100）', priceUsd: 100, priceJpy: 100 * USD_TO_JPY, tier: 'pro', note: 'ヘビーユーザー向け' }
+        ],
+        caution: 'X上の投稿を拾うため速報性は高いですが、デマや主観が混じることもあるため一次情報の裏取りが必須です。',
+        firstStep: '「今Xで話題になっている〇〇について、賛否両論を3行ずつまとめて」と聞く。',
+        sources: [
+          { title: 'Grok無料版・有料プラン解説（2026年7月）', url: 'https://genai-ai.co.jp/ai-kanri/blog/cc-grok-free-plan/' },
+          { title: '主要AI月額料金比較（2026年10月）', url: 'https://penchan.co/ja/ai/compare/ai-model-pricing-comparison/' }
+        ]
+      },
+      {
+        id: 'suno',
+        name: 'Suno AI',
+        maker: 'Suno',
+        badge: '作曲・BGM生成',
+        badgeColor: 'bg-rose-100 text-rose-800',
+        purposes: ['video_music'],
+        hasFree: true,
+        freeLimit: '毎日クレジットが付与され、ボーカル入り楽曲やBGMを無料で生成可能（個人鑑賞のみ）',
+        paidHighlight: 'Pro ($10/月・年払$8/月〜) ／ Premier',
+        paidUnlock: '最新上位モデル、楽曲ファイルのダウンロード、生成曲の「商用利用権」（YouTube収益化や店舗BGM等）',
+        plans: [
+          { id: 'suno-free', name: 'Free（無料）', priceUsd: 0, priceJpy: 0, tier: 'free', note: '商用利用は不可' },
+          { id: 'suno-pro', name: 'Pro（月額$10）', priceUsd: 10, priceJpy: 10 * USD_TO_JPY, tier: 'low', note: '商用利用可・DL可' }
+        ],
+        caution: '無料版で作った曲の権利はSuno社に帰属し商用利用NGです。YouTubeや仕事で使う場合は必ずPro加入中に生成・ダウンロードしてください。',
+        firstStep: '動画の雰囲気に合わせて「軽快な町工場の作業BGM、インストゥルメンタル」と日本語で入れて1曲作ってみる。',
+        sources: [
+          { title: 'Suno公式サイト', url: 'https://suno.com/ja' },
+          { title: 'Suno商用利用条件（2026年7月）', url: 'https://biz.moneyforward.com/ai/basic/6829/' }
+        ]
+      },
+      {
+        id: 'midjourney',
+        name: 'Midjourney',
+        maker: 'Midjourney',
+        badge: 'プロ品質イラスト',
+        badgeColor: 'bg-purple-100 text-purple-800',
+        purposes: ['image'],
+        hasFree: false,
+        freeLimit: '無料プランはなし（2023年に廃止。niji・journeyアプリのみ限定トライアルあり）',
+        paidHighlight: 'Basic ($10/月・年$8) ／ Standard ($30/月) ／ Pro ($60/月) ／ Mega ($120/月)',
+        paidUnlock: '全プランで商用利用が可能。Standard以上は低速モード（Relax）で実質無制限生成が可能',
+        plans: [
+          { id: 'mj-basic', name: 'Basic（月額$10）', priceUsd: 10, priceJpy: 10 * USD_TO_JPY, tier: 'low', note: '月約200枚目安・商用可' },
+          { id: 'mj-std', name: 'Standard（月額$30）', priceUsd: 30, priceJpy: 30 * USD_TO_JPY, tier: 'mid', note: 'Relaxモードで無制限生成' }
+        ],
+        caution: '完全無料では使えません。無料で画像を試したい場合はまずGeminiやChatGPT、Canva AIなどから始めるのがおすすめです。',
+        firstStep: 'まずはGeminiやChatGPTで試して「もっとアート性・統一感を出したい」と感じたらBasic($10)を1ヶ月試す。',
+        sources: [
+          { title: 'Midjourney料金ガイド（2026年11月）', url: 'https://crystal-method.com/blog/midjourney-pricing/' },
+          { title: 'Midjourney無料・代替まとめ（2026年9月）', url: 'https://www.krea.ai/blog/ja/is-midjourney-free-pricing-video-and-free-alternatives-in-2026' }
+        ]
+      },
+      {
+        id: 'cursor',
+        name: 'Cursor',
+        maker: 'Anysphere',
+        badge: 'AI開発エディタ',
+        badgeColor: 'bg-indigo-100 text-indigo-800',
+        purposes: ['coding'],
+        hasFree: true,
+        freeLimit: '制限付きでAI補完・チャット・コード生成を体験可能',
+        paidHighlight: 'Plus ($8/月〜) ／ Pro ($20/月)',
+        paidUnlock: '月額固定料金の中で複数モデルを使いながらプロジェクト全体のコード生成・修正をフル活用',
+        plans: [
+          { id: 'cursor-free', name: '無料プラン（$0）', priceUsd: 0, priceJpy: 0, tier: 'free', note: 'お試し補完・回数制限' },
+          { id: 'cursor-plus', name: 'Plus（月額$8〜）', priceUsd: 8, priceJpy: 8 * USD_TO_JPY, tier: 'low', note: 'ライト開発向け' },
+          { id: 'cursor-pro', name: 'Pro（月額$20）', priceUsd: 20, priceJpy: 20 * USD_TO_JPY, tier: 'mid', note: '定額で開発フル活用' }
+        ],
+        caution: 'エディタ自体がCursor専用（VS Codeベース）になります。既存の環境を変えたくない場合はGitHub Copilotが向いています。',
+        firstStep: '空のフォルダを開いて「ブラウザで動く簡単な計算ツールをHTML1枚で作って」とチャット欄で指示する。',
+        sources: [
+          { title: 'GitHub Copilot vs Cursor比較（2026年11月）', url: 'https://bytech.jp/blog/github-copilot-vs-cursor/' },
+          { title: '開発ツール料金比較（2026年6月）', url: 'https://note.com/seater009ai/n/n66b4cbbe3260' }
+        ]
+      },
+      {
+        id: 'copilot',
+        name: 'GitHub Copilot',
+        maker: 'GitHub / Microsoft',
+        badge: 'IDE統合・定番',
+        badgeColor: 'bg-blue-100 text-blue-800',
+        purposes: ['coding'],
+        hasFree: true,
+        freeLimit: 'Freeプランでコード補完やCopilot Chatを無料枠内で試用可能',
+        paidHighlight: 'Pro ($10/月〜・2026年6月よりAIクレジット制へ移行)',
+        paidUnlock: 'VS CodeやJetBrains等の主要エディタ内での本格補完・PR要約・エージェント機能',
+        plans: [
+          { id: 'gh-free', name: 'Free（無料）', priceUsd: 0, priceJpy: 0, tier: 'free', note: '基本補完・チャット試用' },
+          { id: 'gh-pro', name: 'Pro（月額$10〜）', priceUsd: 10, priceJpy: 10 * USD_TO_JPY, tier: 'low', note: 'AIクレジット制対応' }
+        ],
+        caution: '2026年6月よりトークン使用量ベースのAIクレジット制へ移行しています。重い上位モデルを連発するとクレジット消費が早まります。',
+        firstStep: '普段使っているVS Codeに拡張機能を入れて、コメントで「// 〇〇する関数」と書いて補完させてみる。',
+        sources: [
+          { title: 'GitHub Copilot Pro解説（2026年6月）', url: 'https://japan-ai.co.jp/media/7785/' },
+          { title: 'コード生成AI比較10選（2026年8月）', url: 'https://japan-ai.co.jp/media/6907/' }
+        ]
+      }
+    ];
+
+    const state = {
+      selectedPurpose: 'all',
+      selectedBudget: 'all',
+      searchQuery: '',
+      selectedPlans: {} // { toolId: planId }
+    };
+
+    const els = {
+      purposeButtons: document.getElementById('purposeButtons'),
+      purposeInsight: document.getElementById('purposeInsight'),
+      budgetButtons: document.getElementById('budgetButtons'),
+      searchInput: document.getElementById('searchInput'),
+      toolsGrid: document.getElementById('toolsGrid'),
+      resultCount: document.getElementById('resultCount'),
+      emptyState: document.getElementById('emptyState'),
+      btnEmptyReset: document.getElementById('btnEmptyReset'),
+      btnResetAll: document.getElementById('btnResetAll'),
+      simCount: document.getElementById('simCount'),
+      simTotalText: document.getElementById('simTotalText'),
+      simUsdNote: document.getElementById('simUsdNote'),
+      simCapabilities: document.getElementById('simCapabilities'),
+      btnSimDetail: document.getElementById('btnSimDetail'),
+      btnSimClear: document.getElementById('btnSimClear'),
+      detailModal: document.getElementById('detailModal'),
+      modalMaker: document.getElementById('modalMaker'),
+      modalTitle: document.getElementById('modalTitle'),
+      modalBody: document.getElementById('modalBody'),
+      btnCloseModal: document.getElementById('btnCloseModal'),
+      simModal: document.getElementById('simModal'),
+      simModalBody: document.getElementById('simModalBody'),
+      btnCloseSimModal: document.getElementById('btnCloseSimModal'),
+      toast: document.getElementById('toast')
+    };
+
+    let toastTimer = null;
+    function showToast(msg) {
+      els.toast.textContent = msg;
+      els.toast.classList.remove('hidden');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        els.toast.classList.add('hidden');
+      }, 2400);
+    }
+
+    function formatPlanPrice(plan) {
+      if (plan.priceJpy === 0) return '¥0';
+      if (plan.priceUsd > 0) {
+        return `$${plan.priceUsd}（約¥${plan.priceJpy.toLocaleString('ja-JP')}）`;
+      }
+      return `¥${plan.priceJpy.toLocaleString('ja-JP')}`;
+    }
+
+    function getFilteredTools() {
+      const q = state.searchQuery.trim().toLowerCase();
+      return AI_TOOLS.filter((tool) => {
+        const matchPurpose = state.selectedPurpose === 'all' || tool.purposes.includes(state.selectedPurpose);
+        const matchBudget = state.selectedBudget === 'all' || (
+          state.selectedBudget === 'free'
+            ? tool.hasFree
+            : tool.plans.some((p) => p.tier === state.selectedBudget)
+        );
+        if (!matchPurpose || !matchBudget) return false;
+        if (!q) return true;
+        const haystack = [
+          tool.name,
+          tool.maker,
+          tool.badge,
+          tool.freeLimit,
+          tool.paidHighlight,
+          tool.paidUnlock,
+          tool.caution,
+          tool.firstStep,
+          ...tool.plans.map((p) => p.name + ' ' + p.note)
+        ].join(' ').toLowerCase();
+        return haystack.includes(q);
+      });
+    }
+
+    function renderPurposeButtons() {
+      els.purposeButtons.innerHTML = PURPOSES.map((p) => {
+        const active = state.selectedPurpose === p.id;
+        return `
+          <button type="button" data-purpose="${p.id}"
+            class="tap-btn text-left p-3 rounded-xl border ${active
+              ? 'bg-emerald-600 text-white border-emerald-700 shadow-md ring-2 ring-emerald-300'
+              : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200'}">
+            <div class="text-xl leading-none mb-1.5">${p.icon}</div>
+            <div class="text-xs sm:text-sm font-bold leading-tight">${p.label}</div>
+            <div class="text-[11px] mt-0.5 ${active ? 'text-emerald-100' : 'text-slate-500'}">${p.sub}</div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function renderPurposeInsight() {
+      const p = PURPOSES.find((item) => item.id === state.selectedPurpose) || PURPOSES[0];
+      els.purposeInsight.innerHTML = `
+        <div class="space-y-1">
+          <div class="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
+            <span>${p.icon}</span>
+            <span>「${p.label}」の結論</span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">${p.summary}</p>
+        </div>
+        <div class="shrink-0 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 sm:max-w-xs">
+          ${p.topPick}
+        </div>
+      `;
+    }
+
+    function renderBudgetButtons() {
+      els.budgetButtons.innerHTML = BUDGETS.map((b) => {
+        const active = state.selectedBudget === b.id;
+        return `
+          <button type="button" data-budget="${b.id}"
+            class="tap-btn px-3.5 py-2 rounded-xl text-xs font-bold border ${active
+              ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+              : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'}">
+            ${b.label}
+          </button>
+        `;
+      }).join('');
+    }
+
+    function renderToolsGrid() {
+      const tools = getFilteredTools();
+      els.resultCount.textContent = `表示中: ${tools.length}件`;
+
+      if (tools.length === 0) {
+        els.toolsGrid.innerHTML = '';
+        els.emptyState.classList.remove('hidden');
+        return;
+      }
+      els.emptyState.classList.add('hidden');
+
+      els.toolsGrid.innerHTML = tools.map((tool) => {
+        const selectedPlanId = state.selectedPlans[tool.id];
+        const selectedPlan = tool.plans.find((p) => p.id === selectedPlanId);
+
+        const planChips = tool.plans.map((plan) => {
+          const isSelected = selectedPlanId === plan.id;
+          const isHighlight = state.selectedBudget !== 'all' && plan.tier === state.selectedBudget;
+          return `
+            <button type="button" data-select-plan="${tool.id}:${plan.id}"
+              class="tap-btn text-left px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold flex items-center justify-between gap-1.5 ${
+                isSelected
+                  ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm'
+                  : isHighlight
+                    ? 'bg-emerald-50 text-emerald-900 border-emerald-400 hover:bg-emerald-100'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }">
+              <span>${plan.name}</span>
+              <span class="${isSelected ? 'text-indigo-100' : 'text-slate-500'}">${isSelected ? '✓ 選択中' : '+ 追加'}</span>
+            </button>
+          `;
+        }).join('');
+
+        return `
+          <article class="card-hover bg-white rounded-2xl border ${selectedPlan ? 'border-indigo-400 ring-2 ring-indigo-100' : 'border-slate-200'} p-4 sm:p-5 flex flex-col justify-between gap-4">
+            <div class="space-y-3">
+              <!-- Card Header -->
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="text-lg font-extrabold text-slate-900">${tool.name}</h3>
+                    <span class="text-[11px] font-bold px-2 py-0.5 rounded-full ${tool.badgeColor}">${tool.badge}</span>
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">提供: ${tool.maker}</p>
+                </div>
+                <span class="shrink-0 text-xs font-extrabold px-2.5 py-1 rounded-lg ${tool.hasFree ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}">
+                  ${tool.hasFree ? '無料枠あり' : '有料のみ'}
+                </span>
+              </div>
+
+              <!-- 無料 vs 有料の境界線 -->
+              <div class="grid grid-cols-1 gap-2 text-xs">
+                <div class="rounded-xl p-2.5 ${tool.hasFree ? 'bg-emerald-50/70 border border-emerald-200/80' : 'bg-rose-50/70 border border-rose-200/80'}">
+                  <span class="font-bold ${tool.hasFree ? 'text-emerald-900' : 'text-rose-900'}">🟢 無料でできること：</span>
+                  <span class="${tool.hasFree ? 'text-emerald-950' : 'text-rose-950'}">${tool.freeLimit}</span>
+                </div>
+                <div class="rounded-xl p-2.5 bg-indigo-50/70 border border-indigo-200/80">
+                  <div class="font-bold text-indigo-950">💎 課金で広がること（${tool.paidHighlight}）</div>
+                  <p class="text-indigo-900 mt-0.5 leading-relaxed">${tool.paidUnlock}</p>
+                </div>
+              </div>
+
+              <!-- シミュレーター追加ボタン群 -->
+              <div>
+                <div class="text-[11px] font-bold text-slate-500 mb-1.5">シミュレーターに追加（ワンタッチで比較）：</div>
+                <div class="grid grid-cols-2 gap-1.5">
+                  ${planChips}
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+              <div class="flex flex-wrap gap-1">
+                ${tool.purposes.map((pid) => `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">${CAPABILITY_LABELS[pid] || pid}</span>`).join('')}
+              </div>
+              <button type="button" data-open-detail="${tool.id}"
+                class="tap-btn shrink-0 text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg">
+                回し方・出典を見る →
+              </button>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function renderSimulator() {
+      const entries = Object.entries(state.selectedPlans);
+      let totalUsd = 0;
+      let totalJpy = 0;
+      const covered = new Set();
+
+      entries.forEach(([toolId, planId]) => {
+        const tool = AI_TOOLS.find((t) => t.id === toolId);
+        if (!tool) return;
+        const plan = tool.plans.find((p) => p.id === planId);
+        if (!plan) return;
+        totalUsd += plan.priceUsd;
+        totalJpy += plan.priceJpy;
+        tool.purposes.forEach((p) => covered.add(p));
+      });
+
+      els.simCount.textContent = String(entries.length);
+      els.simTotalText.textContent = `約¥${totalJpy.toLocaleString('ja-JP')} / 月`;
+      els.simUsdNote.textContent = totalUsd > 0 ? `（うちドル建て $${totalUsd} を 1ドル=${USD_TO_JPY}円 で換算）` : entries.length > 0 ? '（完全無料構成！）' : '';
+      els.btnSimDetail.disabled = entries.length === 0;
+
+      if (covered.size === 0) {
+        els.simCapabilities.innerHTML = '<span class="text-[11px] text-slate-400">カードのプランを押すとここに月額合計とカバー範囲が出ます</span>';
+      } else {
+        els.simCapabilities.innerHTML = Array.from(covered).map((pid) =>
+          `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">✓ ${CAPABILITY_LABELS[pid] || pid}</span>`
+        ).join('');
+      }
+    }
+
+    function openDetailModal(toolId) {
+      const tool = AI_TOOLS.find((t) => t.id === toolId);
+      if (!tool) return;
+      els.modalMaker.textContent = `${tool.maker} ｜ ${tool.badge}`;
+      els.modalTitle.textContent = tool.name;
+      els.modalBody.innerHTML = `
+        <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-3.5">
+          <div class="font-bold text-emerald-950 mb-1">⚙️ 水車の回し方（最初の1歩）</div>
+          <p class="text-emerald-900 leading-relaxed">${tool.firstStep}</p>
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="font-bold text-slate-900">プラン別の料金と特徴</h4>
+          <div class="divide-y divide-slate-200 border border-slate-200 rounded-xl overflow-hidden">
+            ${tool.plans.map((p) => `
+              <div class="px-3.5 py-2.5 bg-white flex items-center justify-between gap-2">
+                <div>
+                  <div class="font-bold text-slate-900 text-xs sm:text-sm">${p.name}</div>
+                  <div class="text-xs text-slate-500">${p.note}</div>
+                </div>
+                <div class="font-extrabold text-slate-900 text-xs sm:text-sm shrink-0">${formatPlanPrice(p)}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="rounded-xl bg-amber-50 border border-amber-200 p-3.5">
+          <div class="font-bold text-amber-950 mb-1">⚠️ 課金・商用利用の注意点</div>
+          <p class="text-amber-900 leading-relaxed">${tool.caution}</p>
+        </div>
+
+        <div>
+          <h4 class="font-bold text-slate-900 mb-1.5">情報出典（2026年最新）</h4>
+          <ul class="space-y-1">
+            ${tool.sources.map((s) => `
+              <li>
+                <a href="${s.url}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline font-medium inline-flex items-center gap-1">
+                  <span>🔗 ${s.title}</span>
+                </a>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+      `;
+      els.detailModal.classList.remove('hidden');
+    }
+
+    function openSimModal() {
+      const entries = Object.entries(state.selectedPlans);
+      if (entries.length === 0) return;
+
+      let totalJpy = 0;
+      const itemsHtml = entries.map(([toolId, planId]) => {
+        const tool = AI_TOOLS.find((t) => t.id === toolId);
+        const plan = tool ? tool.plans.find((p) => p.id === planId) : null;
+        if (!tool || !plan) return '';
+        totalJpy += plan.priceJpy;
+        return `
+          <div class="flex items-center justify-between gap-3 py-2.5 border-b border-slate-100">
+            <div>
+              <div class="font-bold text-slate-900">${tool.name} — ${plan.name}</div>
+              <div class="text-xs text-slate-500">${plan.note}</div>
+            </div>
+            <div class="font-extrabold text-slate-900 shrink-0">${formatPlanPrice(plan)}</div>
+          </div>
+        `;
+      }).join('');
+
+      const allKeys = Object.keys(CAPABILITY_LABELS);
+      const covered = new Set();
+      entries.forEach(([toolId]) => {
+        const tool = AI_TOOLS.find((t) => t.id === toolId);
+        if (tool) tool.purposes.forEach((p) => covered.add(p));
+      });
+      const missing = allKeys.filter((k) => !covered.has(k));
+
+      els.simModalBody.innerHTML = `
+        <div>${itemsHtml}</div>
+        <div class="rounded-xl bg-slate-900 text-white p-4 flex items-center justify-between">
+          <span class="text-sm font-bold">合計月額目安</span>
+          <span class="text-xl font-extrabold text-emerald-400">約¥${totalJpy.toLocaleString('ja-JP')} / 月</span>
+        </div>
+        <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5 space-y-2">
+          <div class="font-bold text-slate-900 text-xs">カバーできている領域（${covered.size}/${allKeys.length}）</div>
+          <div class="flex flex-wrap gap-1.5">
+            ${Array.from(covered).map((k) => `<span class="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800">✓ ${CAPABILITY_LABELS[k]}</span>`).join('')}
+          </div>
+          ${missing.length > 0 ? `
+            <div class="pt-2 border-t border-slate-200 text-xs text-slate-600">
+              <span class="font-bold">未カバー：</span>${missing.map((k) => CAPABILITY_LABELS[k]).join('・')}（必要になったら無料枠で補えます）
+            </div>
+          ` : '<div class="pt-2 border-t border-slate-200 text-xs font-bold text-emerald-700">🎉 全ジャンルをカバーできる布陣です！</div>'}
+        </div>
+      `;
+      els.simModal.classList.remove('hidden');
+    }
+
+    function renderAll() {
+      renderPurposeButtons();
+      renderPurposeInsight();
+      renderBudgetButtons();
+      renderToolsGrid();
+      renderSimulator();
+    }
+
+    // Event Listeners
+    els.purposeButtons.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-purpose]');
+      if (!btn) return;
+      state.selectedPurpose = btn.dataset.purpose;
+      renderAll();
+    });
+
+    els.budgetButtons.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-budget]');
+      if (!btn) return;
+      state.selectedBudget = btn.dataset.budget;
+      renderAll();
+    });
+
+    els.searchInput.addEventListener('input', (e) => {
+      state.searchQuery = e.target.value;
+      renderToolsGrid();
+    });
+
+    els.toolsGrid.addEventListener('click', (e) => {
+      const planBtn = e.target.closest('[data-select-plan]');
+      if (planBtn) {
+        const [toolId, planId] = planBtn.dataset.selectPlan.split(':');
+        if (state.selectedPlans[toolId] === planId) {
+          delete state.selectedPlans[toolId];
+          showToast('シミュレーターから外しました');
+        } else {
+          state.selectedPlans[toolId] = planId;
+          showToast('シミュレーターに追加しました');
+        }
+        renderToolsGrid();
+        renderSimulator();
+        return;
+      }
+
+      const detailBtn = e.target.closest('[data-open-detail]');
+      if (detailBtn) {
+        openDetailModal(detailBtn.dataset.openDetail);
+      }
+    });
+
+    function resetFilters() {
+      state.selectedPurpose = 'all';
+      state.selectedBudget = 'all';
+      state.searchQuery = '';
+      els.searchInput.value = '';
+      renderAll();
+    }
+
+    els.btnEmptyReset.addEventListener('click', resetFilters);
+    els.btnResetAll.addEventListener('click', () => {
+      state.selectedPlans = {};
+      resetFilters();
+      showToast('選択をすべてリセットしました');
+    });
+
+    els.btnSimClear.addEventListener('click', () => {
+      state.selectedPlans = {};
+      renderToolsGrid();
+      renderSimulator();
+      showToast('シミュレーターをクリアしました');
+    });
+
+    els.btnSimDetail.addEventListener('click', openSimModal);
+    els.btnCloseModal.addEventListener('click', () => els.detailModal.classList.add('hidden'));
+    els.btnCloseSimModal.addEventListener('click', () => els.simModal.classList.add('hidden'));
+
+    els.detailModal.addEventListener('click', (e) => {
+      if (e.target === els.detailModal) els.detailModal.classList.add('hidden');
+    });
+    els.simModal.addEventListener('click', (e) => {
+      if (e.target === els.simModal) els.simModal.classList.add('hidden');
+    });
+
+    renderAll();
+  </script>
+</body>
+</html>

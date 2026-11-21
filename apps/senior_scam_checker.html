@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>シニア向け なりすまし・振り込み詐欺チェッカー（2026年最新版）</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;600;700;900&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Noto Sans JP', 'Inter', sans-serif;
+      background-color: #f4f6f9;
+      color: #111827;
+    }
+    .font-xl-mode {
+      font-size: 1.18rem;
+      line-height: 1.75;
+    }
+    .font-xl-mode h2 { font-size: 1.65rem; }
+    .font-xl-mode h3 { font-size: 1.38rem; }
+    .font-xl-mode .btn-choice { font-size: 1.25rem; padding: 1.25rem 1.25rem; }
+    .tab-active {
+      background-color: #1e3a8a;
+      color: #ffffff;
+      border-color: #1e3a8a;
+      box-shadow: 0 4px 10px rgba(30, 58, 138, 0.25);
+    }
+    .tab-inactive {
+      background-color: #ffffff;
+      color: #1e3a8a;
+      border-color: #93c5fd;
+    }
+    .btn-choice {
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+    }
+    .btn-choice:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 14px rgba(17, 24, 39, 0.1);
+    }
+    .btn-choice:active {
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-12">
+  <!-- ヘッダー -->
+  <header class="bg-blue-950 text-white shadow-md">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-xl bg-amber-400 text-blue-950 flex items-center justify-center shrink-0 font-black text-2xl shadow">
+          守
+        </div>
+        <div>
+          <p class="text-xs sm:text-sm text-amber-300 font-bold tracking-wide">リ研工業 シニア安心道具（2026年11月版）</p>
+          <h1 class="text-xl sm:text-2xl font-black leading-tight">なりすまし・振り込み詐欺チェッカー</h1>
+        </div>
+      </div>
+
+      <!-- 補助ボタン（文字サイズ・音声） -->
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="btn-font-toggle" type="button" class="px-3.5 py-2 rounded-lg bg-blue-800 hover:bg-blue-700 border border-blue-500 text-sm font-bold text-white cursor-pointer">
+          文字の大きさ：ふつう
+        </button>
+        <button id="btn-speak-toggle" type="button" class="px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 border border-emerald-400 text-sm font-bold text-white cursor-pointer">
+          音声よみあげ：オフ
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="app-root" class="max-w-4xl mx-auto px-4 pt-5 space-y-6">
+    <!-- 用途別ナビゲーション（3つの大きなボタン） -->
+    <nav aria-label="用途別メニュー" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <button id="nav-check" type="button" class="tab-active border-2 rounded-2xl p-4 text-left font-bold cursor-pointer flex items-center gap-3">
+        <span class="text-2xl shrink-0" aria-hidden="true">📞</span>
+        <span>
+          <span class="block text-base sm:text-lg">1. いま来た連絡をしらべる</span>
+          <span class="block text-xs opacity-90 font-normal">3つの質問で詐欺か判定</span>
+        </span>
+      </button>
+      <button id="nav-trends" type="button" class="tab-inactive border-2 rounded-2xl p-4 text-left font-bold cursor-pointer flex items-center gap-3">
+        <span class="text-2xl shrink-0" aria-hidden="true">📢</span>
+        <span>
+          <span class="block text-base sm:text-lg">2. いま流行りの最新手口</span>
+          <span class="block text-xs opacity-80 font-normal">2026年の警察庁まとめ</span>
+        </span>
+      </button>
+      <button id="nav-help" type="button" class="tab-inactive border-2 rounded-2xl p-4 text-left font-bold cursor-pointer flex items-center gap-3">
+        <span class="text-2xl shrink-0" aria-hidden="true">☎️</span>
+        <span>
+          <span class="block text-base sm:text-lg">3. 相談窓口・家族メモ</span>
+          <span class="block text-xs opacity-80 font-normal">困ったときの連絡先</span>
+        </span>
+      </button>
+    </nav>
+
+    <!-- セクション1：詐欺チェック診断 -->
+    <section id="panel-check" class="space-y-5">
+      <!-- 実演・すぐ試せるワンタップ例 -->
+      <div class="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4">
+        <p class="font-bold text-amber-950 text-sm sm:text-base mb-2.5">
+          ▼ よくある「だまし」の例をワンタップで体験できます
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <button id="demo-police" type="button" class="px-3 py-2.5 bg-white hover:bg-amber-100 border-2 border-amber-400 rounded-xl text-left text-sm font-bold text-gray-900 cursor-pointer">
+            例1：「＋1」から警察を名乗る電話
+          </button>
+          <button id="demo-invest" type="button" class="px-3 py-2.5 bg-white hover:bg-amber-100 border-2 border-amber-400 rounded-xl text-left text-sm font-bold text-gray-900 cursor-pointer">
+            例2：有名人名義の投資グループ
+          </button>
+          <button id="demo-refund" type="button" class="px-3 py-2.5 bg-white hover:bg-amber-100 border-2 border-amber-400 rounded-xl text-left text-sm font-bold text-gray-900 cursor-pointer">
+            例3：役所から「お金が戻る」電話
+          </button>
+        </div>
+      </div>
+
+      <!-- 質問カード -->
+      <div id="quiz-container" class="bg-white border-2 border-gray-300 rounded-2xl p-5 sm:p-7 shadow-sm space-y-5">
+        <div class="flex items-center justify-between border-b border-gray-200 pb-3">
+          <span id="quiz-step-badge" class="inline-block px-3 py-1 rounded-full bg-blue-100 text-blue-900 font-bold text-sm">
+            質問 1 / 3
+          </span>
+          <button id="btn-quiz-reset" type="button" class="text-sm font-bold text-blue-800 underline hover:text-blue-600 cursor-pointer">
+            最初からやり直す
+          </button>
+        </div>
+
+        <h2 id="quiz-question" class="text-xl sm:text-2xl font-black text-gray-900">
+          どこから連絡がきましたか？
+        </h2>
+
+        <div id="quiz-options" class="grid grid-cols-1 gap-3">
+          <!-- JSで選択肢を描画 -->
+        </div>
+
+        <div id="quiz-back-wrap" class="hidden pt-2">
+          <button id="btn-quiz-back" type="button" class="px-4 py-2 rounded-xl border-2 border-gray-300 bg-gray-100 hover:bg-gray-200 font-bold text-gray-800 cursor-pointer">
+            ← 1つ前の質問にもどる
+          </button>
+        </div>
+      </div>
+
+      <!-- 診断結果カード（初期非表示） -->
+      <div id="result-container" class="hidden rounded-2xl border-4 p-5 sm:p-7 shadow-md space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4">
+          <div>
+            <span id="result-badge" class="inline-block px-4 py-1.5 rounded-full text-base font-black"></span>
+            <h2 id="result-title" class="text-2xl sm:text-3xl font-black mt-2"></h2>
+          </div>
+          <button id="btn-read-result" type="button" class="px-4 py-3 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-bold text-base shrink-0 cursor-pointer">
+            🔊 この結果を音声できく
+          </button>
+        </div>
+
+        <div class="bg-white bg-opacity-90 rounded-xl p-4 border border-gray-200 space-y-2">
+          <p class="font-bold text-gray-700 text-sm">▼ 当てはまる最新の手口</p>
+          <p id="result-pattern-name" class="text-lg sm:text-xl font-black text-gray-900"></p>
+          <p id="result-summary" class="text-base sm:text-lg text-gray-800 leading-relaxed"></p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-red-50 border-2 border-red-300 rounded-xl p-4">
+            <h3 class="text-lg font-black text-red-900 mb-2">✖ 絶対にしないでください</h3>
+            <ul id="result-donts" class="list-disc pl-5 space-y-1.5 text-base text-red-950 font-semibold"></ul>
+          </div>
+          <div class="bg-emerald-50 border-2 border-emerald-400 rounded-xl p-4">
+            <h3 class="text-lg font-black text-emerald-900 mb-2">◎ 今すぐとるべき行動</h3>
+            <ul id="result-dos" class="list-disc pl-5 space-y-1.5 text-base text-emerald-950 font-semibold"></ul>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+          <a id="result-source-link" href="https://www.npa.go.jp/bureau/safetylife/sos47/" target="_blank" rel="noopener noreferrer" class="text-sm font-bold text-blue-800 underline hover:text-blue-600">
+            公式の注意喚起ページをみる（警察庁）↗
+          </a>
+          <button id="btn-result-again" type="button" class="px-6 py-3 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-black text-base cursor-pointer">
+            別の連絡をもういちど調べる
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- セクション2：2026年いま出回っている最新手口・回覧板 -->
+    <section id="panel-trends" class="hidden space-y-6">
+      <div class="bg-blue-950 text-white rounded-2xl p-5 sm:p-6 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <p class="text-amber-300 font-bold text-sm">警察庁公表データ（令和8年／2026年上半期）</p>
+            <h2 class="text-xl sm:text-2xl font-black">いま実際に被害が急増している2大詐欺</h2>
+          </div>
+          <a href="https://www.npa.go.jp/bureau/safetylife/sos47/new-topics/260731/01.html" target="_blank" rel="noopener noreferrer" class="text-xs sm:text-sm text-blue-200 underline hover:text-white shrink-0">
+            出典：警察庁発表 ↗
+          </a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="bg-blue-900 border border-blue-700 rounded-xl p-4">
+            <p class="text-sm text-blue-200 font-bold">SNS型投資詐欺（半年間の被害額）</p>
+            <p class="text-3xl sm:text-4xl font-black text-amber-300 mt-1">797.9億円</p>
+            <p class="text-sm text-blue-100 mt-1">前年同期比 +444.9億円 ／ 1件平均 <span class="font-bold text-white">1,362.5万円</span></p>
+          </div>
+          <div class="bg-blue-900 border border-blue-700 rounded-xl p-4">
+            <p class="text-sm text-blue-200 font-bold">ニセ警察詐欺（半年間の被害額）</p>
+            <p class="text-3xl sm:text-4xl font-black text-amber-300 mt-1">507.9億円</p>
+            <p class="text-sm text-blue-100 mt-1">前年同期比 +108.9億円 ／ 国際電話や偽サイト悪用が急増</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4つの最新手口カード -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="trends-cards">
+        <!-- JSでカード描画 -->
+      </div>
+    </section>
+
+    <!-- セクション3：相談窓口・家族の合言葉メモ -->
+    <section id="panel-help" class="hidden space-y-6">
+      <div class="bg-white border-2 border-blue-300 rounded-2xl p-5 sm:p-6 space-y-4">
+        <h2 class="text-xl sm:text-2xl font-black text-blue-950">迷ったら、お金を払う前にここへ電話</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 space-y-1">
+            <p class="text-sm font-bold text-blue-800">警察相談専用窓口（全国共通）</p>
+            <p class="text-3xl font-black text-blue-950 tracking-wider">#9110</p>
+            <p class="text-sm text-gray-700">「これ詐欺かも？」と思ったら、110番ではなくまずこちらへ相談できます。</p>
+          </div>
+          <div class="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-4 space-y-1">
+            <p class="text-sm font-bold text-emerald-800">消費者ホットライン（いやや！）</p>
+            <p class="text-3xl font-black text-emerald-950 tracking-wider">188</p>
+            <p class="text-sm text-gray-700">身に覚えのない請求や、投資・契約トラブルの相談窓口につながります。</p>
+          </div>
+        </div>
+        <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p class="font-black text-amber-950 text-base">固定電話の「国際電話」をまるごと止める対策</p>
+            <p class="text-sm text-amber-900">海外と電話する予定がないご家庭は、警察庁案内の「国際電話の利用休止（#みんとめ）」が有効です。</p>
+          </div>
+          <a href="https://www.npa.go.jp/bureau/safetylife/sos47/case/international-phone/" target="_blank" rel="noopener noreferrer" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm shrink-0 text-center">
+            警察庁の案内を見る ↗
+          </a>
+        </div>
+      </div>
+
+      <!-- 家族の合言葉メモ -->
+      <div class="bg-white border-2 border-gray-300 rounded-2xl p-5 sm:p-6 space-y-4">
+        <h2 class="text-xl sm:text-2xl font-black text-gray-900">家族の「合言葉」メモ（ブラウザ内保存）</h2>
+        <p class="text-sm sm:text-base text-gray-700">「急にお金が必要」「電話が変わった」と言われたときは、この合言葉を聞いて確認してください。</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="input-family-word" class="block font-bold text-gray-800 mb-1">家族だけの合言葉</label>
+            <input id="input-family-word" type="text" placeholder="例：実家の犬の名前、好きな和菓子" class="w-full px-4 py-3 rounded-xl border-2 border-gray-300 text-base font-bold focus:border-blue-700 focus:outline-none" />
+          </div>
+          <div>
+            <label for="input-family-tel" class="block font-bold text-gray-800 mb-1">困ったときにかけ直す家族の番号</label>
+            <input id="input-family-tel" type="text" placeholder="例：長男 090-XXXX-XXXX" class="w-full px-4 py-3 rounded-xl border-2 border-gray-300 text-base font-bold focus:border-blue-700 focus:outline-none" />
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <button id="btn-save-memo" type="button" class="px-5 py-3 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-black text-base cursor-pointer">
+            メモを保存する
+          </button>
+          <span id="memo-status" class="text-sm font-bold text-emerald-700"></span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // --- 2026年最新手口データ（すべてツール確認済みの公式情報に基づく） ---
+      const latestTrends = [
+        {
+          tag: 'いま最警戒',
+          tagColor: 'bg-red-600 text-white',
+          title: '① ニセ警察詐欺（国際電話・偽サイト）',
+          phrase: '「あなたの口座が犯罪に使われた」「逮捕される」「警察のサイトで逮捕状を確認して」',
+          truth: '警察が「＋1」「＋44」などの国際電話で連絡したり、サイトやビデオ通話で逮捕状を見せたり、資産保護のためにお金を振り込ませることは絶対にありません。警察署番号（末尾0110）を偽装表示する手口も確認されています。',
+          sourceTitle: '警察庁 SOS47 / 警視庁 / Impress Watch',
+          sourceUrl: 'https://www.gov-online.go.jp/article/202610/entry-11718.html'
+        },
+        {
+          tag: '被害額No.1',
+          tagColor: 'bg-orange-600 text-white',
+          title: '② 有名人・大手企業を名乗るSNS投資詐欺',
+          phrase: '「必ず儲かる投資グループ」「出金するために保証金や税金を振り込んで」',
+          truth: 'SNS広告やLINEグループで儲かっているように見せかけ、出金の段になって「手数料・税金・保証金」名目で何度も振込を要求します。2026年上半期の1件平均被害額は1,362.5万円にのぼります。',
+          sourceTitle: '警察庁 SNS型投資詐欺',
+          sourceUrl: 'https://www.npa.go.jp/bureau/safetylife/sos47/case/sns-romance/investment/'
+        },
+        {
+          tag: 'ATM誘導',
+          tagColor: 'bg-amber-600 text-white',
+          title: '③ 役所・大手を名乗る「還付金詐欺」',
+          phrase: '「医療費・税金が戻ります」「今日が期限なのでATMで手続きしてください」',
+          truth: 'ATMを操作してお金が戻ってくることは絶対にありません。電話で指示されるまま操作すると、自分の口座から犯人の口座へお金を送金させられます。',
+          sourceTitle: '政府広報オンライン',
+          sourceUrl: 'https://www.gov-online.go.jp/article/202610/entry-11721.html'
+        },
+        {
+          tag: '偽SMS・アプリ',
+          tagColor: 'bg-purple-700 text-white',
+          title: '④ 警察・大手銀行を装う偽サイト・偽アプリ誘導',
+          phrase: '「SMSのリンクから警察庁推奨アプリを入れて」「口座確認のためURLを開いて」',
+          truth: '2026年11月現在、本物そっくりの偽警察サイトや、警察庁推奨アプリの偽サイトへSMSで誘導する手口が注意喚起されています。届いたリンクは開かず、公式ページから確認してください。',
+          sourceTitle: 'Impress Watch（2026年11月）',
+          sourceUrl: 'https://internet.watch.impress.co.jp/docs/column/dlis/2157108.html'
+        }
+      ];
+
+      // --- 診断質問定義 ---
+      const questions = [
+        {
+          id: 'channel',
+          text: 'どこから連絡がきましたか？',
+          options: [
+            { value: 'phone_official', label: '📞 電話（「＋」の番号、警察・役所・銀行を名乗る）' },
+            { value: 'sms_web', label: '📱 スマホのショートメール・Web画面（大手企業や警察のURL付き）' },
+            { value: 'sns_invest', label: '💬 SNSやLINEのグループ（有名人や投資の先生を名乗る）' },
+            { value: 'family', label: '🏠 家族や親戚を名乗る電話（「電話番号が変わった」など）' }
+          ]
+        },
+        {
+          id: 'claim',
+          text: '相手は何と言っていますか？',
+          options: [
+            { value: 'arrest', label: '🚨 「口座が犯罪に使われた」「逮捕される」「資産を保護する」' },
+            { value: 'refund', label: '💰 「税金や医療費が戻る」「未払い料金がある」' },
+            { value: 'profit', label: '📈 「絶対に儲かる」「利益を出すために手数料・税金が必要」' },
+            { value: 'urgent', label: '💦 「急にお金が必要になった」「今日中に払わないと大変」' }
+          ]
+        },
+        {
+          id: 'action',
+          text: 'いま、何を求められていますか？',
+          options: [
+            { value: 'transfer', label: '🏦 指定された口座にお金を振り込む・ATMへ行く' },
+            { value: 'video_url', label: '🪪 ビデオ通話やURL先で「逮捕状」「警察手帳」「アプリ」を見る' },
+            { value: 'card_pin', label: '💳 キャッシュカードや暗証番号・現金を家で渡す' },
+            { value: 'unsure', label: '❓ まだ指示はないが、話が怪しくて不安' }
+          ]
+        }
+      ];
+
+      // --- 状態管理 ---
+      let state = {
+        activeTab: 'check',
+        step: 0,
+        answers: {},
+        largeFont: true,
+        autoSpeak: false,
+        lastResultText: ''
+      };
+
+      // --- DOM参照 ---
+      const appRoot = document.getElementById('app-root');
+      const btnFontToggle = document.getElementById('btn-font-toggle');
+      const btnSpeakToggle = document.getElementById('btn-speak-toggle');
+      const navCheck = document.getElementById('nav-check');
+      const navTrends = document.getElementById('nav-trends');
+      const navHelp = document.getElementById('nav-help');
+      const panelCheck = document.getElementById('panel-check');
+      const panelTrends = document.getElementById('panel-trends');
+      const panelHelp = document.getElementById('panel-help');
+
+      const quizContainer = document.getElementById('quiz-container');
+      const quizStepBadge = document.getElementById('quiz-step-badge');
+      const quizQuestion = document.getElementById('quiz-question');
+      const quizOptions = document.getElementById('quiz-options');
+      const quizBackWrap = document.getElementById('quiz-back-wrap');
+      const btnQuizBack = document.getElementById('btn-quiz-back');
+      const btnQuizReset = document.getElementById('btn-quiz-reset');
+
+      const resultContainer = document.getElementById('result-container');
+      const resultBadge = document.getElementById('result-badge');
+      const resultTitle = document.getElementById('result-title');
+      const resultPatternName = document.getElementById('result-pattern-name');
+      const resultSummary = document.getElementById('result-summary');
+      const resultDonts = document.getElementById('result-donts');
+      const resultDos = document.getElementById('result-dos');
+      const resultSourceLink = document.getElementById('result-source-link');
+      const btnReadResult = document.getElementById('btn-read-result');
+      const btnResultAgain = document.getElementById('btn-result-again');
+
+      const trendsCards = document.getElementById('trends-cards');
+      const inputFamilyWord = document.getElementById('input-family-word');
+      const inputFamilyTel = document.getElementById('input-family-tel');
+      const btnSaveMemo = document.getElementById('btn-save-memo');
+      const memoStatus = document.getElementById('memo-status');
+
+      // --- 音声読み上げ ---
+      function speakText(text) {
+        try {
+          if (!('speechSynthesis' in window)) return;
+          window.speechSynthesis.cancel();
+          const utt = new SpeechSynthesisUtterance(text);
+          utt.lang = 'ja-JP';
+          utt.rate = 0.92;
+          window.speechSynthesis.speak(utt);
+        } catch (e) {
+          // 非対応環境では無視
+        }
+      }
+
+      // --- 文字サイズ・音声トグル描画 ---
+      function updateHeaderControls() {
+        if (state.largeFont) {
+          appRoot.classList.add('font-xl-mode');
+          btnFontToggle.textContent = '文字の大きさ：おおきめ';
+        } else {
+          appRoot.classList.remove('font-xl-mode');
+          btnFontToggle.textContent = '文字の大きさ：ふつう';
+        }
+        btnSpeakToggle.textContent = state.autoSpeak ? '音声よみあげ：オン' : '音声よみあげ：オフ';
+      }
+
+      btnFontToggle.addEventListener('click', function () {
+        state.largeFont = !state.largeFont;
+        updateHeaderControls();
+      });
+
+      btnSpeakToggle.addEventListener('click', function () {
+        state.autoSpeak = !state.autoSpeak;
+        updateHeaderControls();
+        if (!state.autoSpeak) {
+          try { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); } catch (e) {}
+        }
+      });
+
+      // --- タブ切り替え ---
+      function switchTab(tabName) {
+        state.activeTab = tabName;
+        const map = {
+          check: { nav: navCheck, panel: panelCheck },
+          trends: { nav: navTrends, panel: panelTrends },
+          help: { nav: navHelp, panel: panelHelp }
+        };
+        Object.keys(map).forEach(function (key) {
+          const item = map[key];
+          if (key === tabName) {
+            item.nav.classList.remove('tab-inactive');
+            item.nav.classList.add('tab-active');
+            item.panel.classList.remove('hidden');
+          } else {
+            item.nav.classList.remove('tab-active');
+            item.nav.classList.add('tab-inactive');
+            item.panel.classList.add('hidden');
+          }
+        });
+      }
+
+      navCheck.addEventListener('click', function () { switchTab('check'); });
+      navTrends.addEventListener('click', function () { switchTab('trends'); });
+      navHelp.addEventListener('click', function () { switchTab('help'); });
+
+      // --- 質問の描画 ---
+      function renderQuiz() {
+        resultContainer.classList.add('hidden');
+        quizContainer.classList.remove('hidden');
+
+        const q = questions[state.step];
+        quizStepBadge.textContent = '質問 ' + (state.step + 1) + ' / ' + questions.length;
+        quizQuestion.textContent = q.text;
+        quizBackWrap.classList.toggle('hidden', state.step === 0);
+
+        quizOptions.innerHTML = '';
+        q.options.forEach(function (opt) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn-choice w-full text-left px-5 py-4 rounded-2xl border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 hover:border-blue-500 font-bold text-gray-900 text-base sm:text-lg cursor-pointer';
+          btn.textContent = opt.label;
+          btn.addEventListener('click', function () {
+            state.answers[q.id] = opt.value;
+            if (state.step < questions.length - 1) {
+              state.step += 1;
+              renderQuiz();
+            } else {
+              evaluateResult();
+            }
+          });
+          quizOptions.appendChild(btn);
+        });
+
+        if (state.autoSpeak) {
+          speakText(q.text);
+        }
+      }
+
+      // --- 診断判定ロジック ---
+      function evaluateResult() {
+        const ch = state.answers.channel;
+        const cl = state.answers.claim;
+        const ac = state.answers.action;
+
+        let res = {
+          level: 'high',
+          badge: '危険度：非常に高い（すぐ中断）',
+          title: 'ただちに電話を切るか、連絡を無視してください！',
+          patternName: '2026年急増中の「なりすまし・特殊詐欺」の特徴に一致します',
+          summary: '相手は公的機関や大手企業・家族のフリをして不安をあおり、お金や個人情報を奪おうとしています。相手が教えてきた番号やURLには絶対に連絡しないでください。',
+          donts: [
+            '言われた通りの口座へお金を振り込まない',
+            '届いたURLを開いたり、アプリを入れない',
+            'キャッシュカードや暗証番号を誰にも教えない・渡さない'
+          ],
+          dos: [
+            '今すぐ電話を切り、自分で調べた公式番号へかけ直す',
+            '警察相談専用窓口「#9110」または家族に相談する'
+          ],
+          sourceLabel: '警察庁 SOS47 特殊詐欺対策ページを見る ↗',
+          sourceUrl: 'https://www.npa.go.jp/bureau/safetylife/sos47/'
+        };
+
+        if (cl === 'arrest' || ac === 'video_url' || (ch === 'phone_official' && cl !== 'refund')) {
+          res.patternName = '【ニセ警察詐欺】警察官や検察官を名乗る最新の手口';
+          res.summary = '2026年に被害額が500億円を超えている「ニセ警察詐欺」です。「＋1」などの国際電話や偽装された警察番号からかけ、「口座が犯罪に使われた」「逮捕される」「サイトで逮捕状を見て」と脅して資産保護名目で振り込ませます。警察が電話やビデオ通話で送金を求めることは絶対にありません。';
+          res.sourceLabel = '政府広報オンライン：ニセ警察詐欺の解説を見る ↗';
+          res.sourceUrl = 'https://www.gov-online.go.jp/article/202610/entry-11718.html';
+        } else if (ch === 'sns_invest' || cl === 'profit') {
+          res.patternName = '【SNS型投資詐欺】有名人や先生を名乗る投資グループ';
+          res.summary = '2026年上半期で被害額797.9億円（1件平均1,362.5万円）と最大の被害が出ている手口です。偽の利益画面を見せて信用させ、出金しようとすると「保証金」「税金」「手数料」を次々と振り込ませます。';
+          res.sourceLabel = '警察庁：SNS型投資詐欺の解説を見る ↗';
+          res.sourceUrl = 'https://www.npa.go.jp/bureau/safetylife/sos47/case/sns-romance/investment/';
+        } else if (cl === 'refund' && ac === 'transfer') {
+          res.patternName = '【還付金詐欺】役所・大手を名乗るATM誘導';
+          res.summary = '「税金や医療費が戻る」と言ってATMへ誘導し、電話口で指示を出しながら犯人の口座へ振り込ませる詐欺です。ATMの操作でお金が戻ってくることは絶対にありません。';
+          res.sourceLabel = '政府広報オンライン：還付金詐欺の解説を見る ↗';
+          res.sourceUrl = 'https://www.gov-online.go.jp/article/202610/entry-11721.html';
+        } else if (ch === 'sms_web') {
+          res.patternName = '【偽サイト・偽SMS詐欺】警察や大手銀行そっくりの偽ページ誘導';
+          res.summary = 'ショートメールで「警察庁推奨アプリ」や「大手銀行・宅配の確認」のURLを送り、偽サイトへ誘導して個人情報や不正送金を狙う手口です。SMSのリンクからは絶対に開かないでください。';
+          res.sourceLabel = 'Impress Watch：偽の警察サイトの注意喚起を見る ↗';
+          res.sourceUrl = 'https://internet.watch.impress.co.jp/docs/column/dlis/2157108.html';
+        } else if (ch === 'family') {
+          res.patternName = '【オレオレ詐欺（家族なりすまし）】電話番号変更・緊急送金';
+          res.summary = '「携帯の番号が変わった」「今日中にお金が必要」と焦らせるのが特徴です。元の電話番号へこちらからかけ直すか、「家族の合言葉」を確認するまで絶対にお金を動かさないでください。';
+        } else if (ac === 'unsure') {
+          res.level = 'medium';
+          res.badge = '危険度：注意（必ず確認を）';
+          res.title = 'お金の話が出る前に、いったん電話・画面を閉じてください';
+          res.summary = 'まだ具体的な指示がなくても、相手が焦らせたり「誰にも言わないで」と口止めする場合は詐欺の可能性が高いです。一人で判断せず家族や「#9110」に確認しましょう。';
+        }
+
+        showResult(res);
+      }
+
+      function showResult(res) {
+        quizContainer.classList.add('hidden');
+        resultContainer.classList.remove('hidden');
+
+        if (res.level === 'high') {
+          resultContainer.className = 'rounded-2xl border-4 border-red-600 bg-red-50 p-5 sm:p-7 shadow-md space-y-5';
+          resultBadge.className = 'inline-block px-4 py-1.5 rounded-full text-base font-black bg-red-600 text-white';
+          resultTitle.className = 'text-2xl sm:text-3xl font-black mt-2 text-red-900';
+        } else {
+          resultContainer.className = 'rounded-2xl border-4 border-amber-500 bg-amber-50 p-5 sm:p-7 shadow-md space-y-5';
+          resultBadge.className = 'inline-block px-4 py-1.5 rounded-full text-base font-black bg-amber-500 text-white';
+          resultTitle.className = 'text-2xl sm:text-3xl font-black mt-2 text-amber-950';
+        }
+
+        resultBadge.textContent = res.badge;
+        resultTitle.textContent = res.title;
+        resultPatternName.textContent = res.patternName;
+        resultSummary.textContent = res.summary;
+
+        resultDonts.innerHTML = '';
+        res.donts.forEach(function (d) {
+          const li = document.createElement('li');
+          li.textContent = d;
+          resultDonts.appendChild(li);
+        });
+
+        resultDos.innerHTML = '';
+        res.dos.forEach(function (d) {
+          const li = document.createElement('li');
+          li.textContent = d;
+          resultDos.appendChild(li);
+        });
+
+        resultSourceLink.textContent = res.sourceLabel;
+        resultSourceLink.href = res.sourceUrl;
+
+        state.lastResultText = res.badge + '。' + res.title + '。' + res.patternName + '。' + res.summary;
+        if (state.autoSpeak) {
+          speakText(state.lastResultText);
+        }
+      }
+
+      btnQuizBack.addEventListener('click', function () {
+        if (state.step > 0) {
+          state.step -= 1;
+          renderQuiz();
+        }
+      });
+
+      function resetQuiz() {
+        state.step = 0;
+        state.answers = {};
+        renderQuiz();
+      }
+
+      btnQuizReset.addEventListener('click', resetQuiz);
+      btnResultAgain.addEventListener('click', resetQuiz);
+      btnReadResult.addEventListener('click', function () {
+        if (state.lastResultText) speakText(state.lastResultText);
+      });
+
+      // --- ワンタップ実例ボタン ---
+      document.getElementById('demo-police').addEventListener('click', function () {
+        state.answers = { channel: 'phone_official', claim: 'arrest', action: 'video_url' };
+        evaluateResult();
+      });
+      document.getElementById('demo-invest').addEventListener('click', function () {
+        state.answers = { channel: 'sns_invest', claim: 'profit', action: 'transfer' };
+        evaluateResult();
+      });
+      document.getElementById('demo-refund').addEventListener('click', function () {
+        state.answers = { channel: 'phone_official', claim: 'refund', action: 'transfer' };
+        evaluateResult();
+      });
+
+      // --- 最新手口カードの描画 ---
+      function renderTrends() {
+        trendsCards.innerHTML = '';
+        latestTrends.forEach(function (t) {
+          const card = document.createElement('article');
+          card.className = 'bg-white border-2 border-gray-300 rounded-2xl p-5 flex flex-col justify-between gap-4 shadow-sm';
+          card.innerHTML = `
+            <div class="space-y-3">
+              <span class="inline-block px-3 py-1 rounded-full text-xs font-black ${t.tagColor}">${t.tag}</span>
+              <h3 class="text-lg sm:text-xl font-black text-gray-900">${t.title}</h3>
+              <div class="bg-red-50 border border-red-200 rounded-xl p-3">
+                <p class="text-xs font-bold text-red-800">▼ 犯人の決まり文句</p>
+                <p class="text-sm sm:text-base font-bold text-red-950 mt-0.5">${t.phrase}</p>
+              </div>
+              <p class="text-sm sm:text-base text-gray-800 leading-relaxed">${t.truth}</p>
+            </div>
+            <div class="pt-2 border-t border-gray-200">
+              <a href="${t.sourceUrl}" target="_blank" rel="noopener noreferrer" class="text-sm font-bold text-blue-800 underline hover:text-blue-600">
+                出典：${t.sourceTitle} ↗
+              </a>
+            </div>
+          `;
+          trendsCards.appendChild(card);
+        });
+      }
+
+      // --- 家族メモ（localStorage安全利用） ---
+      function loadMemo() {
+        try {
+          const savedWord = localStorage.getItem('riken_family_word');
+          const savedTel = localStorage.getItem('riken_family_tel');
+          if (savedWord) inputFamilyWord.value = savedWord;
+          if (savedTel) inputFamilyTel.value = savedTel;
+        } catch (e) {}
+      }
+
+      btnSaveMemo.addEventListener('click', function () {
+        try {
+          localStorage.setItem('riken_family_word', inputFamilyWord.value.trim());
+          localStorage.setItem('riken_family_tel', inputFamilyTel.value.trim());
+          memoStatus.textContent = '✓ 保存しました';
+        } catch (e) {
+          memoStatus.textContent = '✓ この画面に表示しました（一時保存）';
+        }
+        setTimeout(function () { memoStatus.textContent = ''; }, 3000);
+      });
+
+      // --- 初期化 ---
+      updateHeaderControls();
+      renderQuiz();
+      renderTrends();
+      loadMemo();
+    })();
+  </script>
+</body>
+</html>

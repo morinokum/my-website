@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>ゴーストミッション - ドローン潜入作戦</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #060913;
+      color: #e2e8f0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    #app {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    #hud {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgba(6, 9, 19, 0.85) 0%, rgba(6, 9, 19, 0) 100%);
+    }
+    .hud-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: auto;
+    }
+    .badge {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #38bdf8;
+      backdrop-filter: blur(6px);
+    }
+    .badge-warn {
+      border-color: rgba(251, 191, 36, 0.5);
+      color: #fbbf24;
+      display: none;
+    }
+    .icon-btn {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      color: #e2e8f0;
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+    }
+    .icon-btn:active {
+      transform: scale(0.96);
+    }
+    #canvas-wrap {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      height: 100%;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+    #controls-hint {
+      position: absolute;
+      bottom: 10px;
+      left: 12px;
+      right: 12px;
+      z-index: 8;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      pointer-events: none;
+      opacity: 0.72;
+    }
+    .hint-pill {
+      flex: 1;
+      text-align: center;
+      padding: 6px 8px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      font-size: 11px;
+      color: #cbd5e1;
+    }
+    #overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(6, 9, 19, 0.78);
+      backdrop-filter: blur(5px);
+    }
+    #overlay.hidden {
+      display: none;
+    }
+    .card {
+      width: 100%;
+      max-width: 380px;
+      background: #0f172a;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 20px;
+      padding: 24px 20px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    }
+    .card-kicker {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #38bdf8;
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+    .card h1 {
+      margin: 0 0 10px;
+      font-size: 24px;
+      color: #f8fafc;
+    }
+    .card p {
+      margin: 0 0 18px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #94a3b8;
+    }
+    .stat-row {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .stat-box {
+      flex: 1;
+      background: rgba(30, 41, 59, 0.8);
+      border-radius: 12px;
+      padding: 10px 8px;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .stat-val {
+      font-size: 16px;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-top: 2px;
+    }
+    .primary-btn {
+      width: 100%;
+      padding: 13px 18px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #0ea5e9, #2563eb);
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+    }
+    .primary-btn:active {
+      transform: scale(0.98);
+    }
+    .secondary-btn {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px 16px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      border-radius: 12px;
+      background: transparent;
+      color: #cbd5e1;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="hud">
+      <div class="hud-group">
+        <div class="badge" id="stage-badge">STAGE 1 / 10F</div>
+        <div class="badge" id="fuel-badge">FUEL 100%</div>
+        <div class="badge badge-warn" id="wind-badge">乱気流</div>
+      </div>
+      <div class="hud-group">
+        <button class="icon-btn" id="hover-btn" type="button">ホバー: ON</button>
+        <button class="icon-btn" id="sound-btn" type="button">🔊 ON</button>
+        <button class="icon-btn" id="reset-btn" type="button">やり直す</button>
+      </div>
+    </div>
+
+    <div id="canvas-wrap">
+      <canvas id="game-canvas"></canvas>
+      <div id="controls-hint">
+        <div class="hint-pill">◀ 左タップ：左上へ</div>
+        <button class="icon-btn" id="down-btn" type="button" style="pointer-events:auto; padding:7px 16px; border-color:rgba(56,189,248,0.45); background:rgba(15,23,42,0.85);">▼ 下降</button>
+        <div class="hint-pill">▶ 右タップ：右上へ</div>
+      </div>
+    </div>
+
+    <div id="overlay">
+      <div class="card">
+        <div class="card-kicker" id="card-kicker">STEALTH DRONE ACTION</div>
+        <h1 id="card-title">ゴーストミッション</h1>
+        <p id="card-desc">
+          ドローンをタップで操縦し、ビルの光る目標フロアへ潜入して機密データを奪取しよう。1面は10階建て・無風、面が進むと乱気流が発生します。
+        </p>
+        <div class="stat-row" id="card-stats">
+          <div class="stat-box">
+            <div class="stat-label">現在の面</div>
+            <div class="stat-val" id="stat-stage">STAGE 1</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">ビル規模</div>
+            <div class="stat-val" id="stat-floors">10階建て</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">気象状況</div>
+            <div class="stat-val" id="stat-wind">無風</div>
+          </div>
+        </div>
+        <button class="primary-btn" id="action-btn" type="button">ミッション開始</button>
+        <button class="secondary-btn" id="restart-all-btn" type="button" style="display:none;">STAGE 1 から遊ぶ</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const canvas = document.getElementById('game-canvas');
+      const ctx = canvas.getContext('2d');
+      const wrap = document.getElementById('canvas-wrap');
+
+      const stageBadge = document.getElementById('stage-badge');
+      const fuelBadge = document.getElementById('fuel-badge');
+      const windBadge = document.getElementById('wind-badge');
+      const downBtn = document.getElementById('down-btn');
+      const hoverBtn = document.getElementById('hover-btn');
+      const soundBtn = document.getElementById('sound-btn');
+      const resetBtn = document.getElementById('reset-btn');
+      const overlay = document.getElementById('overlay');
+      const cardKicker = document.getElementById('card-kicker');
+      const cardTitle = document.getElementById('card-title');
+      const cardDesc = document.getElementById('card-desc');
+      const statStage = document.getElementById('stat-stage');
+      const statFloors = document.getElementById('stat-floors');
+      const statWind = document.getElementById('stat-wind');
+      const actionBtn = document.getElementById('action-btn');
+      const restartAllBtn = document.getElementById('restart-all-btn');
+
+      let width = 360;
+      let height = 640;
+      let dpr = 1;
+
+      // Audio synthesizer
+      let audioCtx = null;
+      let soundEnabled = true;
+
+      function ensureAudio() {
+        if (!soundEnabled) return null;
+        if (!audioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) {
+            audioCtx = new AudioContextClass();
+          }
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume().catch(function () {});
+        }
+        return audioCtx;
+      }
+
+      function playTone(freq, duration, type, gainVal, slideTo) {
+        const ac = ensureAudio();
+        if (!ac) return;
+        const now = ac.currentTime;
+        const osc = ac.createOscillator();
+        const gain = ac.createGain();
+        osc.type = type || 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+        if (slideTo) {
+          osc.frequency.exponentialRampToValueAtTime(slideTo, now + duration);
+        }
+        gain.gain.setValueAtTime(gainVal || 0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        osc.connect(gain);
+        gain.connect(ac.destination);
+        osc.start(now);
+        osc.stop(now + duration);
+      }
+
+      function playThrustSound() {
+        playTone(210, 0.09, 'triangle', 0.06, 360);
+      }
+      function playClearSound() {
+        playTone(523.25, 0.12, 'triangle', 0.1);
+        setTimeout(function () { playTone(659.25, 0.12, 'triangle', 0.1); }, 90);
+        setTimeout(function () { playTone(783.99, 0.25, 'triangle', 0.12); }, 180);
+      }
+      function playCrashSound() {
+        playTone(140, 0.28, 'sawtooth', 0.12, 45);
+      }
+      function playWindAlertSound() {
+        playTone(440, 0.12, 'sine', 0.05, 580);
+      }
+
+      // Game State
+      let state = 'title'; // 'title' | 'playing' | 'clear' | 'gameover'
+      let stage = 1;
+      let animId = null;
+      let lastTime = 0;
+      let hoverEnabled = true;
+
+      // Input state
+      const keys = { left: false, right: false, up: false, down: false };
+      let downBtnHeld = false;
+      let activePointerDir = 0; // -1 left, 0 center, 1 right
+      let pointerDown = false;
+
+      // Stage config
+      function getStageConfig(s) {
+        const floors = Math.min(24, 10 + (s - 1) * 2);
+        const hasTurbulence = s >= 2;
+        const windPower = s === 1 ? 0 : Math.min(220, 65 + (s - 2) * 30);
+        const targetFloor = Math.max(4, Math.floor(floors * 0.65));
+        const hasLedges = s >= 3;
+        const enemyCount = Math.floor(s / 10);
+        return {
+          floors: floors,
+          hasTurbulence: hasTurbulence,
+          windPower: windPower,
+          targetFloor: targetFloor,
+          hasLedges: hasLedges,
+          enemyCount: enemyCount
+        };
+      }
+
+      // World objects
+      const drone = {
+        x: 60,
+        y: 300,
+        vx: 0,
+        vy: 0,
+        r: 13,
+        angle: 0,
+        thrustGlow: 0
+      };
+
+      let building = {
+        x: 220,
+        w: 110,
+        topY: 120,
+        bottomY: 580,
+        floors: 10,
+        floorH: 36,
+        targetFloor: 7,
+        targetY: 220,
+        targetH: 34,
+        ledges: []
+      };
+
+      let turbulence = {
+        active: false,
+        warning: false,
+        timer: 0,
+        vx: 0,
+        vy: 0,
+        label: ''
+      };
+
+      let enemyDrones = [];
+      let invulnTimer = 0;
+      let particles = [];
+      let windParticles = [];
+      let stars = [];
+      let stealProgress = 0; // 0 to 100
+      let fuel = 100; // 0 to 100
+
+      function initStars() {
+        stars = [];
+        for (let i = 0; i < 45; i++) {
+          stars.push({
+            x: Math.random() * width,
+            y: Math.random() * height * 0.8,
+            r: Math.random() * 1.5 + 0.5,
+            a: Math.random() * 0.6 + 0.2
+          });
+        }
+      }
+
+      function setupStage(stageNum) {
+        stage = stageNum;
+        const cfg = getStageConfig(stage);
+
+        const groundY = height - 44;
+        const maxBuildingH = Math.min(height - 130, cfg.floors * 30);
+        const floorH = maxBuildingH / cfg.floors;
+
+        const bWidth = Math.max(96, Math.min(145, width * 0.3));
+        const bX = width - bWidth - Math.max(18, width * 0.06);
+
+        building = {
+          x: bX,
+          w: bWidth,
+          topY: groundY - maxBuildingH,
+          bottomY: groundY,
+          floors: cfg.floors,
+          floorH: floorH,
+          targetFloor: cfg.targetFloor,
+          targetY: groundY - cfg.targetFloor * floorH,
+          targetH: Math.max(28, floorH * 1.15),
+          ledges: []
+        };
+
+        if (cfg.hasLedges) {
+          const ledgeCount = Math.min(4, stage - 1);
+          for (let i = 0; i < ledgeCount; i++) {
+            const lf = Math.floor(((i + 1) / (ledgeCount + 1)) * cfg.floors);
+            if ((lf < cfg.targetFloor - 2 || lf > cfg.targetFloor + 1) && lf >= 2) {
+              building.ledges.push({
+                x: building.x - (18 + (i % 2) * 14),
+                y: groundY - lf * floorH,
+                w: 18 + (i % 2) * 14,
+                h: 10
+              });
+            }
+          }
+        }
+
+        drone.x = Math.max(48, width * 0.18);
+        drone.y = groundY - 60;
+        drone.vx = 0;
+        drone.vy = 0;
+        drone.angle = 0;
+        drone.thrustGlow = 0;
+
+        stealProgress = 0;
+        fuel = 100;
+        invulnTimer = 0;
+        enemyDrones = [];
+        for (let i = 0; i < cfg.enemyCount; i++) {
+          const laneX = Math.max(100, building.x - 55 - (i % 3) * 42);
+          const minY = building.topY + 20;
+          const maxY = groundY - 40;
+          enemyDrones.push({
+            x: laneX,
+            baseX: laneX,
+            y: minY + ((i + 1) / (cfg.enemyCount + 1)) * (maxY - minY),
+            baseY: minY + ((i + 1) / (cfg.enemyCount + 1)) * (maxY - minY),
+            r: 13,
+            speed: 1.5 + i * 0.35,
+            phase: i * 1.7,
+            ampY: Math.min(90, (maxY - minY) * 0.35),
+            ampX: 22
+          });
+        }
+        particles = [];
+        windParticles = [];
+        fuelBadge.textContent = 'FUEL 100%';
+        fuelBadge.style.color = '#38bdf8';
+        fuelBadge.style.borderColor = 'rgba(56, 189, 248, 0.35)';
+
+        turbulence = {
+          active: false,
+          warning: false,
+          timer: cfg.hasTurbulence ? 2.2 : 999,
+          vx: 0,
+          vy: 0,
+          label: ''
+        };
+
+        stageBadge.textContent = 'STAGE ' + stage + ' / ' + cfg.floors + 'F' + (cfg.enemyCount > 0 ? ' / 敵' + cfg.enemyCount : '');
+        if (cfg.hasTurbulence) {
+          windBadge.style.display = 'inline-block';
+          windBadge.textContent = '乱気流エリア';
+        } else {
+          windBadge.style.display = 'none';
+        }
+      }
+
+      function showModal(mode) {
+        state = mode;
+        const cfg = getStageConfig(stage);
+        statStage.textContent = 'STAGE ' + stage;
+        statFloors.textContent = cfg.floors + '階建て';
+        statWind.textContent = (cfg.hasTurbulence ? '乱気流' : '無風') + (cfg.enemyCount > 0 ? '・敵' + cfg.enemyCount + '機' : '');
+
+        if (mode === 'title') {
+          cardKicker.textContent = 'STEALTH DRONE ACTION';
+          cardTitle.textContent = 'ゴーストミッション';
+          cardDesc.textContent = 'ドローンをタップで操縦し、燃料が切れる前にビルの光る目標フロアへ潜入しよう。ビルに当たっても壊れませんが、乱気流に逆らうと燃料を多く消費します。';
+          actionBtn.textContent = 'ミッション開始';
+          restartAllBtn.style.display = 'none';
+        } else if (mode === 'clear') {
+          cardKicker.textContent = 'MISSION ACCOMPLISHED';
+          cardTitle.textContent = 'STAGE ' + stage + ' クリア！';
+          const nextCfg = getStageConfig(stage + 1);
+          cardDesc.textContent = '目標フロアへの潜入とデータ奪取に成功！次は ' + nextCfg.floors + '階建てのビル（乱気流あり）です。';
+          statStage.textContent = 'STAGE ' + (stage + 1);
+          statFloors.textContent = nextCfg.floors + '階建て';
+          statWind.textContent = (nextCfg.hasTurbulence ? '乱気流' : '無風') + (nextCfg.enemyCount > 0 ? '・敵' + nextCfg.enemyCount + '機' : '');
+          actionBtn.textContent = '次の面へ（STAGE ' + (stage + 1) + '）';
+          restartAllBtn.style.display = 'none';
+        } else if (mode === 'gameover') {
+          cardKicker.textContent = 'FUEL EMPTY';
+          cardTitle.textContent = '燃料切れ…';
+          cardDesc.textContent = '目標フロアへの潜入前にバッテリーが尽きました。無駄な噴射を抑えて最短ルートを狙おう！';
+          actionBtn.textContent = 'STAGE ' + stage + ' をリトライ';
+          restartAllBtn.style.display = stage > 1 ? 'block' : 'none';
+        }
+        overlay.classList.remove('hidden');
+      }
+
+      function hideModal() {
+        overlay.classList.add('hidden');
+      }
+
+      function startThrust(dir) {
+        if (state !== 'playing' || fuel <= 0) return;
+        fuel = Math.max(0, fuel - 1.2);
+        drone.vy = Math.max(drone.vy - 175, -240);
+        if (dir === -1) {
+          drone.vx = Math.max(drone.vx - 95, -180);
+        } else if (dir === 1) {
+          drone.vx = Math.min(drone.vx + 95, 180);
+        } else {
+          drone.vx += 24;
+        }
+        drone.thrustGlow = 1;
+        playThrustSound();
+        for (let i = 0; i < 4; i++) {
+          particles.push({
+            x: drone.x + (Math.random() - 0.5) * 10,
+            y: drone.y + 8,
+            vx: (Math.random() - 0.5) * 40,
+            vy: 60 + Math.random() * 60,
+            life: 0.35,
+            maxLife: 0.35,
+            color: '#38bdf8'
+          });
+        }
+      }
+
+      function spawnCrashParticles() {
+        for (let i = 0; i < 18; i++) {
+          const ang = Math.random() * Math.PI * 2;
+          const spd = 40 + Math.random() * 140;
+          particles.push({
+            x: drone.x,
+            y: drone.y,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
+            life: 0.6,
+            maxLife: 0.6,
+            color: i % 2 === 0 ? '#f97316' : '#facc15'
+          });
+        }
+      }
+
+      function pickTurbulence() {
+        const cfg = getStageConfig(stage);
+        const modes = [
+          { vx: -cfg.windPower, vy: 0, label: '◀ 強い向かい風' },
+          { vx: 0, vy: -cfg.windPower * 0.75, label: '▲ 上昇気流' },
+          { vx: 0, vy: cfg.windPower * 0.75, label: '▼ 下降気流' },
+          { vx: -cfg.windPower * 0.7, vy: -cfg.windPower * 0.5, label: '↖ 斜め乱気流' }
+        ];
+        return modes[Math.floor(Math.random() * modes.length)];
+      }
+
+      function update(dt) {
+        if (state !== 'playing') return;
+
+        const cfg = getStageConfig(stage);
+        const groundY = building.bottomY;
+
+        // Continuous key / hold thrust
+        if (keys.up || pointerDown) {
+          const holdDir = keys.left ? -1 : keys.right ? 1 : activePointerDir;
+          drone.vy -= 420 * dt;
+          if (holdDir === -1) drone.vx -= 220 * dt;
+          if (holdDir === 1) drone.vx += 220 * dt;
+          drone.thrustGlow = Math.min(1, drone.thrustGlow + dt * 5);
+        } else {
+          drone.thrustGlow = Math.max(0, drone.thrustGlow - dt * 4);
+        }
+
+        if (keys.left && !keys.up && !pointerDown) drone.vx -= 240 * dt;
+        if (keys.right && !keys.up && !pointerDown) drone.vx += 240 * dt;
+
+        // Gravity & hover control (with downward descent)
+        const isDescending = keys.down || downBtnHeld;
+        const isThrusting = keys.up || pointerDown || isDescending;
+        if (isDescending) {
+          drone.vy += 380 * dt;
+        } else if (hoverEnabled && !(keys.up || pointerDown)) {
+          // Auto-hover: damp vertical velocity to hold current altitude
+          drone.vy *= Math.pow(0.015, dt);
+          if (Math.abs(drone.vy) < 4) drone.vy = 0;
+        } else if (!(keys.up || pointerDown)) {
+          drone.vy += 290 * dt;
+        }
+        drone.vx *= Math.pow(0.45, dt);
+        drone.vy = Math.max(-280, Math.min(300, drone.vy));
+        drone.vx = Math.max(-210, Math.min(210, drone.vx));
+
+        // Turbulence cycle (Stage 2+)
+        if (cfg.hasTurbulence) {
+          turbulence.timer -= dt;
+          if (!turbulence.warning && !turbulence.active && turbulence.timer <= 0) {
+            const chosen = pickTurbulence();
+            turbulence.vx = chosen.vx;
+            turbulence.vy = chosen.vy;
+            turbulence.label = chosen.label;
+            turbulence.warning = true;
+            turbulence.timer = 1.1;
+            windBadge.textContent = '予告: ' + turbulence.label;
+            playWindAlertSound();
+          } else if (turbulence.warning && turbulence.timer <= 0) {
+            turbulence.warning = false;
+            turbulence.active = true;
+            turbulence.timer = 2.6;
+            windBadge.textContent = '発生中: ' + turbulence.label;
+          } else if (turbulence.active && turbulence.timer <= 0) {
+            turbulence.active = false;
+            turbulence.timer = 2.0;
+            windBadge.textContent = '乱気流エリア';
+          }
+
+          if (turbulence.active) {
+            drone.vx += turbulence.vx * dt;
+            drone.vy += turbulence.vy * dt;
+            if (Math.random() < 0.45) {
+              windParticles.push({
+                x: turbulence.vx < 0 ? width + 10 : Math.random() * width,
+                y: Math.random() * groundY,
+                vx: turbulence.vx * 1.8 || (Math.random() - 0.5) * 40,
+                vy: turbulence.vy * 1.8 || (Math.random() - 0.5) * 20,
+                life: 1.1
+              });
+            }
+          }
+        }
+
+        drone.x += drone.vx * dt;
+        drone.y += drone.vy * dt;
+        drone.angle = Math.max(-0.35, Math.min(0.35, drone.vx * 0.002));
+
+        if (invulnTimer > 0) invulnTimer = Math.max(0, invulnTimer - dt);
+
+        // Update enemy patrol drones
+        for (let i = 0; i < enemyDrones.length; i++) {
+          const ed = enemyDrones[i];
+          ed.phase += ed.speed * dt;
+          ed.y = ed.baseY + Math.sin(ed.phase) * ed.ampY;
+          ed.x = ed.baseX + Math.cos(ed.phase * 0.7) * ed.ampX;
+
+          const dx = drone.x - ed.x;
+          const dy = drone.y - ed.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < drone.r + ed.r && invulnTimer <= 0) {
+            invulnTimer = 1.0;
+            fuel = Math.max(0, fuel - 15);
+            const nx = dist > 0 ? dx / dist : -1;
+            const ny = dist > 0 ? dy / dist : 0;
+            drone.vx = nx * 180;
+            drone.vy = ny * 180;
+            playCrashSound();
+            for (let k = 0; k < 10; k++) {
+              const ang = Math.random() * Math.PI * 2;
+              particles.push({
+                x: drone.x,
+                y: drone.y,
+                vx: Math.cos(ang) * 95,
+                vy: Math.sin(ang) * 95,
+                life: 0.4,
+                maxLife: 0.4,
+                color: '#ef4444'
+              });
+            }
+          }
+        }
+
+        // Fuel consumption
+        const fuelBurnRate = isThrusting ? 8.5 : (hoverEnabled ? 3.2 : 1.4);
+        fuel = Math.max(0, fuel - fuelBurnRate * dt);
+        const fuelPct = Math.ceil(fuel);
+        fuelBadge.textContent = 'FUEL ' + fuelPct + '%';
+        if (fuelPct <= 25) {
+          fuelBadge.style.color = '#f87171';
+          fuelBadge.style.borderColor = 'rgba(248, 113, 113, 0.6)';
+        } else if (fuelPct <= 50) {
+          fuelBadge.style.color = '#fbbf24';
+          fuelBadge.style.borderColor = 'rgba(251, 191, 36, 0.5)';
+        } else {
+          fuelBadge.style.color = '#38bdf8';
+          fuelBadge.style.borderColor = 'rgba(56, 189, 248, 0.35)';
+        }
+
+        if (fuel <= 0) {
+          spawnCrashParticles();
+          playCrashSound();
+          showModal('gameover');
+          return;
+        }
+
+        // Screen bounds
+        if (drone.x < drone.r + 6) {
+          drone.x = drone.r + 6;
+          drone.vx = 0;
+        }
+        if (drone.x > width - drone.r - 6) {
+          drone.x = width - drone.r - 6;
+          drone.vx = 0;
+        }
+        if (drone.y < drone.r + 44) {
+          drone.y = drone.r + 44;
+          drone.vy = 0;
+        }
+
+        // Soft ground landing (no crash)
+        if (drone.y + drone.r >= groundY) {
+          drone.y = groundY - drone.r;
+          if (drone.vy > 0) drone.vy = 0;
+        }
+
+        // Soft ledge obstacle pushback (blocks path without destroying drone)
+        for (let i = 0; i < building.ledges.length; i++) {
+          const l = building.ledges[i];
+          if (
+            drone.x + drone.r > l.x &&
+            drone.x - drone.r < l.x + l.w &&
+            drone.y + drone.r > l.y &&
+            drone.y - drone.r < l.y + l.h
+          ) {
+            const overlapLeft = (drone.x + drone.r) - l.x;
+            const overlapTop = (drone.y + drone.r) - l.y;
+            const overlapBottom = (l.y + l.h) - (drone.y - drone.r);
+            if (overlapLeft < overlapTop && overlapLeft < overlapBottom) {
+              drone.x = l.x - drone.r;
+              drone.vx = Math.min(0, drone.vx);
+            } else if (overlapTop < overlapBottom) {
+              drone.y = l.y - drone.r;
+              drone.vy = Math.min(0, drone.vy);
+            } else {
+              drone.y = l.y + l.h + drone.r;
+              drone.vy = Math.max(0, drone.vy);
+            }
+          }
+        }
+
+        // Target infiltration zone (2 floors tall on left facade of building)
+        const targetZoneTop = building.bottomY - building.targetFloor * building.floorH;
+        const targetZoneBottom = building.bottomY - (building.targetFloor - 2) * building.floorH;
+        const inTargetY = drone.y + drone.r * 0.5 > targetZoneTop && drone.y - drone.r * 0.5 < targetZoneBottom;
+        const nearTargetX = drone.x + drone.r >= building.x - 28 && drone.x - drone.r <= building.x + 32;
+
+        if (inTargetY && nearTargetX) {
+          stealProgress = Math.min(100, stealProgress + dt * 85);
+          if (stealProgress >= 100) {
+            playClearSound();
+            showModal('clear');
+            return;
+          }
+        } else {
+          stealProgress = Math.max(0, stealProgress - dt * 12);
+        }
+
+        // Soft building wall pushback (no crash)
+        if (drone.x + drone.r > building.x && drone.y + drone.r > building.topY) {
+          if (!inTargetY) {
+            drone.x = building.x - drone.r;
+            if (drone.vx > 0) drone.vx = 0;
+          } else {
+            drone.x = Math.min(drone.x, building.x + 12);
+          }
+        }
+
+        // Update particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.life -= dt;
+          if (p.life <= 0) particles.splice(i, 1);
+        }
+        for (let i = windParticles.length - 1; i >= 0; i--) {
+          const wp = windParticles[i];
+          wp.x += wp.vx * dt;
+          wp.y += wp.vy * dt;
+          wp.life -= dt;
+          if (wp.life <= 0) windParticles.splice(i, 1);
+        }
+      }
+
+      function draw() {
+        // Sky gradient based on stage
+        const grad = ctx.createLinearGradient(0, 0, 0, height);
+        if (stage === 1) {
+          grad.addColorStop(0, '#0b132b');
+          grad.addColorStop(1, '#1c2541');
+        } else if (stage === 2) {
+          grad.addColorStop(0, '#1a1423');
+          grad.addColorStop(1, '#3d2645');
+        } else {
+          grad.addColorStop(0, '#050814');
+          grad.addColorStop(1, '#0f172a');
+        }
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, width, height);
+
+        // Stars
+        for (let i = 0; i < stars.length; i++) {
+          const s = stars[i];
+          ctx.fillStyle = 'rgba(226, 232, 240, ' + s.a + ')';
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Wind warning banner in canvas
+        if (turbulence.warning) {
+          ctx.fillStyle = 'rgba(251, 191, 36, 0.14)';
+          ctx.fillRect(0, 56, width, 34);
+          ctx.fillStyle = '#fbbf24';
+          ctx.font = 'bold 13px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('⚠ 乱気流接近: ' + turbulence.label, width / 2, 78);
+        }
+
+        // Wind particles
+        ctx.strokeStyle = 'rgba(125, 211, 252, 0.55)';
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < windParticles.length; i++) {
+          const wp = windParticles[i];
+          ctx.beginPath();
+          ctx.moveTo(wp.x, wp.y);
+          ctx.lineTo(wp.x - wp.vx * 0.06, wp.y - wp.vy * 0.06);
+          ctx.stroke();
+        }
+
+        // Ground
+        ctx.fillStyle = '#090d16';
+        ctx.fillRect(0, building.bottomY, width, height - building.bottomY);
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, building.bottomY);
+        ctx.lineTo(width, building.bottomY);
+        ctx.stroke();
+
+        // Building body
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(building.x, building.topY, building.w, building.bottomY - building.topY);
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(building.x, building.topY, building.w, building.bottomY - building.topY);
+
+        // Building antenna on roof
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(building.x + building.w * 0.5, building.topY);
+        ctx.lineTo(building.x + building.w * 0.5, building.topY - 24);
+        ctx.stroke();
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(building.x + building.w * 0.5, building.topY - 26, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Windows per floor
+        const cols = 3;
+        const winW = (building.w - 24) / cols;
+        const winH = Math.max(8, building.floorH * 0.52);
+
+        for (let f = 1; f <= building.floors; f++) {
+          const fy = building.bottomY - f * building.floorH;
+          const isTarget = f === building.targetFloor || f === building.targetFloor - 1;
+
+          for (let c = 0; c < cols; c++) {
+            const wx = building.x + 8 + c * (winW + 4);
+            const wy = fy + (building.floorH - winH) * 0.5;
+            if (isTarget) {
+              ctx.fillStyle = '#22d3ee';
+              ctx.fillRect(wx, wy, winW, winH);
+            } else {
+              ctx.fillStyle = (f + c) % 3 === 0 ? 'rgba(250, 204, 21, 0.35)' : '#0f172a';
+              ctx.fillRect(wx, wy, winW, winH);
+            }
+          }
+        }
+
+        // Draw 2-block glowing target entry zone
+        const tzTop = building.bottomY - building.targetFloor * building.floorH;
+        const tzH = building.floorH * 2;
+        ctx.fillStyle = 'rgba(34, 211, 238, 0.22)';
+        ctx.fillRect(building.x - 28, tzTop, 36, tzH);
+        ctx.strokeStyle = '#22d3ee';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(building.x - 28, tzTop, 36, tzH);
+
+        ctx.fillStyle = '#22d3ee';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText('TARGET ' + (building.targetFloor - 1) + '-' + building.targetFloor + 'F ▶', building.x - 34, tzTop + tzH * 0.54);
+
+        // Ledges
+        ctx.fillStyle = '#64748b';
+        for (let i = 0; i < building.ledges.length; i++) {
+          const l = building.ledges[i];
+          ctx.fillRect(l.x, l.y, l.w, l.h);
+        }
+
+        // Particles
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        // Enemy patrol drones
+        for (let i = 0; i < enemyDrones.length; i++) {
+          const ed = enemyDrones[i];
+          ctx.save();
+          ctx.translate(ed.x, ed.y);
+
+          // Red alert aura
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.18)';
+          ctx.beginPath();
+          ctx.arc(0, 0, ed.r + 6, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Rotors
+          ctx.strokeStyle = '#f87171';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(-16, -6);
+          ctx.lineTo(-6, -6);
+          ctx.moveTo(6, -6);
+          ctx.lineTo(16, -6);
+          ctx.stroke();
+
+          // Body
+          ctx.fillStyle = '#991b1b';
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.roundRect(-11, -5, 22, 11, 5);
+          ctx.fill();
+          ctx.stroke();
+
+          // Red scanner eye
+          ctx.fillStyle = '#fca5a5';
+          ctx.beginPath();
+          ctx.arc(-4, 0, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Drone (blink during invulnerability)
+        if (invulnTimer <= 0 || Math.floor(invulnTimer * 16) % 2 === 0) {
+        ctx.save();
+        ctx.translate(drone.x, drone.y);
+        ctx.rotate(drone.angle);
+
+        // Hover stabilizer ring
+        if (hoverEnabled && state === 'playing' && !keys.up && !pointerDown) {
+          ctx.strokeStyle = 'rgba(52, 211, 153, 0.55)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.ellipse(0, 4, 18, 5, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Thrust glow
+        if (drone.thrustGlow > 0.05) {
+          ctx.fillStyle = 'rgba(56, 189, 248, ' + (drone.thrustGlow * 0.55) + ')';
+          ctx.beginPath();
+          ctx.arc(0, 10, 11, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Rotors
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-16, -6);
+        ctx.lineTo(-6, -6);
+        ctx.moveTo(6, -6);
+        ctx.lineTo(16, -6);
+        ctx.stroke();
+
+        // Drone body
+        ctx.fillStyle = '#e2e8f0';
+        ctx.beginPath();
+        ctx.roundRect(-11, -5, 22, 11, 5);
+        ctx.fill();
+
+        // Stealth sensor eye
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(4, 0, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        }
+
+        // Data steal progress bar above drone
+        if (stealProgress > 0) {
+          const bw = 48;
+          const bh = 6;
+          const bx = drone.x - bw / 2;
+          const by = drone.y - 24;
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+          ctx.fillRect(bx, by, bw, bh);
+          ctx.fillStyle = '#22d3ee';
+          ctx.fillRect(bx, by, (bw * stealProgress) / 100, bh);
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(bx, by, bw, bh);
+        }
+      }
+
+      function loop(ts) {
+        if (!lastTime) lastTime = ts;
+        const dt = Math.min(0.05, (ts - lastTime) / 1000);
+        lastTime = ts;
+        update(dt);
+        draw();
+        animId = requestAnimationFrame(loop);
+      }
+
+      function resize() {
+        const rect = wrap.getBoundingClientRect();
+        width = Math.max(300, rect.width);
+        height = Math.max(400, rect.height);
+        dpr = Math.min(2, window.devicePixelRatio || 1);
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        initStars();
+        setupStage(stage);
+      }
+
+      function getTapDirection(clientX) {
+        const rect = canvas.getBoundingClientRect();
+        const relX = (clientX - rect.left) / rect.width;
+        if (relX < 0.34) return -1;
+        if (relX > 0.66) return 1;
+        return 0;
+      }
+
+      canvas.addEventListener('pointerdown', function (e) {
+        if (state !== 'playing') return;
+        pointerDown = true;
+        activePointerDir = getTapDirection(e.clientX);
+        startThrust(activePointerDir);
+      });
+
+      window.addEventListener('pointerup', function () {
+        pointerDown = false;
+      });
+      window.addEventListener('pointercancel', function () {
+        pointerDown = false;
+      });
+
+      downBtn.addEventListener('pointerdown', function (e) {
+        e.stopPropagation();
+        if (state === 'playing') downBtnHeld = true;
+      });
+      window.addEventListener('pointerup', function () {
+        downBtnHeld = false;
+      });
+      window.addEventListener('pointercancel', function () {
+        downBtnHeld = false;
+      });
+
+      window.addEventListener('keydown', function (e) {
+        if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+          if (!keys.up && state === 'playing') {
+            startThrust(keys.left ? -1 : keys.right ? 1 : 0);
+          }
+          keys.up = true;
+        }
+        if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = true;
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+        if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+      });
+
+      window.addEventListener('keyup', function (e) {
+        if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = false;
+        if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = false;
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+        if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+      });
+
+      actionBtn.addEventListener('click', function () {
+        ensureAudio();
+        if (state === 'clear') {
+          setupStage(stage + 1);
+        } else {
+          setupStage(stage);
+        }
+        hideModal();
+        state = 'playing';
+      });
+
+      restartAllBtn.addEventListener('click', function () {
+        ensureAudio();
+        setupStage(1);
+        hideModal();
+        state = 'playing';
+      });
+
+      resetBtn.addEventListener('click', function () {
+        setupStage(stage);
+        hideModal();
+        state = 'playing';
+      });
+
+      hoverBtn.addEventListener('click', function () {
+        hoverEnabled = !hoverEnabled;
+        hoverBtn.textContent = hoverEnabled ? 'ホバー: ON' : 'ホバー: OFF';
+        hoverBtn.style.borderColor = hoverEnabled ? 'rgba(52, 211, 153, 0.55)' : 'rgba(148, 163, 184, 0.3)';
+        hoverBtn.style.color = hoverEnabled ? '#34d399' : '#e2e8f0';
+      });
+      hoverBtn.style.borderColor = 'rgba(52, 211, 153, 0.55)';
+      hoverBtn.style.color = '#34d399';
+
+      soundBtn.addEventListener('click', function () {
+        soundEnabled = !soundEnabled;
+        soundBtn.textContent = soundEnabled ? '🔊 ON' : '🔇 OFF';
+        if (soundEnabled) ensureAudio();
+      });
+
+      window.addEventListener('resize', resize);
+
+      window.onload = function () {
+        resize();
+        showModal('title');
+        if (animId) cancelAnimationFrame(animId);
+        lastTime = 0;
+        animId = requestAnimationFrame(loop);
+      };
+    })();
+  </script>
+</body>
+</html>

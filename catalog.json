@@ -1,29 +1,5 @@
 [
  {
-  "id": "page:index",
-  "title": "AI Game Portfolio（ゲーム一覧トップ）",
-  "category": "ページ",
-  "url": "https://morinokum.github.io/my-website/index.html"
- },
- {
-  "id": "page:apps",
-  "title": "AI App Portfolio（アプリ一覧）",
-  "category": "ページ",
-  "url": "https://morinokum.github.io/my-website/apps.html"
- },
- {
-  "id": "page:linux-kenkyukai",
-  "title": "Linux研究会｜LINUX KENKYUKAI",
-  "category": "ページ",
-  "url": "https://morinokum.github.io/my-website/linux-kenkyukai.html"
- },
- {
-  "id": "page:rina",
-  "title": "リナ｜Linux研究会 公式イメージキャラクター",
-  "category": "ページ",
-  "url": "https://morinokum.github.io/my-website/rina.html"
- },
- {
   "id": "game:ai",
   "title": "蒸気機関：プレッシャー・ライン",
   "category": "ゲーム（スマホ向け）",

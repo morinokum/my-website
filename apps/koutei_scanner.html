@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>工程スキャナー｜現場マニュアル動画 × QRコードシステム</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-slate-900 text-white shadow-md sticky top-0 z-30 no-print">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center font-bold shadow">
+          <i data-lucide="qr-code" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold tracking-tight leading-tight">工程スキャナー</h1>
+          <p class="text-xs text-slate-400">動画マニュアル登録・QR発行・現場即時再生</p>
+        </div>
+      </div>
+
+      <!-- Mode Switch Tabs -->
+      <nav class="flex bg-slate-800 p-1 rounded-xl gap-1" aria-label="モード切替">
+        <button id="tab-scan" type="button" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition bg-amber-500 text-slate-950">
+          <i data-lucide="scan-line" class="w-4 h-4"></i>
+          <span>現場でスキャン・再生</span>
+        </button>
+        <button id="tab-admin" type="button" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-300 hover:text-white hover:bg-slate-700">
+          <i data-lucide="clapperboard" class="w-4 h-4"></i>
+          <span>動画登録・QR発行</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-6">
+
+    <!-- ==================== VIEW 1: 現場でスキャン・再生 ==================== -->
+    <section id="view-scan" class="space-y-6">
+      <!-- Top Hero / Scanner Box -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- Left: Camera / QR Input -->
+        <div class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold flex items-center gap-2 text-slate-800">
+              <i data-lucide="camera" class="w-5 h-5 text-amber-600"></i>
+              QRコードを読み取る
+            </h2>
+            <span id="scanner-status-badge" class="text-xs font-medium px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">待機中</span>
+          </div>
+
+          <!-- Camera Preview / Placeholder -->
+          <div class="relative aspect-square max-h-72 w-full mx-auto bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center border border-slate-800">
+            <video id="camera-video" class="w-full h-full object-cover hidden" playsinline muted></video>
+            <canvas id="camera-canvas" class="hidden"></canvas>
+
+            <div id="camera-placeholder" class="text-center p-6 space-y-3">
+              <div class="w-14 h-14 rounded-full bg-slate-800 text-amber-400 flex items-center justify-center mx-auto">
+                <i data-lucide="scan-line" class="w-7 h-7"></i>
+              </div>
+              <p class="text-sm text-slate-300 font-medium">設備に貼られたQRコードをかざしてください</p>
+              <p class="text-xs text-slate-400">カメラが使えない環境でも、下の「シミュレーション」や画像読込で動作を試せます</p>
+            </div>
+
+            <!-- Scan reticle -->
+            <div id="scan-reticle" class="hidden absolute inset-8 border-2 border-amber-400/80 rounded-2xl pointer-events-none">
+              <div class="absolute top-0 left-0 right-0 h-0.5 bg-amber-400 animate-pulse"></div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <button id="btn-toggle-camera" type="button" class="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition">
+              <i data-lucide="video" class="w-4 h-4"></i>
+              <span id="btn-camera-label">カメラ起動</span>
+            </button>
+            <label class="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm font-semibold cursor-pointer transition">
+              <i data-lucide="image-up" class="w-4 h-4"></i>
+              <span>QR画像から読込</span>
+              <input id="input-qr-image" type="file" accept="image/*" class="hidden" />
+            </label>
+          </div>
+
+          <!-- Quick Simulation Picker -->
+          <div class="pt-3 border-t border-slate-100">
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2.5">
+              ワンタップQRスキャン体験（現場設備の例）
+            </p>
+            <div id="sim-qr-list" class="space-y-2"></div>
+          </div>
+        </div>
+
+        <!-- Right: Video Player & Step Guide -->
+        <div class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div id="player-empty" class="p-10 text-center space-y-3">
+            <div class="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
+              <i data-lucide="play-circle" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800">QRコードを読むと手順動画が再生されます</h3>
+            <p class="text-sm text-slate-500 max-w-md mx-auto">
+              左の「ワンタップQRスキャン体験」から設備を選ぶか、カメラ／QR画像から読み取ってみてください。
+            </p>
+          </div>
+
+          <div id="player-active" class="hidden">
+            <!-- Process Header -->
+            <div class="bg-slate-900 text-white px-5 py-4 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span id="player-code" class="text-xs font-mono px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-bold">PROC-001</span>
+                  <span id="player-category" class="text-xs text-slate-300">加工機</span>
+                </div>
+                <h3 id="player-title" class="text-lg font-bold mt-1">工程タイトル</h3>
+              </div>
+              <button id="btn-voice-guide" type="button" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-amber-300 border border-slate-700 transition">
+                <i data-lucide="volume-2" class="w-4 h-4"></i>
+                <span>音声読み上げ</span>
+              </button>
+            </div>
+
+            <!-- Video Surface (Real <video> or Interactive Animated Guide <canvas>) -->
+            <div class="relative bg-slate-950 aspect-video w-full flex items-center justify-center">
+              <video id="real-video-player" class="w-full h-full hidden" controls playsinline></video>
+              <canvas id="sim-video-canvas" width="800" height="450" class="w-full h-full block"></canvas>
+            </div>
+
+            <!-- Big Glove-Friendly Controls (for Animated Guide) -->
+            <div id="sim-controls" class="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center gap-2">
+                <button id="btn-sim-play" type="button" class="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm shadow-sm transition">
+                  <i data-lucide="play" class="w-4 h-4"></i>
+                  <span id="btn-sim-play-text">再生 / 一時停止</span>
+                </button>
+                <button id="btn-sim-prev" type="button" class="px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 font-semibold text-sm transition">
+                  前へ
+                </button>
+                <button id="btn-sim-next" type="button" class="px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 font-semibold text-sm transition">
+                  次の工程
+                </button>
+              </div>
+              <div class="text-xs font-semibold text-slate-600" id="sim-step-counter">ステップ 1 / 3</div>
+            </div>
+
+            <!-- Step Breakdown & Safety Note -->
+            <div class="p-5 space-y-4">
+              <div id="player-safety-box" class="flex items-start gap-2.5 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 text-sm">
+                <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
+                <div>
+                  <span class="font-bold">安全ポイント：</span>
+                  <span id="player-safety-text"></span>
+                </div>
+              </div>
+
+              <div>
+                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5">作業ステップ（タップで頭出し）</h4>
+                <div id="player-steps-list" class="space-y-2"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 2: 動画登録・QR発行 ==================== -->
+    <section id="view-admin" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- Left: Create New Process Video & QR -->
+        <div class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+          <h2 class="text-base font-bold flex items-center gap-2 text-slate-800">
+            <i data-lucide="plus-circle" class="w-5 h-5 text-amber-600"></i>
+            新しい工程動画・QRを登録
+          </h2>
+
+          <form id="form-create-process" class="space-y-3.5">
+            <div>
+              <label for="input-title" class="block text-xs font-semibold text-slate-700 mb-1">工程・設備名 <span class="text-red-500">*</span></label>
+              <input id="input-title" type="text" required placeholder="例：自動包装機 フィルムロール交換" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label for="input-category" class="block text-xs font-semibold text-slate-700 mb-1">エリア / 設備分類</label>
+                <input id="input-category" type="text" placeholder="例：第2包装ライン" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+              </div>
+              <div>
+                <label for="input-safety" class="block text-xs font-semibold text-slate-700 mb-1">安全注意事項</label>
+                <input id="input-safety" type="text" placeholder="例：主電源OFFを確認" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+              </div>
+            </div>
+
+            <div>
+              <label for="input-video-file" class="block text-xs font-semibold text-slate-700 mb-1">動画ファイルを選択（任意・未選択時は手順アニメ生成）</label>
+              <input id="input-video-file" type="file" accept="video/*" class="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200" />
+            </div>
+
+            <div>
+              <label for="input-steps" class="block text-xs font-semibold text-slate-700 mb-1">手順ステップ（1行につき1ステップ） <span class="text-red-500">*</span></label>
+              <textarea id="input-steps" rows="4" required placeholder="カバーを開けて非常停止ボタンを押す&#10;古いロールを抜き取り芯を清掃する&#10;新しいフィルムを矢印向きにセットする" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+            </div>
+
+            <button type="submit" class="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm shadow-sm transition">
+              <i data-lucide="qr-code" class="w-4 h-4"></i>
+              <span>工程を登録してQRコードを発行</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Right: Issued QR Code Cards -->
+        <div class="lg:col-span-7 space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+              <i data-lucide="layers" class="w-5 h-5 text-slate-600"></i>
+              発行済みQRコード一覧（現場掲示用ラベル）
+            </h2>
+            <span id="process-count-badge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-200 text-slate-700">3件</span>
+          </div>
+
+          <div id="admin-qr-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // ==================== STATE ====================
+    const initialProcesses = [
+      {
+        id: 'PROC-001',
+        title: 'CNC旋盤：チャック爪交換と原点復帰',
+        category: '加工エリア A-3',
+        safety: '必ず主軸ロックとドアインターロックを確認してから作業すること。',
+        videoUrl: null,
+        steps: [
+          '操作盤を「段取りモード」に切り替え、主軸の完全停止を確認する',
+          '六角レンチで既存のソフトジョーを取り外し、溝の切粉をエアブロー清掃する',
+          '新しい爪を番号（1・2・3）を合わせて仮締めし、トルクレンチで規定値締めする',
+          '安全カバーを閉じ、低速回転で振れがないか確認後、原点復帰を実行する'
+        ]
+      },
+      {
+        id: 'PROC-002',
+        title: '自動梱包機：フィルム詰まり解消手順',
+        category: '出荷ライン B-1',
+        safety: 'ヒーター部は高温（約180℃）のため、必ず耐熱手袋を着用すること。',
+        videoUrl: null,
+        steps: [
+          '非常停止ボタンを押し、操作パネルのエラー表示「E-12」を確認する',
+          '前面の安全カバーを開け、カッター部周辺の詰まったフィルムを除去する',
+          'テンションローラーにフィルムを通し直し、ガイド位置を合わせる',
+          'カバーを閉じてリセットボタンを押し、テスト梱包を1回実施する'
+        ]
+      },
+      {
+        id: 'PROC-003',
+        title: '自販機・無人端末：釣銭詰まりリセット',
+        category: '無人施設ロビー',
+        safety: '硬貨投入口に指を奥まで入れず、必ず専用トレイを引き出して確認すること。',
+        videoUrl: null,
+        steps: [
+          'サービスキーで前面扉を開け、コインメック（硬貨選別機）のランプを確認する',
+          '返却レバーを押し下げて詰まっている硬貨や異物をトレイに取り出す',
+          'コインメック上部の蓋を開け、センサー部にゴミがないか乾いた布で拭く',
+          'テストモードで100円玉を投入し、正常にカウントされれば扉を閉める'
+        ]
+      }
+    ];
+
+    let processes = [...initialProcesses];
+    let currentProcessId = null;
+    let simStepIndex = 0;
+    let simProgress = 0;
+    let simPlaying = false;
+    let simRafId = null;
+    let lastTick = 0;
+
+    let cameraStream = null;
+    let cameraScanning = false;
+    let cameraRafId = null;
+
+    // ==================== DOM REFS ====================
+    const tabScan = document.getElementById('tab-scan');
+    const tabAdmin = document.getElementById('tab-admin');
+    const viewScan = document.getElementById('view-scan');
+    const viewAdmin = document.getElementById('view-admin');
+
+    const simQrList = document.getElementById('sim-qr-list');
+    const adminQrGrid = document.getElementById('admin-qr-grid');
+    const processCountBadge = document.getElementById('process-count-badge');
+
+    const playerEmpty = document.getElementById('player-empty');
+    const playerActive = document.getElementById('player-active');
+    const playerCode = document.getElementById('player-code');
+    const playerCategory = document.getElementById('player-category');
+    const playerTitle = document.getElementById('player-title');
+    const playerSafetyText = document.getElementById('player-safety-text');
+    const playerStepsList = document.getElementById('player-steps-list');
+
+    const realVideoPlayer = document.getElementById('real-video-player');
+    const simVideoCanvas = document.getElementById('sim-video-canvas');
+    const simControls = document.getElementById('sim-controls');
+    const simStepCounter = document.getElementById('sim-step-counter');
+    const btnSimPlay = document.getElementById('btn-sim-play');
+    const btnSimPlayText = document.getElementById('btn-sim-play-text');
+    const btnSimPrev = document.getElementById('btn-sim-prev');
+    const btnSimNext = document.getElementById('btn-sim-next');
+    const btnVoiceGuide = document.getElementById('btn-voice-guide');
+
+    const btnToggleCamera = document.getElementById('btn-toggle-camera');
+    const btnCameraLabel = document.getElementById('btn-camera-label');
+    const cameraVideo = document.getElementById('camera-video');
+    const cameraCanvas = document.getElementById('camera-canvas');
+    const cameraPlaceholder = document.getElementById('camera-placeholder');
+    const scanReticle = document.getElementById('scan-reticle');
+    const scannerStatusBadge = document.getElementById('scanner-status-badge');
+    const inputQrImage = document.getElementById('input-qr-image');
+
+    const formCreateProcess = document.getElementById('form-create-process');
+
+    // ==================== HELPERS ====================
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const el = document.createElement('div');
+      const colors = type === 'success'
+        ? 'bg-emerald-600 text-white'
+        : type === 'error'
+        ? 'bg-red-600 text-white'
+        : 'bg-slate-900 text-white';
+      el.className = `pointer-events-auto px-4 py-2.5 rounded-xl shadow-lg text-sm font-semibold transition-opacity duration-300 ${colors}`;
+      el.textContent = message;
+      container.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 300);
+      }, 2800);
+    }
+
+    function buildQrPayload(procId) {
+      return `PROCESS-SCANNER:${procId}`;
+    }
+
+    function parseQrPayload(rawText) {
+      if (!rawText) return null;
+      const trimmed = rawText.trim();
+      if (trimmed.startsWith('PROCESS-SCANNER:')) {
+        return trimmed.replace('PROCESS-SCANNER:', '').trim();
+      }
+      const match = trimmed.match(/PROC-\d+/i);
+      return match ? match[0].toUpperCase() : null;
+    }
+
+    // ==================== TAB SWITCHING ====================
+    function switchMode(mode) {
+      if (mode === 'scan') {
+        viewScan.classList.remove('hidden');
+        viewAdmin.classList.add('hidden');
+        tabScan.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition bg-amber-500 text-slate-950';
+        tabAdmin.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-300 hover:text-white hover:bg-slate-700';
+      } else {
+        stopCamera();
+        viewScan.classList.add('hidden');
+        viewAdmin.classList.remove('hidden');
+        tabAdmin.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition bg-amber-500 text-slate-950';
+        tabScan.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-300 hover:text-white hover:bg-slate-700';
+      }
+    }
+
+    tabScan.addEventListener('click', () => switchMode('scan'));
+    tabAdmin.addEventListener('click', () => switchMode('admin'));
+
+    // ==================== RENDER LISTS & QR CARDS ====================
+    function renderAllLists() {
+      processCountBadge.textContent = `${processes.length}件`;
+
+      // 1. Simulator list in Scan tab
+      simQrList.innerHTML = '';
+      processes.forEach(proc => {
+        const isActive = proc.id === currentProcessId;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `w-full text-left p-2.5 rounded-xl border transition flex items-center justify-between gap-2 ${
+          isActive
+            ? 'bg-amber-50 border-amber-400 ring-1 ring-amber-400'
+            : 'bg-slate-50 hover:bg-slate-100 border-slate-200'
+        }`;
+        btn.innerHTML = `
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[11px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-800 text-amber-400">${proc.id}</span>
+              <span class="text-xs text-slate-500 truncate">${proc.category}</span>
+            </div>
+            <p class="text-sm font-semibold text-slate-800 truncate mt-0.5">${proc.title}</p>
+          </div>
+          <span class="shrink-0 text-xs font-bold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-lg">スキャン</span>
+        `;
+        btn.addEventListener('click', () => openProcessById(proc.id, true));
+        simQrList.appendChild(btn);
+      });
+
+      // 2. Admin QR cards
+      adminQrGrid.innerHTML = '';
+      processes.forEach(proc => {
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col justify-between gap-3';
+
+        const qrCanvasId = `qr-canvas-${proc.id}`;
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <span class="inline-block text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-slate-900 text-amber-400">${proc.id}</span>
+              <h3 class="text-sm font-bold text-slate-900 mt-1 leading-snug">${proc.title}</h3>
+              <p class="text-xs text-slate-500 mt-0.5">${proc.category} ・ ${proc.steps.length}ステップ</p>
+            </div>
+            <span class="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full ${proc.videoUrl ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}">
+              ${proc.videoUrl ? '実動画' : '手順アニメ'}
+            </span>
+          </div>
+
+          <div class="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5">
+            <canvas id="${qrCanvasId}" class="rounded-lg bg-white p-1 shadow-xs"></canvas>
+            <p class="text-[11px] font-mono text-slate-500">${buildQrPayload(proc.id)}</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" data-action="download" data-id="${proc.id}" class="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>QR画像保存</span>
+            </button>
+            <button type="button" data-action="preview" data-id="${proc.id}" class="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition">
+              <i data-lucide="play" class="w-3.5 h-3.5"></i>
+              <span>再生テスト</span>
+            </button>
+          </div>
+        `;
+
+        adminQrGrid.appendChild(card);
+
+        const qrEl = document.getElementById(qrCanvasId);
+        if (qrEl && typeof QRCode !== 'undefined') {
+          QRCode.toCanvas(qrEl, buildQrPayload(proc.id), { width: 132, margin: 1 }, (err) => {
+            if (err) console.error(err);
+          });
+        }
+      });
+
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    }
+
+    adminQrGrid.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      const action = btn.dataset.action;
+      const procId = btn.dataset.id;
+      const proc = processes.find(p => p.id === procId);
+      if (!proc) return;
+
+      if (action === 'preview') {
+        switchMode('scan');
+        openProcessById(procId, true);
+      } else if (action === 'download') {
+        const canvas = document.getElementById(`qr-canvas-${procId}`);
+        if (!canvas) return;
+        const link = document.createElement('a');
+        link.download = `${procId}_QR.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        showToast(`${procId} のQR画像をダウンロードしました`, 'success');
+      }
+    });
+
+    // ==================== PROCESS VIDEO PLAYER ====================
+    function openProcessById(procId, autoPlay = true) {
+      const proc = processes.find(p => p.id === procId);
+      if (!proc) {
+        showToast(`未登録のQRコードです (${procId})`, 'error');
+        return;
+      }
+
+      currentProcessId = proc.id;
+      simStepIndex = 0;
+      simProgress = 0;
+
+      playerEmpty.classList.add('hidden');
+      playerActive.classList.remove('hidden');
+
+      playerCode.textContent = proc.id;
+      playerCategory.textContent = proc.category;
+      playerTitle.textContent = proc.title;
+      playerSafetyText.textContent = proc.safety || '周囲の安全を確認してから作業してください。';
+
+      renderAllLists();
+      renderStepButtons(proc);
+
+      if (proc.videoUrl) {
+        stopSimLoop();
+        simVideoCanvas.classList.add('hidden');
+        simControls.classList.add('hidden');
+        realVideoPlayer.classList.remove('hidden');
+        realVideoPlayer.src = proc.videoUrl;
+        if (autoPlay) {
+          realVideoPlayer.play().catch(() => {});
+        }
+      } else {
+        realVideoPlayer.pause();
+        realVideoPlayer.classList.add('hidden');
+        simVideoCanvas.classList.remove('hidden');
+        simControls.classList.remove('hidden');
+        if (autoPlay) {
+          startSimLoop();
+        } else {
+          drawSimFrame();
+        }
+      }
+
+      showToast(`${proc.title} を読み込みました`, 'success');
+    }
+
+    function renderStepButtons(proc) {
+      playerStepsList.innerHTML = '';
+      proc.steps.forEach((stepText, idx) => {
+        const isCurrent = idx === simStepIndex;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `w-full text-left p-3 rounded-xl border transition flex items-start gap-3 ${
+          isCurrent
+            ? 'bg-amber-50 border-amber-400 text-slate-900 shadow-xs'
+            : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
+        }`;
+        btn.innerHTML = `
+          <span class="w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-xs font-bold ${
+            isCurrent ? 'bg-amber-500 text-slate-950' : 'bg-slate-200 text-slate-700'
+          }">${idx + 1}</span>
+          <span class="text-sm font-medium leading-snug">${stepText}</span>
+        `;
+        btn.addEventListener('click', () => {
+          simStepIndex = idx;
+          simProgress = 0;
+          renderStepButtons(proc);
+          drawSimFrame();
+        });
+        playerStepsList.appendChild(btn);
+      });
+      simStepCounter.textContent = `ステップ ${simStepIndex + 1} / ${proc.steps.length}`;
+    }
+
+    function startSimLoop() {
+      stopSimLoop();
+      simPlaying = true;
+      btnSimPlayText.textContent = '一時停止';
+      lastTick = performance.now();
+      const loop = (now) => {
+        if (!simPlaying) return;
+        const dt = (now - lastTick) / 1000;
+        lastTick = now;
+
+        const proc = processes.find(p => p.id === currentProcessId);
+        if (!proc) return;
+
+        simProgress += dt / 5.0; // 5 seconds per step
+        if (simProgress >= 1) {
+          simProgress = 0;
+          if (simStepIndex < proc.steps.length - 1) {
+            simStepIndex += 1;
+            renderStepButtons(proc);
+          } else {
+            simStepIndex = 0;
+            renderStepButtons(proc);
+          }
+        }
+        drawSimFrame();
+        simRafId = requestAnimationFrame(loop);
+      };
+      simRafId = requestAnimationFrame(loop);
+    }
+
+    function stopSimLoop() {
+      simPlaying = false;
+      btnSimPlayText.textContent = '再生';
+      if (simRafId) {
+        cancelAnimationFrame(simRafId);
+        simRafId = null;
+      }
+    }
+
+    function drawSimFrame() {
+      const proc = processes.find(p => p.id === currentProcessId);
+      if (!proc) return;
+
+      const ctx = simVideoCanvas.getContext('2d');
+      const w = simVideoCanvas.width;
+      const h = simVideoCanvas.height;
+
+      // Background gradient
+      const grad = ctx.createLinearGradient(0, 0, w, h);
+      grad.addColorStop(0, '#0f172a');
+      grad.addColorStop(1, '#1e293b');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Subtle technical grid
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.08)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < w; x += 40) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      }
+      for (let y = 0; y < h; y += 40) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }
+
+      // Top status bar
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.fillRect(24, 24, w - 48, 44);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(24, 24, 6, 44);
+
+      ctx.fillStyle = '#f59e0b';
+      ctx.font = 'bold 16px Inter, sans-serif';
+      ctx.fillText(`${proc.id}  |  STEP ${simStepIndex + 1} / ${proc.steps.length}`, 44, 52);
+
+      // Animated mechanical gear / indicator on right
+      const cx = w - 120;
+      const cy = 200;
+      const angle = simProgress * Math.PI * 2;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(angle);
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.arc(0, 0, 44, 0, Math.PI * 1.65);
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = 'bold 20px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${Math.round(simProgress * 100)}%`, cx, cy + 7);
+      ctx.textAlign = 'left';
+
+      // Step text wrapped
+      const text = proc.steps[simStepIndex] || '';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 28px "Noto Sans JP", sans-serif';
+      wrapText(ctx, text, 48, 155, w - 260, 42);
+
+      // Progress bar at bottom
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.fillRect(24, h - 36, w - 48, 10);
+      ctx.fillStyle = '#f59e0b';
+      const totalFrac = (simStepIndex + simProgress) / proc.steps.length;
+      ctx.fillRect(24, h - 36, (w - 48) * totalFrac, 10);
+    }
+
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+      let line = '';
+      let currY = y;
+      for (let i = 0; i < text.length; i++) {
+        const testLine = line + text[i];
+        if (ctx.measureText(testLine).width > maxWidth && i > 0) {
+          ctx.fillText(line, x, currY);
+          line = text[i];
+          currY += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx.fillText(line, x, currY);
+    }
+
+    btnSimPlay.addEventListener('click', () => {
+      if (simPlaying) stopSimLoop();
+      else startSimLoop();
+    });
+
+    btnSimPrev.addEventListener('click', () => {
+      const proc = processes.find(p => p.id === currentProcessId);
+      if (!proc) return;
+      simStepIndex = (simStepIndex - 1 + proc.steps.length) % proc.steps.length;
+      simProgress = 0;
+      renderStepButtons(proc);
+      drawSimFrame();
+    });
+
+    btnSimNext.addEventListener('click', () => {
+      const proc = processes.find(p => p.id === currentProcessId);
+      if (!proc) return;
+      simStepIndex = (simStepIndex + 1) % proc.steps.length;
+      simProgress = 0;
+      renderStepButtons(proc);
+      drawSimFrame();
+    });
+
+    btnVoiceGuide.addEventListener('click', () => {
+      const proc = processes.find(p => p.id === currentProcessId);
+      if (!proc) return;
+      if (!('speechSynthesis' in window)) {
+        showToast('このブラウザは音声読み上げに対応していません', 'error');
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const text = `${proc.title}。ステップ${simStepIndex + 1}。${proc.steps[simStepIndex]}`;
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'ja-JP';
+      window.speechSynthesis.speak(utter);
+      showToast('音声ガイドを再生しました', 'info');
+    });
+
+    // ==================== CAMERA & QR IMAGE SCANNING ====================
+    async function startCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast('カメラAPIが利用できない環境です。下のシミュレーションをお使いください', 'error');
+        return;
+      }
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        cameraVideo.srcObject = cameraStream;
+        await cameraVideo.play();
+        cameraScanning = true;
+        cameraVideo.classList.remove('hidden');
+        cameraPlaceholder.classList.add('hidden');
+        scanReticle.classList.remove('hidden');
+        btnCameraLabel.textContent = 'カメラ停止';
+        scannerStatusBadge.textContent = 'スキャン中...';
+        scannerStatusBadge.className = 'text-xs font-medium px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800';
+        scanCameraFrame();
+      } catch (err) {
+        showToast('カメラへのアクセスが許可されませんでした。シミュレーションをお試しください', 'error');
+      }
+    }
+
+    function stopCamera() {
+      cameraScanning = false;
+      if (cameraRafId) {
+        cancelAnimationFrame(cameraRafId);
+        cameraRafId = null;
+      }
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+      }
+      cameraVideo.classList.add('hidden');
+      cameraPlaceholder.classList.remove('hidden');
+      scanReticle.classList.add('hidden');
+      btnCameraLabel.textContent = 'カメラ起動';
+      scannerStatusBadge.textContent = '待機中';
+      scannerStatusBadge.className = 'text-xs font-medium px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600';
+    }
+
+    function scanCameraFrame() {
+      if (!cameraScanning) return;
+      if (cameraVideo.readyState === cameraVideo.HAVE_ENOUGH_DATA && typeof jsQR !== 'undefined') {
+        cameraCanvas.width = cameraVideo.videoWidth;
+        cameraCanvas.height = cameraVideo.videoHeight;
+        const ctx = cameraCanvas.getContext('2d');
+        ctx.drawImage(cameraVideo, 0, 0, cameraCanvas.width, cameraCanvas.height);
+        const imageData = ctx.getImageData(0, 0, cameraCanvas.width, cameraCanvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        if (code && code.data) {
+          const procId = parseQrPayload(code.data);
+          if (procId) {
+            stopCamera();
+            openProcessById(procId, true);
+            return;
+          }
+        }
+      }
+      cameraRafId = requestAnimationFrame(scanCameraFrame);
+    }
+
+    btnToggleCamera.addEventListener('click', () => {
+      if (cameraScanning) stopCamera();
+      else startCamera();
+    });
+
+    inputQrImage.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          cameraCanvas.width = img.width;
+          cameraCanvas.height = img.height;
+          const ctx = cameraCanvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          const imageData = ctx.getImageData(0, 0, img.width, img.height);
+          if (typeof jsQR === 'undefined') {
+            showToast('QR解析ライブラリが読み込まれていません', 'error');
+            return;
+          }
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
+          if (code && code.data) {
+            const procId = parseQrPayload(code.data);
+            if (procId) {
+              openProcessById(procId, true);
+            } else {
+              showToast(`工程IDが見つかりません (${code.data})`, 'error');
+            }
+          } else {
+            showToast('画像からQRコードを読み取れませんでした', 'error');
+          }
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    });
+
+    // ==================== CREATE NEW PROCESS ====================
+    formCreateProcess.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const title = document.getElementById('input-title').value.trim();
+      const category = document.getElementById('input-category').value.trim() || '一般現場';
+      const safety = document.getElementById('input-safety').value.trim() || '作業前に周囲の安全を確認してください。';
+      const stepsRaw = document.getElementById('input-steps').value;
+      const steps = stepsRaw.split('\n').map(s => s.trim()).filter(Boolean);
+      const videoFile = document.getElementById('input-video-file').files[0];
+
+      if (!title || steps.length === 0) {
+        showToast('工程名と手順ステップを入力してください', 'error');
+        return;
+      }
+
+      const nextNum = processes.length + 1;
+      const newId = `PROC-${String(nextNum).padStart(3, '0')}`;
+      const videoUrl = videoFile ? URL.createObjectURL(videoFile) : null;
+
+      processes.unshift({
+        id: newId,
+        title,
+        category,
+        safety,
+        videoUrl,
+        steps
+      });
+
+      formCreateProcess.reset();
+      renderAllLists();
+      showToast(`${newId} の動画とQRコードを発行しました！`, 'success');
+    });
+
+    // ==================== INIT ====================
+    renderAllLists();
+    openProcessById('PROC-001', false);
+  </script>
+</body>
+</html>

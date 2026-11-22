@@ -580,5 +580,11 @@
   "title": "タチエモン — 立ち絵メーカー＆口パク・まばたきスタジオ",
   "category": "アプリ（PC向け）",
   "url": "https://morinokum.github.io/my-website/apps/tachiemon.html"
+ },
+ {
+  "id": "app:koutei_scanner",
+  "title": "工程スキャナー — 動画マニュアル×QRコード",
+  "category": "アプリ（スマホ向け）",
+  "url": "https://morinokum.github.io/my-website/apps/koutei_scanner.html"
  }
 ]

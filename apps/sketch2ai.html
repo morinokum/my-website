@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sketch2AI — 下絵＆プロンプト作成スタジオ</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .canvas-checker {
+      background-color: #ffffff;
+      background-image:
+        linear-gradient(45deg, #f1f5f9 25%, transparent 25%),
+        linear-gradient(-45deg, #f1f5f9 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #f1f5f9 75%),
+        linear-gradient(-45deg, transparent 75%, #f1f5f9 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+    }
+    #drawCanvas {
+      touch-action: none;
+    }
+    /* Custom scrollbar for prompt area */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-3 sm:px-5 h-14 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+          <i data-lucide="pen-tool" class="w-4 h-4"></i>
+        </div>
+        <div class="min-w-0">
+          <h1 class="text-sm sm:text-base font-bold text-slate-900 truncate leading-tight">Sketch2AI</h1>
+          <p class="text-[11px] text-slate-500 hidden sm:block leading-tight">下絵を描いて、プロンプトと一緒にAIへ渡すスタジオ</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <!-- Sample Sketch Dropdown / Quick Load -->
+        <div class="relative">
+          <button id="sampleMenuBtn" type="button" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-600"></i>
+            <span class="hidden sm:inline">サンプル下絵</span>
+            <span class="sm:hidden">サンプル</span>
+          </button>
+          <div id="sampleMenu" class="hidden absolute right-0 mt-1.5 w-52 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-40">
+            <div class="px-3 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">構図サンプルを読み込む</div>
+            <button type="button" data-sample="landscape" class="sample-item w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 text-slate-700 flex items-center gap-2">
+              <i data-lucide="mountain" class="w-3.5 h-3.5 text-emerald-600"></i>
+              <span>山と湖の風景ラフ</span>
+            </button>
+            <button type="button" data-sample="character" class="sample-item w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 text-slate-700 flex items-center gap-2">
+              <i data-lucide="user" class="w-3.5 h-3.5 text-indigo-600"></i>
+              <span>キャラクター立ち絵アタリ</span>
+            </button>
+            <button type="button" data-sample="cafe" class="sample-item w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 text-slate-700 flex items-center gap-2">
+              <i data-lucide="coffee" class="w-3.5 h-3.5 text-amber-600"></i>
+              <span>カフェテーブルの静物</span>
+            </button>
+          </div>
+        </div>
+
+        <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer transition-colors" title="手持ちの画像を下絵として読み込む">
+          <i data-lucide="image-plus" class="w-3.5 h-3.5 text-slate-600"></i>
+          <span class="hidden md:inline">画像読込</span>
+          <input id="bgImageInput" type="file" accept="image/*" class="hidden" />
+        </label>
+
+        <button id="helpBtn" type="button" class="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors" title="使い方">
+          <i data-lucide="help-circle" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-5 py-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+
+    <!-- Left Column: Drawing Studio (7 cols on lg) -->
+    <section class="lg:col-span-7 flex flex-col gap-3">
+      <!-- Top Tool Bar -->
+      <div class="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex flex-wrap items-center justify-between gap-2">
+        <!-- Tools -->
+        <div class="flex items-center gap-1 flex-wrap" role="group" aria-label="描画ツール">
+          <button type="button" data-tool="pen" class="tool-btn active inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors bg-indigo-600 text-white" title="ペン (B)">
+            <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">ペン</span>
+          </button>
+          <button type="button" data-tool="eraser" class="tool-btn inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors text-slate-700 hover:bg-slate-100" title="消しゴム (E)">
+            <i data-lucide="eraser" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">消す</span>
+          </button>
+          <button type="button" data-tool="line" class="tool-btn inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors text-slate-700 hover:bg-slate-100" title="直線">
+            <i data-lucide="minus" class="w-3.5 h-3.5 -rotate-45"></i>
+          </button>
+          <button type="button" data-tool="rect" class="tool-btn inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors text-slate-700 hover:bg-slate-100" title="四角形（構図アタリ）">
+            <i data-lucide="square" class="w-3.5 h-3.5"></i>
+          </button>
+          <button type="button" data-tool="circle" class="tool-btn inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors text-slate-700 hover:bg-slate-100" title="円・楕円（顔や丸のアタリ）">
+            <i data-lucide="circle" class="w-3.5 h-3.5"></i>
+          </button>
+          <button type="button" data-tool="fill" class="tool-btn inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors text-slate-700 hover:bg-slate-100" title="塗りつぶし">
+            <i data-lucide="paint-bucket" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+
+        <!-- History & Clear -->
+        <div class="flex items-center gap-1">
+          <button id="undoBtn" type="button" class="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-35 disabled:pointer-events-none transition-colors" title="元に戻す (Ctrl+Z)" disabled>
+            <i data-lucide="undo-2" class="w-4 h-4"></i>
+          </button>
+          <button id="redoBtn" type="button" class="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-35 disabled:pointer-events-none transition-colors" title="やり直す (Ctrl+Y)" disabled>
+            <i data-lucide="redo-2" class="w-4 h-4"></i>
+          </button>
+          <div class="w-px h-5 bg-slate-200 mx-1"></div>
+          <button id="gridToggleBtn" type="button" class="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors" title="三分割ガイド線の表示切替">
+            <i data-lucide="grid-3x3" class="w-4 h-4"></i>
+          </button>
+          <button id="clearBtn" type="button" class="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors" title="キャンバスを白紙に戻す">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">消去</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Color, Brush Size & Aspect Ratio Bar -->
+      <div class="bg-white border border-slate-200 rounded-xl px-3 py-2.5 shadow-sm flex flex-wrap items-center justify-between gap-3">
+        <!-- Colors -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="text-[11px] font-medium text-slate-500 mr-0.5">色:</span>
+          <button type="button" data-color="#1e293b" class="color-swatch w-6 h-6 rounded-full bg-slate-800 ring-2 ring-offset-2 ring-indigo-600 transition-transform hover:scale-110" title="黒（下絵線）"></button>
+          <button type="button" data-color="#64748b" class="color-swatch w-6 h-6 rounded-full bg-slate-500 border border-slate-200 transition-transform hover:scale-110" title="グレー（アタリ線）"></button>
+          <button type="button" data-color="#ef4444" class="color-swatch w-6 h-6 rounded-full bg-red-500 transition-transform hover:scale-110" title="赤"></button>
+          <button type="button" data-color="#f97316" class="color-swatch w-6 h-6 rounded-full bg-orange-500 transition-transform hover:scale-110" title="オレンジ"></button>
+          <button type="button" data-color="#eab308" class="color-swatch w-6 h-6 rounded-full bg-yellow-500 transition-transform hover:scale-110" title="黄"></button>
+          <button type="button" data-color="#22c55e" class="color-swatch w-6 h-6 rounded-full bg-green-500 transition-transform hover:scale-110" title="緑"></button>
+          <button type="button" data-color="#0ea5e9" class="color-swatch w-6 h-6 rounded-full bg-sky-500 transition-transform hover:scale-110" title="水色（ラフ線）"></button>
+          <button type="button" data-color="#6366f1" class="color-swatch w-6 h-6 rounded-full bg-indigo-500 transition-transform hover:scale-110" title="青紫"></button>
+          <button type="button" data-color="#ec4899" class="color-swatch w-6 h-6 rounded-full bg-pink-500 transition-transform hover:scale-110" title="ピンク"></button>
+          <label class="w-6 h-6 rounded-full border border-slate-300 overflow-hidden cursor-pointer flex items-center justify-center bg-gradient-to-tr from-rose-400 via-amber-300 to-sky-400" title="カスタムカラー">
+            <input id="customColorInput" type="color" value="#1e293b" class="opacity-0 w-0 h-0" />
+          </label>
+        </div>
+
+        <!-- Brush Size & Aspect Ratio -->
+        <div class="flex items-center gap-3 flex-wrap">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-medium text-slate-500">太さ</span>
+            <input id="brushSizeInput" type="range" min="1" max="36" value="4" class="w-20 sm:w-24 accent-indigo-600 cursor-pointer" />
+            <span id="brushSizeLabel" class="text-xs font-mono text-slate-600 w-7 text-right">4px</span>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <span class="text-[11px] font-medium text-slate-500">比率</span>
+            <select id="aspectSelect" class="text-xs bg-slate-100 border border-slate-200 rounded-lg px-2 py-1 font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="1:1">1:1 (正方形)</option>
+              <option value="4:3">4:3 (横長)</option>
+              <option value="16:9">16:9 (ワイド)</option>
+              <option value="3:4">3:4 (縦長)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clear Confirmation Inline Banner (hidden by default) -->
+      <div id="clearConfirmBar" class="hidden bg-rose-50 border border-rose-200 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-3">
+        <p class="text-xs text-rose-800 font-medium">下絵をすべて消去して白紙に戻しますか？（「元に戻す」で復帰できます）</p>
+        <div class="flex items-center gap-2 shrink-0">
+          <button id="cancelClearBtn" type="button" class="px-2.5 py-1 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">キャンセル</button>
+          <button id="confirmClearBtn" type="button" class="px-2.5 py-1 text-xs font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700">消去する</button>
+        </div>
+      </div>
+
+      <!-- Canvas Frame -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col items-center justify-center">
+        <div id="canvasWrapper" class="relative w-full max-w-[600px] aspect-square rounded-xl overflow-hidden border border-slate-300 shadow-inner canvas-checker flex items-center justify-center">
+          <canvas id="drawCanvas" width="800" height="800" class="w-full h-full block cursor-crosshair bg-white"></canvas>
+          <!-- Rule of Thirds Overlay -->
+          <div id="gridOverlay" class="hidden pointer-events-none absolute inset-0 grid grid-cols-3 grid-rows-3">
+            <div class="border-r border-b border-indigo-400/35"></div>
+            <div class="border-r border-b border-indigo-400/35"></div>
+            <div class="border-b border-indigo-400/35"></div>
+            <div class="border-r border-b border-indigo-400/35"></div>
+            <div class="border-r border-b border-indigo-400/35"></div>
+            <div class="border-b border-indigo-400/35"></div>
+            <div class="border-r border-indigo-400/35"></div>
+            <div class="border-r border-indigo-400/35"></div>
+            <div></div>
+          </div>
+        </div>
+        <div class="w-full max-w-[600px] mt-2 flex items-center justify-between text-[11px] text-slate-400">
+          <span id="canvasDimLabel">800 × 800 px</span>
+          <span>ドラッグで描画 / タッチ・ペン対応</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Prompt Builder & AI Handoff (5 cols on lg) -->
+    <section class="lg:col-span-5 flex flex-col gap-3.5">
+
+      <!-- Prompt Card -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3.5">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+            <i data-lucide="message-square-text" class="w-4 h-4 text-indigo-600"></i>
+            <span>プロンプト（AIへの指示）</span>
+          </h2>
+          <button id="clearPromptBtn" type="button" class="text-[11px] text-slate-400 hover:text-slate-600 transition-colors">入力をリセット</button>
+        </div>
+
+        <div>
+          <label for="mainPrompt" class="block text-xs font-medium text-slate-600 mb-1">描いてほしい内容（日本語・英語どちらでもOK）</label>
+          <textarea id="mainPrompt" rows="3" placeholder="例：青い空と雪山、手前の湖に反射する朝日。水彩画のような透明感のあるイラストにして。" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y"></textarea>
+        </div>
+
+        <!-- Quick Style Tags -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-xs font-medium text-slate-600">スタイル・雰囲気タグ（タップで追加）</span>
+          </div>
+          <div id="styleTagsContainer" class="flex flex-wrap gap-1.5">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Reference Strength & Negative Prompt -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-100">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label for="sketchStrength" class="text-xs font-medium text-slate-600">下絵の忠実度</label>
+              <span id="strengthLabel" class="text-xs font-semibold text-indigo-600">しっかり (75%)</span>
+            </div>
+            <input id="sketchStrength" type="range" min="20" max="100" step="5" value="75" class="w-full accent-indigo-600 cursor-pointer" />
+            <p class="text-[11px] text-slate-400 mt-0.5">低いとアレンジ強め、高いと構図を厳密に維持</p>
+          </div>
+          <div>
+            <label for="negativePrompt" class="block text-xs font-medium text-slate-600 mb-1">避けたい要素（任意）</label>
+            <input id="negativePrompt" type="text" placeholder="例：文字、ぼやけ、暗い色" class="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Handoff / Export Card -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+            <i data-lucide="send" class="w-4 h-4 text-indigo-600"></i>
+            <span>AIに渡すパッケージ</span>
+          </h2>
+          <span class="text-[11px] bg-indigo-50 text-indigo-700 font-medium px-2 py-0.5 rounded-full">コピペ・保存対応</span>
+        </div>
+
+        <!-- Generated AI Instruction Preview -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">送信テキストプレビュー</span>
+            <span id="charCountLabel" class="text-[11px] text-slate-400">0文字</span>
+          </div>
+          <pre id="compiledPreview" class="text-xs text-slate-700 whitespace-pre-wrap font-sans leading-relaxed max-h-36 overflow-y-auto"></pre>
+        </div>
+
+        <!-- Primary Action Buttons -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <button id="copyPromptBtn" type="button" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition-colors">
+            <i data-lucide="copy" class="w-4 h-4"></i>
+            <span>指示文をコピー</span>
+          </button>
+          <button id="copyImageBtn" type="button" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold shadow-sm transition-colors">
+            <i data-lucide="clipboard-paste" class="w-4 h-4"></i>
+            <span>下絵画像をコピー</span>
+          </button>
+        </div>
+
+        <!-- Download Buttons -->
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button id="downloadSketchBtn" type="button" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors">
+            <i data-lucide="download" class="w-3.5 h-3.5 text-slate-500"></i>
+            <span>下絵PNG保存</span>
+          </button>
+          <button id="downloadCardBtn" type="button" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-800 text-xs font-medium transition-colors" title="下絵とプロンプトを1枚の画像にまとめて保存">
+            <i data-lucide="layout-template" class="w-3.5 h-3.5 text-indigo-600"></i>
+            <span>指示カードPNG保存</span>
+          </button>
+        </div>
+
+        <button id="downloadJsonBtn" type="button" class="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+          <i data-lucide="file-json" class="w-3.5 h-3.5"></i>
+          <span>プロンプト＋画像データをJSONで書き出す（API連携用）</span>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Help Modal -->
+  <div id="helpModal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl border border-slate-200">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <i data-lucide="sparkles" class="w-4 h-4 text-indigo-600"></i>
+          <span>AIへの渡し方ガイド</span>
+        </h3>
+        <button id="closeHelpBtn" type="button" class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <ol class="space-y-2.5 text-xs text-slate-600 leading-relaxed list-decimal list-inside">
+        <li>左のキャンバスに<strong>大まかな構図やポーズの下絵</strong>を描きます（四角や丸ツールでアタリを取ると簡単です）。</li>
+        <li>右の欄に<strong>描いてほしい内容</strong>を入力し、好みでスタイルタグを選びます。</li>
+        <li><strong>「下絵画像をコピー」</strong>（または「下絵PNG保存」）でチャットAIの入力欄に画像を貼り付け、続けて<strong>「指示文をコピー」</strong>の内容を貼り付けて送信します。</li>
+        <li><strong>「指示カードPNG保存」</strong>を使うと、下絵とプロンプトが1枚にまとまった画像として保存・共有できます。</li>
+      </ol>
+      <div class="mt-4 flex justify-end">
+        <button id="closeHelpConfirmBtn" type="button" class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="pointer-events-none fixed bottom-5 left-1/2 -translate-x-1/2 z-50 opacity-0 translate-y-2 transition-all duration-200">
+    <div class="bg-slate-900 text-white text-xs font-medium px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2">
+      <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+      <span id="toastMsg">コピーしました</span>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      // --- State ---
+      const ASPECT_SIZES = {
+        '1:1': { w: 800, h: 800, css: 'aspect-square' },
+        '4:3': { w: 960, h: 720, css: 'aspect-[4/3]' },
+        '16:9': { w: 1024, h: 576, css: 'aspect-video' },
+        '3:4': { w: 720, h: 960, css: 'aspect-[3/4]' }
+      };
+
+      const STYLE_TAGS = [
+        { id: 'anime', label: 'アニメ調', prompt: 'アニメ調の鮮明なイラスト' },
+        { id: 'watercolor', label: '水彩画風', prompt: '透明感のある水彩画風' },
+        { id: 'oil', label: '油絵・厚塗り', prompt: '重厚な油絵・厚塗りタッチ' },
+        { id: 'realistic', label: '写真・写実的', prompt: '写実的でリアルな質感' },
+        { id: 'pixel', label: 'ドット絵', prompt: 'レトロなピクセルアート風' },
+        { id: 'ghibli_vibe', label: '温かみのある背景美術', prompt: '手描き風の温かみのある背景美術' },
+        { id: 'backlight', label: '逆光・シネマティック', prompt: 'ドラマチックな逆光とシネマティックなライティング' },
+        { id: 'pastel', label: 'パステル・柔らかい光', prompt: '淡いパステル調と柔らかい自然光' }
+      ];
+
+      const state = {
+        tool: 'pen',
+        color: '#1e293b',
+        size: 4,
+        aspect: '1:1',
+        showGrid: false,
+        isDrawing: false,
+        startX: 0,
+        startY: 0,
+        snapshot: null,
+        history: [],
+        historyIndex: -1,
+        selectedTags: new Set(['watercolor']),
+        strength: 75
+      };
+
+      // --- DOM Elements ---
+      const canvas = document.getElementById('drawCanvas');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const canvasWrapper = document.getElementById('canvasWrapper');
+      const canvasDimLabel = document.getElementById('canvasDimLabel');
+      const gridOverlay = document.getElementById('gridOverlay');
+
+      const toolBtns = document.querySelectorAll('.tool-btn');
+      const colorSwatches = document.querySelectorAll('.color-swatch');
+      const customColorInput = document.getElementById('customColorInput');
+      const brushSizeInput = document.getElementById('brushSizeInput');
+      const brushSizeLabel = document.getElementById('brushSizeLabel');
+      const aspectSelect = document.getElementById('aspectSelect');
+
+      const undoBtn = document.getElementById('undoBtn');
+      const redoBtn = document.getElementById('redoBtn');
+      const gridToggleBtn = document.getElementById('gridToggleBtn');
+      const clearBtn = document.getElementById('clearBtn');
+      const clearConfirmBar = document.getElementById('clearConfirmBar');
+      const cancelClearBtn = document.getElementById('cancelClearBtn');
+      const confirmClearBtn = document.getElementById('confirmClearBtn');
+
+      const mainPrompt = document.getElementById('mainPrompt');
+      const negativePrompt = document.getElementById('negativePrompt');
+      const styleTagsContainer = document.getElementById('styleTagsContainer');
+      const sketchStrength = document.getElementById('sketchStrength');
+      const strengthLabel = document.getElementById('strengthLabel');
+      const compiledPreview = document.getElementById('compiledPreview');
+      const charCountLabel = document.getElementById('charCountLabel');
+      const clearPromptBtn = document.getElementById('clearPromptBtn');
+
+      const copyPromptBtn = document.getElementById('copyPromptBtn');
+      const copyImageBtn = document.getElementById('copyImageBtn');
+      const downloadSketchBtn = document.getElementById('downloadSketchBtn');
+      const downloadCardBtn = document.getElementById('downloadCardBtn');
+      const downloadJsonBtn = document.getElementById('downloadJsonBtn');
+
+      const sampleMenuBtn = document.getElementById('sampleMenuBtn');
+      const sampleMenu = document.getElementById('sampleMenu');
+      const bgImageInput = document.getElementById('bgImageInput');
+      const helpBtn = document.getElementById('helpBtn');
+      const helpModal = document.getElementById('helpModal');
+      const closeHelpBtn = document.getElementById('closeHelpBtn');
+      const closeHelpConfirmBtn = document.getElementById('closeHelpConfirmBtn');
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+
+      let toastTimer = null;
+
+      // --- Helpers ---
+      function showToast(msg) {
+        toastMsg.textContent = msg;
+        toast.classList.remove('opacity-0', 'translate-y-2');
+        toast.classList.add('opacity-100', 'translate-y-0');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          toast.classList.remove('opacity-100', 'translate-y-0');
+          toast.classList.add('opacity-0', 'translate-y-2');
+        }, 2600);
+      }
+
+      function fillWhiteBackground() {
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+      }
+
+      function pushHistory() {
+        if (state.historyIndex < state.history.length - 1) {
+          state.history = state.history.slice(0, state.historyIndex + 1);
+        }
+        state.history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+        if (state.history.length > 30) {
+          state.history.shift();
+        }
+        state.historyIndex = state.history.length - 1;
+        updateHistoryButtons();
+      }
+
+      function updateHistoryButtons() {
+        undoBtn.disabled = state.historyIndex <= 0;
+        redoBtn.disabled = state.historyIndex >= state.history.length - 1;
+      }
+
+      function undo() {
+        if (state.historyIndex > 0) {
+          state.historyIndex--;
+          ctx.putImageData(state.history[state.historyIndex], 0, 0);
+          updateHistoryButtons();
+        }
+      }
+
+      function redo() {
+        if (state.historyIndex < state.history.length - 1) {
+          state.historyIndex++;
+          ctx.putImageData(state.history[state.historyIndex], 0, 0);
+          updateHistoryButtons();
+        }
+      }
+
+      function getCanvasPoint(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return {
+          x: (e.clientX - rect.left) * scaleX,
+          y: (e.clientY - rect.top) * scaleY
+        };
+      }
+
+      // Flood fill with tolerance
+      function hexToRgb(hex) {
+        const clean = hex.replace('#', '');
+        const num = parseInt(clean, 16);
+        return [(num >> 16) & 255, (num >> 8) & 255, num & 255, 255];
+      }
+
+      function floodFill(startX, startY, fillHex) {
+        const x0 = Math.floor(startX);
+        const y0 = Math.floor(startY);
+        if (x0 < 0 || x0 >= canvas.width || y0 < 0 || y0 >= canvas.height) return;
+
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imgData.data;
+        const w = canvas.width;
+        const h = canvas.height;
+        const idx0 = (y0 * w + x0) * 4;
+        const target = [data[idx0], data[idx0 + 1], data[idx0 + 2], data[idx0 + 3]];
+        const fill = hexToRgb(fillHex);
+
+        if (
+          Math.abs(target[0] - fill[0]) < 8 &&
+          Math.abs(target[1] - fill[1]) < 8 &&
+          Math.abs(target[2] - fill[2]) < 8
+        ) {
+          return;
+        }
+
+        const tolerance = 36;
+        const visited = new Uint8Array(w * h);
+        const stack = [x0, y0];
+
+        while (stack.length > 0) {
+          const y = stack.pop();
+          const x = stack.pop();
+          const p = y * w + x;
+          if (visited[p]) continue;
+          const idx = p * 4;
+          const diff =
+            Math.abs(data[idx] - target[0]) +
+            Math.abs(data[idx + 1] - target[1]) +
+            Math.abs(data[idx + 2] - target[2]);
+          if (diff > tolerance) continue;
+
+          visited[p] = 1;
+          data[idx] = fill[0];
+          data[idx + 1] = fill[1];
+          data[idx + 2] = fill[2];
+          data[idx + 3] = 255;
+
+          if (x > 0) stack.push(x - 1, y);
+          if (x < w - 1) stack.push(x + 1, y);
+          if (y > 0) stack.push(x, y - 1);
+          if (y < h - 1) stack.push(x, y + 1);
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+
+      // --- Drawing Events ---
+      function startDraw(e) {
+        if (e.button !== undefined && e.button !== 0) return;
+        const pt = getCanvasPoint(e);
+
+        if (state.tool === 'fill') {
+          floodFill(pt.x, pt.y, state.color);
+          pushHistory();
+          return;
+        }
+
+        state.isDrawing = true;
+        state.startX = pt.x;
+        state.startY = pt.y;
+        state.snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        if (state.tool === 'pen' || state.tool === 'eraser') {
+          ctx.beginPath();
+          ctx.moveTo(pt.x, pt.y);
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.lineWidth = state.tool === 'eraser' ? state.size * 2.2 : state.size;
+          ctx.strokeStyle = state.tool === 'eraser' ? '#ffffff' : state.color;
+          // Draw a dot for single click
+          ctx.lineTo(pt.x + 0.01, pt.y + 0.01);
+          ctx.stroke();
+        }
+      }
+
+      function moveDraw(e) {
+        if (!state.isDrawing) return;
+        const pt = getCanvasPoint(e);
+
+        if (state.tool === 'pen' || state.tool === 'eraser') {
+          ctx.lineTo(pt.x, pt.y);
+          ctx.stroke();
+        } else {
+          ctx.putImageData(state.snapshot, 0, 0);
+          ctx.beginPath();
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.lineWidth = state.size;
+          ctx.strokeStyle = state.color;
+
+          if (state.tool === 'line') {
+            ctx.moveTo(state.startX, state.startY);
+            ctx.lineTo(pt.x, pt.y);
+            ctx.stroke();
+          } else if (state.tool === 'rect') {
+            ctx.strokeRect(state.startX, state.startY, pt.x - state.startX, pt.y - state.startY);
+          } else if (state.tool === 'circle') {
+            const rx = Math.abs(pt.x - state.startX) / 2;
+            const ry = Math.abs(pt.y - state.startY) / 2;
+            const cx = (state.startX + pt.x) / 2;
+            const cy = (state.startY + pt.y) / 2;
+            ctx.ellipse(cx, cy, Math.max(rx, 1), Math.max(ry, 1), 0, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+      }
+
+      function endDraw() {
+        if (!state.isDrawing) return;
+        state.isDrawing = false;
+        ctx.closePath();
+        pushHistory();
+      }
+
+      canvas.addEventListener('pointerdown', (e) => {
+        canvas.setPointerCapture(e.pointerId);
+        startDraw(e);
+      });
+      canvas.addEventListener('pointermove', moveDraw);
+      canvas.addEventListener('pointerup', endDraw);
+      canvas.addEventListener('pointercancel', endDraw);
+
+      // --- Tool & Color Controls ---
+      toolBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.tool = btn.dataset.tool;
+          toolBtns.forEach((b) => {
+            b.classList.remove('active', 'bg-indigo-600', 'text-white');
+            b.classList.add('text-slate-700', 'hover:bg-slate-100');
+          });
+          btn.classList.add('active', 'bg-indigo-600', 'text-white');
+          btn.classList.remove('text-slate-700', 'hover:bg-slate-100');
+        });
+      });
+
+      function setActiveColor(hex) {
+        state.color = hex;
+        colorSwatches.forEach((s) => {
+          if (s.dataset.color.toLowerCase() === hex.toLowerCase()) {
+            s.classList.add('ring-2', 'ring-offset-2', 'ring-indigo-600');
+          } else {
+            s.classList.remove('ring-2', 'ring-offset-2', 'ring-indigo-600');
+          }
+        });
+        if (state.tool === 'eraser') {
+          document.querySelector('[data-tool="pen"]').click();
+        }
+      }
+
+      colorSwatches.forEach((s) => {
+        s.addEventListener('click', () => setActiveColor(s.dataset.color));
+      });
+
+      customColorInput.addEventListener('input', (e) => {
+        setActiveColor(e.target.value);
+      });
+
+      brushSizeInput.addEventListener('input', (e) => {
+        state.size = Number(e.target.value);
+        brushSizeLabel.textContent = `${state.size}px`;
+      });
+
+      // Aspect ratio switching (preserves current drawing centered)
+      aspectSelect.addEventListener('change', (e) => {
+        const nextAspect = e.target.value;
+        const spec = ASPECT_SIZES[nextAspect];
+        if (!spec) return;
+
+        // Snapshot current image
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
+
+        Object.values(ASPECT_SIZES).forEach((s) => canvasWrapper.classList.remove(s.css));
+        canvasWrapper.classList.add(spec.css);
+        canvas.width = spec.w;
+        canvas.height = spec.h;
+        fillWhiteBackground();
+
+        // Draw old sketch fitted inside
+        const ratio = Math.min(spec.w / tempCanvas.width, spec.h / tempCanvas.height);
+        const drawW = tempCanvas.width * ratio;
+        const drawH = tempCanvas.height * ratio;
+        ctx.drawImage(tempCanvas, (spec.w - drawW) / 2, (spec.h - drawH) / 2, drawW, drawH);
+
+        state.aspect = nextAspect;
+        canvasDimLabel.textContent = `${spec.w} × ${spec.h} px`;
+        pushHistory();
+        updateCompiledPrompt();
+      });
+
+      undoBtn.addEventListener('click', undo);
+      redoBtn.addEventListener('click', redo);
+
+      gridToggleBtn.addEventListener('click', () => {
+        state.showGrid = !state.showGrid;
+        gridOverlay.classList.toggle('hidden', !state.showGrid);
+        gridToggleBtn.classList.toggle('bg-indigo-50', state.showGrid);
+        gridToggleBtn.classList.toggle('text-indigo-600', state.showGrid);
+      });
+
+      clearBtn.addEventListener('click', () => {
+        clearConfirmBar.classList.remove('hidden');
+      });
+      cancelClearBtn.addEventListener('click', () => {
+        clearConfirmBar.classList.add('hidden');
+      });
+      confirmClearBtn.addEventListener('click', () => {
+        fillWhiteBackground();
+        pushHistory();
+        clearConfirmBar.classList.add('hidden');
+        showToast('キャンバスを白紙に戻しました');
+      });
+
+      // Keyboard shortcuts (Ctrl+Z / Ctrl+Y)
+      document.addEventListener('keydown', (e) => {
+        if (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT') return;
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+          e.preventDefault();
+          if (e.shiftKey) redo();
+          else undo();
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+          e.preventDefault();
+          redo();
+        }
+      });
+
+      // --- Background Reference Image Upload ---
+      bgImageInput.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const img = new Image();
+          img.onload = () => {
+            fillWhiteBackground();
+            const ratio = Math.min(canvas.width / img.width, canvas.height / img.height);
+            const w = img.width * ratio;
+            const h = img.height * ratio;
+            ctx.save();
+            ctx.globalAlpha = 0.45; // Thin trace opacity
+            ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+            ctx.restore();
+            pushHistory();
+            showToast('画像を薄く読み込みました。上からなぞれます');
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+        e.target.value = '';
+      });
+
+      // --- Sample Sketches ---
+      function loadSample(type) {
+        fillWhiteBackground();
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        if (type === 'landscape') {
+          // Sky & sun
+          ctx.strokeStyle = '#f97316';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.arc(canvas.width * 0.72, canvas.height * 0.25, 48, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Mountains
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.moveTo(0, canvas.height * 0.62);
+          ctx.lineTo(canvas.width * 0.25, canvas.height * 0.34);
+          ctx.lineTo(canvas.width * 0.48, canvas.height * 0.56);
+          ctx.lineTo(canvas.width * 0.72, canvas.height * 0.38);
+          ctx.lineTo(canvas.width, canvas.height * 0.62);
+          ctx.stroke();
+
+          // Lake horizon & reflection lines
+          ctx.strokeStyle = '#0ea5e9';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(0, canvas.height * 0.62);
+          ctx.lineTo(canvas.width, canvas.height * 0.62);
+          ctx.stroke();
+
+          ctx.lineWidth = 3;
+          for (let i = 0; i < 4; i++) {
+            const y = canvas.height * (0.7 + i * 0.06);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width * (0.2 + i * 0.05), y);
+            ctx.lineTo(canvas.width * (0.8 - i * 0.05), y);
+            ctx.stroke();
+          }
+
+          mainPrompt.value = '朝日に照らされた雄大な山々と、手前の静かな湖面に映る光の反射。';
+          state.selectedTags = new Set(['watercolor', 'pastel']);
+        } else if (type === 'character') {
+          // Head & guidelines
+          ctx.strokeStyle = '#0ea5e9';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.ellipse(canvas.width * 0.5, canvas.height * 0.26, 75, 88, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Body & shoulders
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.moveTo(canvas.width * 0.44, canvas.height * 0.37);
+          ctx.lineTo(canvas.width * 0.32, canvas.height * 0.45);
+          ctx.lineTo(canvas.width * 0.26, canvas.height * 0.72);
+          ctx.moveTo(canvas.width * 0.56, canvas.height * 0.37);
+          ctx.lineTo(canvas.width * 0.68, canvas.height * 0.45);
+          ctx.lineTo(canvas.width * 0.74, canvas.height * 0.72);
+          ctx.stroke();
+
+          // Torso
+          ctx.beginPath();
+          ctx.moveTo(canvas.width * 0.37, canvas.height * 0.45);
+          ctx.lineTo(canvas.width * 0.39, canvas.height * 0.85);
+          ctx.moveTo(canvas.width * 0.63, canvas.height * 0.45);
+          ctx.lineTo(canvas.width * 0.61, canvas.height * 0.85);
+          ctx.stroke();
+
+          // Simple face cue
+          ctx.strokeStyle = '#6366f1';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(canvas.width * 0.44, canvas.height * 0.25);
+          ctx.lineTo(canvas.width * 0.47, canvas.height * 0.25);
+          ctx.moveTo(canvas.width * 0.53, canvas.height * 0.25);
+          ctx.lineTo(canvas.width * 0.56, canvas.height * 0.25);
+          ctx.stroke();
+
+          mainPrompt.value = '笑顔でこちらを見つめる冒険者のキャラクター。軽やかなケープと風になびく髪。';
+          state.selectedTags = new Set(['anime', 'backlight']);
+        } else if (type === 'cafe') {
+          // Table line
+          ctx.strokeStyle = '#64748b';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(0, canvas.height * 0.72);
+          ctx.lineTo(canvas.width, canvas.height * 0.72);
+          ctx.stroke();
+
+          // Coffee cup
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineWidth = 5;
+          ctx.strokeRect(canvas.width * 0.36, canvas.height * 0.48, canvas.width * 0.22, canvas.height * 0.22);
+          ctx.beginPath();
+          ctx.arc(canvas.width * 0.58, canvas.height * 0.58, 28, -Math.PI / 2, Math.PI / 2);
+          ctx.stroke();
+
+          // Steam
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(canvas.width * 0.44, canvas.height * 0.44);
+          ctx.quadraticCurveTo(canvas.width * 0.4, canvas.height * 0.36, canvas.width * 0.46, canvas.height * 0.28);
+          ctx.moveTo(canvas.width * 0.52, canvas.height * 0.44);
+          ctx.quadraticCurveTo(canvas.width * 0.56, canvas.height * 0.36, canvas.width * 0.5, canvas.height * 0.28);
+          ctx.stroke();
+
+          // Window frame in background
+          ctx.strokeStyle = '#0ea5e9';
+          ctx.lineWidth = 3;
+          ctx.strokeRect(canvas.width * 0.1, canvas.height * 0.1, canvas.width * 0.24, canvas.height * 0.45);
+
+          mainPrompt.value = '木漏れ日が差し込む静かなカフェの窓際。湯気の立つラテと木のテーブル。';
+          state.selectedTags = new Set(['realistic', 'pastel']);
+        }
+
+        ctx.restore();
+        pushHistory();
+        renderStyleTags();
+        updateCompiledPrompt();
+        sampleMenu.classList.add('hidden');
+        showToast('サンプル下絵を読み込みました');
+      }
+
+      sampleMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sampleMenu.classList.toggle('hidden');
+      });
+      document.addEventListener('click', () => sampleMenu.classList.add('hidden'));
+      document.querySelectorAll('.sample-item').forEach((btn) => {
+        btn.addEventListener('click', () => loadSample(btn.dataset.sample));
+      });
+
+      // --- Prompt Builder ---
+      function renderStyleTags() {
+        styleTagsContainer.innerHTML = '';
+        STYLE_TAGS.forEach((tag) => {
+          const active = state.selectedTags.has(tag.id);
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = tag.label;
+          btn.className = active
+            ? 'px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-600 text-white shadow-xs transition-colors'
+            : 'px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors';
+          btn.addEventListener('click', () => {
+            if (state.selectedTags.has(tag.id)) state.selectedTags.delete(tag.id);
+            else state.selectedTags.add(tag.id);
+            renderStyleTags();
+            updateCompiledPrompt();
+          });
+          styleTagsContainer.appendChild(btn);
+        });
+      }
+
+      function getStrengthDesc(val) {
+        if (val <= 40) return `自由度高め (${val}%)`;
+        if (val <= 70) return `バランス (${val}%)`;
+        return `しっかり (${val}%)`;
+      }
+
+      function buildCompiledPrompt() {
+        const base = mainPrompt.value.trim();
+        const styles = STYLE_TAGS.filter((t) => state.selectedTags.has(t.id)).map((t) => t.prompt);
+        const neg = negativePrompt.value.trim();
+        const strengthVal = state.strength;
+
+        let strengthInstruction = '添付した下絵（ラフスケッチ）の構図とオブジェクトの配置をベースに、';
+        if (strengthVal <= 40) {
+          strengthInstruction = '添付した下絵（ラフスケッチ）のアイデアを参考にしつつ、構図は自由にアレンジして、';
+        } else if (strengthVal >= 85) {
+          strengthInstruction = '添付した下絵（ラフスケッチ）の構図・位置・シルエットを忠実に保ったまま、';
+        }
+
+        const lines = [];
+        lines.push(`${strengthInstruction}完成度の高いビジュアルを生成してください。`);
+        lines.push('');
+        lines.push(`【描く内容】${base || '（未入力：左の下絵に合わせて自由に描写してください）'}`);
+        if (styles.length > 0) {
+          lines.push(`【画風・雰囲気】${styles.join('、')}`);
+        }
+        lines.push(`【比率・忠実度】アスペクト比 ${state.aspect} / 下絵への忠実度 ${strengthVal}%`);
+        if (neg) {
+          lines.push(`【除外したい要素】${neg}`);
+        }
+        return lines.join('\n');
+      }
+
+      function updateCompiledPrompt() {
+        const text = buildCompiledPrompt();
+        compiledPreview.textContent = text;
+        charCountLabel.textContent = `${text.length}文字`;
+        saveDraftSafe();
+      }
+
+      function saveDraftSafe() {
+        try {
+          localStorage.setItem('sketch2ai_prompt_v1', JSON.stringify({
+            mainPrompt: mainPrompt.value,
+            negativePrompt: negativePrompt.value,
+            strength: state.strength,
+            tags: Array.from(state.selectedTags)
+          }));
+        } catch (_) {}
+      }
+
+      function loadDraftSafe() {
+        try {
+          const raw = localStorage.getItem('sketch2ai_prompt_v1');
+          if (!raw) return;
+          const data = JSON.parse(raw);
+          if (typeof data.mainPrompt === 'string') mainPrompt.value = data.mainPrompt;
+          if (typeof data.negativePrompt === 'string') negativePrompt.value = data.negativePrompt;
+          if (typeof data.strength === 'number') {
+            state.strength = data.strength;
+            sketchStrength.value = String(data.strength);
+            strengthLabel.textContent = getStrengthDesc(data.strength);
+          }
+          if (Array.isArray(data.tags)) {
+            state.selectedTags = new Set(data.tags);
+          }
+        } catch (_) {}
+      }
+
+      mainPrompt.addEventListener('input', updateCompiledPrompt);
+      negativePrompt.addEventListener('input', updateCompiledPrompt);
+      sketchStrength.addEventListener('input', (e) => {
+        state.strength = Number(e.target.value);
+        strengthLabel.textContent = getStrengthDesc(state.strength);
+        updateCompiledPrompt();
+      });
+
+      clearPromptBtn.addEventListener('click', () => {
+        mainPrompt.value = '';
+        negativePrompt.value = '';
+        state.selectedTags.clear();
+        state.strength = 75;
+        sketchStrength.value = '75';
+        strengthLabel.textContent = getStrengthDesc(75);
+        renderStyleTags();
+        updateCompiledPrompt();
+        showToast('プロンプトをリセットしました');
+      });
+
+      // --- Export & Copy Actions ---
+      async function copyTextSafe(text) {
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            return true;
+          }
+        } catch (_) {}
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        let ok = false;
+        try {
+          ok = document.execCommand('copy');
+        } catch (_) {}
+        document.body.removeChild(ta);
+        return ok;
+      }
+
+      copyPromptBtn.addEventListener('click', async () => {
+        const text = buildCompiledPrompt();
+        const ok = await copyTextSafe(text);
+        if (ok) showToast('AIへの指示文をコピーしました');
+        else showToast('コピーに失敗しました。プレビューから手動でコピーしてください');
+      });
+
+      copyImageBtn.addEventListener('click', () => {
+        canvas.toBlob(async (blob) => {
+          if (!blob) {
+            showToast('画像の生成に失敗しました');
+            return;
+          }
+          try {
+            if (navigator.clipboard && window.ClipboardItem) {
+              await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+              showToast('下絵画像をコピーしました！AIのチャット欄に貼り付けできます');
+              return;
+            }
+          } catch (_) {}
+          showToast('この環境では画像コピーに非対応のため「下絵PNG保存」をご利用ください');
+        }, 'image/png');
+      });
+
+      function triggerDownload(url, filename) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+
+      downloadSketchBtn.addEventListener('click', () => {
+        const url = canvas.toDataURL('image/png');
+        triggerDownload(url, `sketch_${Date.now()}.png`);
+        showToast('下絵PNGを保存しました');
+      });
+
+      // Combined Instruction Card PNG (Sketch + Prompt side by side)
+      downloadCardBtn.addEventListener('click', () => {
+        const pad = 32;
+        const sideW = 460;
+        const sketchW = 640;
+        const sketchH = Math.round((canvas.height / canvas.width) * sketchW);
+        const cardH = Math.max(sketchH + pad * 2, 520);
+        const cardW = sketchW + sideW + pad * 3;
+
+        const out = document.createElement('canvas');
+        out.width = cardW;
+        out.height = cardH;
+        const octx = out.getContext('2d');
+
+        // Background
+        octx.fillStyle = '#f8fafc';
+        octx.fillRect(0, 0, cardW, cardH);
+
+        // Sketch frame
+        octx.fillStyle = '#ffffff';
+        octx.fillRect(pad, pad, sketchW, sketchH);
+        octx.drawImage(canvas, pad, pad, sketchW, sketchH);
+        octx.strokeStyle = '#cbd5e1';
+        octx.lineWidth = 2;
+        octx.strokeRect(pad, pad, sketchW, sketchH);
+
+        // Right panel text
+        const textX = sketchW + pad * 2;
+        let textY = pad + 26;
+        octx.fillStyle = '#4f46e5';
+        octx.font = 'bold 20px Inter, sans-serif';
+        octx.fillText('Sketch2AI 指示カード', textX, textY);
+        textY += 36;
+
+        octx.fillStyle = '#1e293b';
+        octx.font = '15px Inter, sans-serif';
+        const lines = buildCompiledPrompt().split('\n');
+        const maxTextW = sideW - 16;
+
+        lines.forEach((rawLine) => {
+          if (!rawLine) {
+            textY += 14;
+            return;
+          }
+          let current = '';
+          for (const ch of rawLine) {
+            const test = current + ch;
+            if (octx.measureText(test).width > maxTextW) {
+              octx.fillText(current, textX, textY);
+              textY += 23;
+              current = ch;
+            } else {
+              current = test;
+            }
+          }
+          if (current) {
+            octx.fillText(current, textX, textY);
+            textY += 23;
+          }
+        });
+
+        triggerDownload(out.toDataURL('image/png'), `sketch2ai_card_${Date.now()}.png`);
+        showToast('下絵＋プロンプト指示カードを保存しました');
+      });
+
+      downloadJsonBtn.addEventListener('click', () => {
+        const payload = {
+          createdAt: new Date().toISOString(),
+          aspectRatio: state.aspect,
+          sketchStrength: state.strength,
+          prompt: mainPrompt.value.trim(),
+          styles: STYLE_TAGS.filter((t) => state.selectedTags.has(t.id)).map((t) => t.prompt),
+          negativePrompt: negativePrompt.value.trim(),
+          compiledInstruction: buildCompiledPrompt(),
+          sketchImageBase64: canvas.toDataURL('image/png')
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        triggerDownload(url, `sketch2ai_package_${Date.now()}.json`);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showToast('JSONパッケージを書き出しました');
+      });
+
+      // Help Modal
+      helpBtn.addEventListener('click', () => helpModal.classList.remove('hidden'));
+      closeHelpBtn.addEventListener('click', () => helpModal.classList.add('hidden'));
+      closeHelpConfirmBtn.addEventListener('click', () => helpModal.classList.add('hidden'));
+      helpModal.addEventListener('click', (e) => {
+        if (e.target === helpModal) helpModal.classList.add('hidden');
+      });
+
+      // --- Init ---
+      fillWhiteBackground();
+      pushHistory();
+      loadDraftSafe();
+      renderStyleTags();
+      updateCompiledPrompt();
+      if (window.lucide) {
+        lucide.createIcons();
+      }
+    })();
+  </script>
+</body>
+</html>

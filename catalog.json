@@ -1,590 +1,596 @@
 [
- {
-  "id": "game:ai",
-  "title": "蒸気機関：プレッシャー・ライン",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/ai.html"
- },
- {
-  "id": "game:ai_game_portfolio",
-  "title": "AI-GAME-PORTFOLIO - Short Video Reels",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/ai_game_portfolio.html"
- },
- {
-  "id": "game:chroma_deca",
-  "title": "CHROMA DECA - AI-GAME-PORTFOLIO",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/chroma_deca.html"
- },
- {
-  "id": "game:chronofantasia",
-  "title": "CHRONO FANTASIA 〜終焉のクリスタル〜",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/chronofantasia.html"
- },
- {
-  "id": "game:code_artifact%20%281%29",
-  "title": "蒸気機関：プレッシャー・ライン",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/code_artifact%20%281%29.html"
- },
- {
-  "id": "game:code_artifact%20%2810%29",
-  "title": "紋章ダイスタクティクス：ルーン・ロール・サバイバー",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/code_artifact%20%2810%29.html"
- },
- {
-  "id": "game:code_artifact%20%2811%29",
-  "title": "電脳妖怪ネットダイバー",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/code_artifact%20%2811%29.html"
- },
- {
-  "id": "game:code_artifact%20%282%29",
-  "title": "レトロ町並みアドベンチャー - Humanized Edition",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/code_artifact%20%282%29.html"
- },
- {
-  "id": "game:code_artifact%20%285%29",
-  "title": "紋章カードの錬金市場：ルーン・トレード | AI-GAME-PORTFOLIO",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/code_artifact%20%285%29.html"
- },
- {
-  "id": "game:code_artifact%20%287%29",
-  "title": "紋章カードの領地経営：ルーン・オートバトラー | AI-GAME-PORTFOLIO",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/code_artifact%20%287%29.html"
- },
- {
-  "id": "game:code_artifact%20%289%29",
-  "title": "紋章カードの自動化工場：ルーン・コンベア・オートメーション | AI-GAME-PORTFOLIO",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/code_artifact%20%289%29.html"
- },
- {
-  "id": "game:code_artifact",
-  "title": "蒸気機関：プレッシャー・ライン",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/code_artifact.html"
- },
- {
-  "id": "game:code_artifact_5_html",
-  "title": "紋章カードの錬金市場：ルーン・トレード | AI-GAME-PORTFOLIO",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/code_artifact_5_html.html"
- },
- {
-  "id": "game:conquistador_rpg%20%281%29",
-  "title": "Conquistador: Smoke &amp; Rank (1519 Mexico Expedition)",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/conquistador_rpg%20%281%29.html"
- },
- {
-  "id": "game:conquistador_rpg",
-  "title": "Conquistador: Smoke &amp; Rank (1519 Mexico Expedition)",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/conquistador_rpg.html"
- },
- {
-  "id": "game:conquistador_smoke_rank%20%281%29",
-  "title": "Conquistador: Smoke &amp; Rank (1519 Mexico Expedition)",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/conquistador_smoke_rank%20%281%29.html"
- },
- {
-  "id": "game:conquistador_smoke_rank",
-  "title": "Conquistador: Smoke &amp; Rank (1519 Mexico Expedition)",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/conquistador_smoke_rank.html"
- },
- {
-  "id": "game:crossroad_chaos",
-  "title": "CROSSROAD CHAOS | AI-GAME-PORTFOLIO",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/crossroad_chaos.html"
- },
- {
-  "id": "game:echoes_of_frequency",
-  "title": "Echoes of Frequency | AI-GAME-PORTFOLIO",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/echoes_of_frequency.html"
- },
- {
-  "id": "game:fm_sync_cyber_groove%20%282%29",
-  "title": "FM SYNC: CYBER GROOVE",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/fm_sync_cyber_groove%20%282%29.html"
- },
- {
-  "id": "game:fm_sync_cyber_groove",
-  "title": "FM SYNC: CYBER GROOVE",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/fm_sync_cyber_groove.html"
- },
- {
-  "id": "game:fm_synthesis_striker%20%281%29",
-  "title": "FM SYNTHESIS STRIKER - 鋼鉄の残響 (Enhanced Melody &amp; Smooth Edition)",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/fm_synthesis_striker%20%281%29.html"
- },
- {
-  "id": "game:fm_synthesis_striker",
-  "title": "FM SYNTHESIS STRIKER - 鋼鉄の残響",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/fm_synthesis_striker.html"
- },
- {
-  "id": "game:fps_game",
-  "title": "Pseudo-3D Raycasting FPS",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/fps_game.html"
- },
- {
-  "id": "game:front_mission_tactix",
-  "title": "FRONT MISSION TACTIX: STEEL HOUNDS | AI-GAME-PORTFOLIO",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/front_mission_tactix.html"
- },
- {
-  "id": "game:g",
-  "title": "レトロ町並みアドベンチャー - Humanized Edition",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/g.html"
- },
- {
-  "id": "game:gemini-code-1791547276422",
-  "title": "天空の呪い - Fallout-style Narrative RPG",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1791547276422.html"
- },
- {
-  "id": "game:gemini-code-1791574937101",
-  "title": "Neon Chain: Cascade | AI-GAME-PORTFOLIO",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1791574937101.html"
- },
- {
-  "id": "game:gemini-code-1792274904676",
-  "title": "紋章カードの怠惰なる生活 - Rune Craft Puzzle (拡張版)",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1792274904676.html"
- },
- {
-  "id": "game:gemini-code-1792275752537",
-  "title": "紋章カードの怠惰なる生活 - Rune Craft Puzzle (マイホーム拡張版)",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1792275752537.html"
- },
- {
-  "id": "game:gemini-code-1792280328455",
-  "title": "紋章カードの錬金市場：ルーン・トレード | AI-GAME-PORTFOLIO",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1792280328455.html"
- },
- {
-  "id": "game:gemini-code-1792280377735",
-  "title": "紋章カードの錬金市場：ルーン・トレード | AI-GAME-PORTFOLIO",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1792280377735.html"
- },
- {
-  "id": "game:gemini-code-1792359576046",
-  "title": "紋章ルーン・コレクター",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1792359576046.html"
- },
- {
-  "id": "game:gemini-code-1792409037721",
-  "title": "Neon Prism: Draw &amp; Defend | AI-GAME-PORTFOLIO",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1792409037721.html"
- },
- {
-  "id": "game:gemini-code-1792445201821",
-  "title": "FM SYNTHESIS STRIKER - 3D NEON OVERDRIVE",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1792445201821.html"
- },
- {
-  "id": "game:gemini-code-1792592625961",
-  "title": "絶対絶望獣：神殺しの系譜",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1792592625961.html"
- },
- {
-  "id": "game:gemini-code-1792642937079",
-  "title": "絶対絶望獣：神殺しの系譜",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1792642937079.html"
- },
- {
-  "id": "game:gemini-code-1792653718036",
-  "title": "絶対絶望獣：神殺しの系譜",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1792653718036.html"
- },
- {
-  "id": "game:gemini-code-1792750441145",
-  "title": "STEEL HORIZON - 荒野の機械化戦線",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1792750441145.html"
- },
- {
-  "id": "game:gemini-code-1792750460008",
-  "title": "STEEL HORIZON - 荒野の機械化戦線",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1792750460008.html"
- },
- {
-  "id": "game:gemini-code-1792751706314",
-  "title": "STEEL HORIZON - 荒野の機械化戦線",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1792751706314.html"
- },
- {
-  "id": "game:gemini-code-1793265028632",
-  "title": "Chrono Shadow: Parallel Infiltrator",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1793265028632.html"
- },
- {
-  "id": "game:gorgeous_scene_transition_portfolio",
-  "title": "AI-GAME-PORTFOLIO - Immersive Scene Experience",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/gorgeous_scene_transition_portfolio.html"
- },
- {
-  "id": "game:idle_drakkhen",
-  "title": "Idle Drakkhen RPG",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/idle_drakkhen.html"
- },
- {
-  "id": "game:jyu",
-  "title": "絶対絶望獣：神殺しの系譜",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/jyu.html"
- },
- {
-  "id": "game:jyu2",
-  "title": "絶対絶望獣：神殺しの系譜",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/jyu2.html"
- },
- {
-  "id": "game:jyu3",
-  "title": "絶対絶望獣：神殺しの系譜",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/jyu3.html"
- },
- {
-  "id": "game:jyu4",
-  "title": "絶対絶望獣：神殺しの系譜",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/jyu4.html"
- },
- {
-  "id": "game:kabe",
-  "title": "Cyber Maze: God Hand",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/kabe.html"
- },
- {
-  "id": "game:micron_shokunin",
-  "title": "ミクロン職人 〜寸法ぴったり止め〜",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/micron_shokunin.html"
- },
- {
-  "id": "game:minimal_rpg",
-  "title": "ミニマム文字RPG：ストーリー討伐",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/minimal_rpg.html"
- },
- {
-  "id": "game:neon_prism_draw_defend%20%281%29",
-  "title": "Neon Prism: Draw &amp; Defend | AI-GAME-PORTFOLIO",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/neon_prism_draw_defend%20%281%29.html"
- },
- {
-  "id": "game:neon_prism_draw_defend",
-  "title": "Neon Prism: Draw &amp; Defend | AI-GAME-PORTFOLIO",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/neon_prism_draw_defend.html"
- },
- {
-  "id": "game:neon_swarm_survivor",
-  "title": "Neon Swarm Survivor | AI-GAME-PORTFOLIO",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/neon_swarm_survivor.html"
- },
- {
-  "id": "game:pc88%20%281%29",
-  "title": "レトロ町並みアドベンチャー",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/pc88%20%281%29.html"
- },
- {
-  "id": "game:pc88",
-  "title": "レトロ町並みアドベンチャー",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/pc88.html"
- },
- {
-  "id": "game:retro_kyoto_run",
-  "title": "Retro Kyoto Run",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/retro_kyoto_run.html"
- },
- {
-  "id": "game:rune_craft_puzzle%20%281%29",
-  "title": "紋章カードの怠惰なる生活 - Rune Craft Puzzle",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/rune_craft_puzzle%20%281%29.html"
- },
- {
-  "id": "game:steel_horizon",
-  "title": "STEEL HORIZON - 荒野の機械化戦線",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/steel_horizon.html"
- },
- {
-  "id": "game:survival_wall_throw",
-  "title": "壁ドン即死回避：空気抵抗のみ",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/survival_wall_throw.html"
- },
- {
-  "id": "game:terra_seal_manager",
-  "title": "鳥人の一日 - 絶対封印指定惑星テラ 封印管理シム",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/terra_seal_manager.html"
- },
- {
-  "id": "game:wizardry_rpg",
-  "title": "Wizardry-style RPG: Labyrinth of Legends",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/wizardry_rpg.html"
- },
- {
-  "id": "game:wizardry_style_rpg_labyrinth_of_legends%20%281%29",
-  "title": "Wizardry-style RPG: Labyrinth of Legends (Enhanced)",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/wizardry_style_rpg_labyrinth_of_legends%20%281%29.html"
- },
- {
-  "id": "game:wizardry_style_rpg_labyrinth_of_legends",
-  "title": "Wizardry-style RPG: Labyrinth of Legends (Enhanced)",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/wizardry_style_rpg_labyrinth_of_legends.html"
- },
- {
-  "id": "game:svg_sprite_demo",
-  "title": "SVGスプライト デモ - ペンギンの星集め",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/svg_sprite_demo.html"
- },
- {
-  "id": "game:cassette_orbit_1989",
-  "title": "レトロフューチャーアドベンチャー: Cassette Orbit 1989 | AI-GAME-PORTFOLIO",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/cassette_orbit_1989.html"
- },
- {
-  "id": "game:yamanobori",
-  "title": "山のぼりゲーム 〜エレメカ再現〜",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/yamanobori.html"
- },
- {
-  "id": "game:neo_world_gal",
-  "title": "ネオワールドサーガー ― アーカイブの彼女たち ―",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/neo_world_gal.html"
- },
- {
-  "id": "game:pipe_master",
-  "title": "PIPE MASTER - シェルスクリプト学習カードゲーム",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/pipe_master.html"
- },
- {
-  "id": "game:rina_penguin",
-  "title": "リナのペンギン救出大作戦",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/rina_penguin.html"
- },
- {
-  "id": "game:ghost_mission",
-  "title": "ゴーストミッション — ドローン潜入ステルスアクション",
-  "category": "ゲーム（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/games/ghost_mission.html"
- },
- {
-  "id": "game:code_artifact%20%286%29",
-  "title": "紋章カードと漆黒の狙撃手 - Mouse Aim Rune Action | AI-GAME-PORTFOLIO",
-  "category": "ゲーム（PC向け）",
-  "url": "https://morinokum.github.io/my-website/games/code_artifact%20%286%29.html"
- },
- {
-  "id": "game:gemini-code-1791672889300",
-  "title": "エピック・アドベンチャー",
-  "category": "ゲーム（PC向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1791672889300.html"
- },
- {
-  "id": "game:gemini-code-1791741278843",
-  "title": "エピック・アドベンチャー",
-  "category": "ゲーム（PC向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1791741278843.html"
- },
- {
-  "id": "game:gemini-code-1791971187588",
-  "title": "エピック・アドベンチャー",
-  "category": "ゲーム（PC向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1791971187588.html"
- },
- {
-  "id": "game:gemini-code-1791973327125",
-  "title": "NEON BLADE - Cyber Action",
-  "category": "ゲーム（PC向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1791973327125.html"
- },
- {
-  "id": "game:gemini-code-1792291598101",
-  "title": "紋章カードと漆黒の狙撃手 - Mouse Aim Rune Action | AI-GAME-PORTFOLIO",
-  "category": "ゲーム（PC向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1792291598101.html"
- },
- {
-  "id": "game:gemini-code-1792292913438",
-  "title": "紋章カードと漆黒の狙撃手 - Mouse Aim Rune Action | AI-GAME-PORTFOLIO",
-  "category": "ゲーム（PC向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1792292913438.html"
- },
- {
-  "id": "game:gemini-code-1793233633945",
-  "title": "Chrono Shadow: Parallel Infiltrator",
-  "category": "ゲーム（PC向け）",
-  "url": "https://morinokum.github.io/my-website/games/gemini-code-1793233633945.html"
- },
- {
-  "id": "app:code_artifact%20%2812%29",
-  "title": "自動動画開発 ヴォイスボックス ほか",
-  "category": "アプリ（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/apps/code_artifact%20%2812%29.html"
- },
- {
-  "id": "app:context_anchor",
-  "title": "Context Anchor",
-  "category": "アプリ（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/apps/context_anchor.html"
- },
- {
-  "id": "app:gemini-code-1792965732590",
-  "title": "認知負荷バランサー",
-  "category": "アプリ（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/apps/gemini-code-1792965732590.html"
- },
- {
-  "id": "app:gemini-code-1793051127840",
-  "title": "Diverge &amp; Converge Canvas",
-  "category": "アプリ（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/apps/gemini-code-1793051127840.html"
- },
- {
-  "id": "app:gemini-code-1793051390949",
-  "title": "Diverge &amp; Converge Canvas",
-  "category": "アプリ（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/apps/gemini-code-1793051390949.html"
- },
- {
-  "id": "app:gemini-code-1793052869486",
-  "title": "ゆっくり・ずんだもん動画生成Webツール",
-  "category": "アプリ（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/apps/gemini-code-1793052869486.html"
- },
- {
-  "id": "app:gemini-code-1793224764105",
-  "title": "Thought Prism - 思考リフレーミングツール",
-  "category": "アプリ（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/apps/gemini-code-1793224764105.html"
- },
- {
-  "id": "app:gemini-code-1793224927915",
-  "title": "Serendipity Canvas - 思考結合器",
-  "category": "アプリ（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/apps/gemini-code-1793224927915.html"
- },
- {
-  "id": "app:gemini-code-1793227682079",
-  "title": "Cinematic Typist",
-  "category": "アプリ（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/apps/gemini-code-1793227682079.html"
- },
- {
-  "id": "app:gemini-code-1793228153763",
-  "title": "Cinematic Typist - Visual Edition",
-  "category": "アプリ（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/apps/gemini-code-1793228153763.html"
- },
- {
-  "id": "app:web",
-  "title": "ゆっくり・ずんだもん動画生成Webツール",
-  "category": "アプリ（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/apps/web.html"
- },
- {
-  "id": "app:ai_suisha_navi",
-  "title": "AI水車ナビ — 無料〜課金をワンタッチ判定",
-  "category": "アプリ（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/apps/ai_suisha_navi.html"
- },
- {
-  "id": "app:neo_world_studio",
-  "title": "NEO WORLD SAGA - 自動映像・ナレーション合成スタジオ",
-  "category": "アプリ（PC向け）",
-  "url": "https://morinokum.github.io/my-website/apps/neo_world_studio.html"
- },
- {
-  "id": "app:alter_insert_editor",
-  "title": "オルターインサート型エディタ｜リ研工業 プロトタイプ",
-  "category": "アプリ（PC向け）",
-  "url": "https://morinokum.github.io/my-website/apps/alter_insert_editor.html"
- },
- {
-  "id": "app:oracle_gatekeeper",
-  "title": "ORACLE GATEKEEPER — 文脈・エピソード記憶認証デモ",
-  "category": "アプリ（PC向け）",
-  "url": "https://morinokum.github.io/my-website/apps/oracle_gatekeeper.html"
- },
- {
-  "id": "app:neon_pulse",
-  "title": "NEON PULSE — 録画スタジオ内蔵アーケードゲーム",
-  "category": "アプリ（PC向け）",
-  "url": "https://morinokum.github.io/my-website/apps/neon_pulse.html"
- },
- {
-  "id": "app:senior_scam_checker",
-  "title": "シニア向け詐欺チェッカー — 大きな3ボタンで詐欺を判定",
-  "category": "アプリ（PC向け）",
-  "url": "https://morinokum.github.io/my-website/apps/senior_scam_checker.html"
- },
- {
-  "id": "app:tachiemon",
-  "title": "タチエモン — 立ち絵メーカー＆口パク・まばたきスタジオ",
-  "category": "アプリ（PC向け）",
-  "url": "https://morinokum.github.io/my-website/apps/tachiemon.html"
- },
- {
-  "id": "app:koutei_scanner",
-  "title": "工程スキャナー — 動画マニュアル×QRコード",
-  "category": "アプリ（スマホ向け）",
-  "url": "https://morinokum.github.io/my-website/apps/koutei_scanner.html"
- }
+  {
+    "id": "game:ai",
+    "title": "蒸気機関：プレッシャー・ライン",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/ai.html"
+  },
+  {
+    "id": "game:ai_game_portfolio",
+    "title": "AI-GAME-PORTFOLIO - Short Video Reels",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/ai_game_portfolio.html"
+  },
+  {
+    "id": "game:chroma_deca",
+    "title": "CHROMA DECA - AI-GAME-PORTFOLIO",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/chroma_deca.html"
+  },
+  {
+    "id": "game:chronofantasia",
+    "title": "CHRONO FANTASIA 〜終焉のクリスタル〜",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/chronofantasia.html"
+  },
+  {
+    "id": "game:code_artifact%20%281%29",
+    "title": "蒸気機関：プレッシャー・ライン",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/code_artifact%20%281%29.html"
+  },
+  {
+    "id": "game:code_artifact%20%2810%29",
+    "title": "紋章ダイスタクティクス：ルーン・ロール・サバイバー",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/code_artifact%20%2810%29.html"
+  },
+  {
+    "id": "game:code_artifact%20%2811%29",
+    "title": "電脳妖怪ネットダイバー",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/code_artifact%20%2811%29.html"
+  },
+  {
+    "id": "game:code_artifact%20%282%29",
+    "title": "レトロ町並みアドベンチャー - Humanized Edition",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/code_artifact%20%282%29.html"
+  },
+  {
+    "id": "game:code_artifact%20%285%29",
+    "title": "紋章カードの錬金市場：ルーン・トレード | AI-GAME-PORTFOLIO",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/code_artifact%20%285%29.html"
+  },
+  {
+    "id": "game:code_artifact%20%287%29",
+    "title": "紋章カードの領地経営：ルーン・オートバトラー | AI-GAME-PORTFOLIO",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/code_artifact%20%287%29.html"
+  },
+  {
+    "id": "game:code_artifact%20%289%29",
+    "title": "紋章カードの自動化工場：ルーン・コンベア・オートメーション | AI-GAME-PORTFOLIO",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/code_artifact%20%289%29.html"
+  },
+  {
+    "id": "game:code_artifact",
+    "title": "蒸気機関：プレッシャー・ライン",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/code_artifact.html"
+  },
+  {
+    "id": "game:code_artifact_5_html",
+    "title": "紋章カードの錬金市場：ルーン・トレード | AI-GAME-PORTFOLIO",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/code_artifact_5_html.html"
+  },
+  {
+    "id": "game:conquistador_rpg%20%281%29",
+    "title": "Conquistador: Smoke &amp; Rank (1519 Mexico Expedition)",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/conquistador_rpg%20%281%29.html"
+  },
+  {
+    "id": "game:conquistador_rpg",
+    "title": "Conquistador: Smoke &amp; Rank (1519 Mexico Expedition)",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/conquistador_rpg.html"
+  },
+  {
+    "id": "game:conquistador_smoke_rank%20%281%29",
+    "title": "Conquistador: Smoke &amp; Rank (1519 Mexico Expedition)",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/conquistador_smoke_rank%20%281%29.html"
+  },
+  {
+    "id": "game:conquistador_smoke_rank",
+    "title": "Conquistador: Smoke &amp; Rank (1519 Mexico Expedition)",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/conquistador_smoke_rank.html"
+  },
+  {
+    "id": "game:crossroad_chaos",
+    "title": "CROSSROAD CHAOS | AI-GAME-PORTFOLIO",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/crossroad_chaos.html"
+  },
+  {
+    "id": "game:echoes_of_frequency",
+    "title": "Echoes of Frequency | AI-GAME-PORTFOLIO",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/echoes_of_frequency.html"
+  },
+  {
+    "id": "game:fm_sync_cyber_groove%20%282%29",
+    "title": "FM SYNC: CYBER GROOVE",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/fm_sync_cyber_groove%20%282%29.html"
+  },
+  {
+    "id": "game:fm_sync_cyber_groove",
+    "title": "FM SYNC: CYBER GROOVE",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/fm_sync_cyber_groove.html"
+  },
+  {
+    "id": "game:fm_synthesis_striker%20%281%29",
+    "title": "FM SYNTHESIS STRIKER - 鋼鉄の残響 (Enhanced Melody &amp; Smooth Edition)",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/fm_synthesis_striker%20%281%29.html"
+  },
+  {
+    "id": "game:fm_synthesis_striker",
+    "title": "FM SYNTHESIS STRIKER - 鋼鉄の残響",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/fm_synthesis_striker.html"
+  },
+  {
+    "id": "game:fps_game",
+    "title": "Pseudo-3D Raycasting FPS",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/fps_game.html"
+  },
+  {
+    "id": "game:front_mission_tactix",
+    "title": "FRONT MISSION TACTIX: STEEL HOUNDS | AI-GAME-PORTFOLIO",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/front_mission_tactix.html"
+  },
+  {
+    "id": "game:g",
+    "title": "レトロ町並みアドベンチャー - Humanized Edition",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/g.html"
+  },
+  {
+    "id": "game:gemini-code-1791547276422",
+    "title": "天空の呪い - Fallout-style Narrative RPG",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1791547276422.html"
+  },
+  {
+    "id": "game:gemini-code-1791574937101",
+    "title": "Neon Chain: Cascade | AI-GAME-PORTFOLIO",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1791574937101.html"
+  },
+  {
+    "id": "game:gemini-code-1792274904676",
+    "title": "紋章カードの怠惰なる生活 - Rune Craft Puzzle (拡張版)",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1792274904676.html"
+  },
+  {
+    "id": "game:gemini-code-1792275752537",
+    "title": "紋章カードの怠惰なる生活 - Rune Craft Puzzle (マイホーム拡張版)",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1792275752537.html"
+  },
+  {
+    "id": "game:gemini-code-1792280328455",
+    "title": "紋章カードの錬金市場：ルーン・トレード | AI-GAME-PORTFOLIO",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1792280328455.html"
+  },
+  {
+    "id": "game:gemini-code-1792280377735",
+    "title": "紋章カードの錬金市場：ルーン・トレード | AI-GAME-PORTFOLIO",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1792280377735.html"
+  },
+  {
+    "id": "game:gemini-code-1792359576046",
+    "title": "紋章ルーン・コレクター",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1792359576046.html"
+  },
+  {
+    "id": "game:gemini-code-1792409037721",
+    "title": "Neon Prism: Draw &amp; Defend | AI-GAME-PORTFOLIO",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1792409037721.html"
+  },
+  {
+    "id": "game:gemini-code-1792445201821",
+    "title": "FM SYNTHESIS STRIKER - 3D NEON OVERDRIVE",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1792445201821.html"
+  },
+  {
+    "id": "game:gemini-code-1792592625961",
+    "title": "絶対絶望獣：神殺しの系譜",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1792592625961.html"
+  },
+  {
+    "id": "game:gemini-code-1792642937079",
+    "title": "絶対絶望獣：神殺しの系譜",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1792642937079.html"
+  },
+  {
+    "id": "game:gemini-code-1792653718036",
+    "title": "絶対絶望獣：神殺しの系譜",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1792653718036.html"
+  },
+  {
+    "id": "game:gemini-code-1792750441145",
+    "title": "STEEL HORIZON - 荒野の機械化戦線",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1792750441145.html"
+  },
+  {
+    "id": "game:gemini-code-1792750460008",
+    "title": "STEEL HORIZON - 荒野の機械化戦線",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1792750460008.html"
+  },
+  {
+    "id": "game:gemini-code-1792751706314",
+    "title": "STEEL HORIZON - 荒野の機械化戦線",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1792751706314.html"
+  },
+  {
+    "id": "game:gemini-code-1793265028632",
+    "title": "Chrono Shadow: Parallel Infiltrator",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1793265028632.html"
+  },
+  {
+    "id": "game:gorgeous_scene_transition_portfolio",
+    "title": "AI-GAME-PORTFOLIO - Immersive Scene Experience",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/gorgeous_scene_transition_portfolio.html"
+  },
+  {
+    "id": "game:idle_drakkhen",
+    "title": "Idle Drakkhen RPG",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/idle_drakkhen.html"
+  },
+  {
+    "id": "game:jyu",
+    "title": "絶対絶望獣：神殺しの系譜",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/jyu.html"
+  },
+  {
+    "id": "game:jyu2",
+    "title": "絶対絶望獣：神殺しの系譜",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/jyu2.html"
+  },
+  {
+    "id": "game:jyu3",
+    "title": "絶対絶望獣：神殺しの系譜",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/jyu3.html"
+  },
+  {
+    "id": "game:jyu4",
+    "title": "絶対絶望獣：神殺しの系譜",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/jyu4.html"
+  },
+  {
+    "id": "game:kabe",
+    "title": "Cyber Maze: God Hand",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/kabe.html"
+  },
+  {
+    "id": "game:micron_shokunin",
+    "title": "ミクロン職人 〜寸法ぴったり止め〜",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/micron_shokunin.html"
+  },
+  {
+    "id": "game:minimal_rpg",
+    "title": "ミニマム文字RPG：ストーリー討伐",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/minimal_rpg.html"
+  },
+  {
+    "id": "game:neon_prism_draw_defend%20%281%29",
+    "title": "Neon Prism: Draw &amp; Defend | AI-GAME-PORTFOLIO",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/neon_prism_draw_defend%20%281%29.html"
+  },
+  {
+    "id": "game:neon_prism_draw_defend",
+    "title": "Neon Prism: Draw &amp; Defend | AI-GAME-PORTFOLIO",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/neon_prism_draw_defend.html"
+  },
+  {
+    "id": "game:neon_swarm_survivor",
+    "title": "Neon Swarm Survivor | AI-GAME-PORTFOLIO",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/neon_swarm_survivor.html"
+  },
+  {
+    "id": "game:pc88%20%281%29",
+    "title": "レトロ町並みアドベンチャー",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/pc88%20%281%29.html"
+  },
+  {
+    "id": "game:pc88",
+    "title": "レトロ町並みアドベンチャー",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/pc88.html"
+  },
+  {
+    "id": "game:retro_kyoto_run",
+    "title": "Retro Kyoto Run",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/retro_kyoto_run.html"
+  },
+  {
+    "id": "game:rune_craft_puzzle%20%281%29",
+    "title": "紋章カードの怠惰なる生活 - Rune Craft Puzzle",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/rune_craft_puzzle%20%281%29.html"
+  },
+  {
+    "id": "game:steel_horizon",
+    "title": "STEEL HORIZON - 荒野の機械化戦線",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/steel_horizon.html"
+  },
+  {
+    "id": "game:survival_wall_throw",
+    "title": "壁ドン即死回避：空気抵抗のみ",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/survival_wall_throw.html"
+  },
+  {
+    "id": "game:terra_seal_manager",
+    "title": "鳥人の一日 - 絶対封印指定惑星テラ 封印管理シム",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/terra_seal_manager.html"
+  },
+  {
+    "id": "game:wizardry_rpg",
+    "title": "Wizardry-style RPG: Labyrinth of Legends",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/wizardry_rpg.html"
+  },
+  {
+    "id": "game:wizardry_style_rpg_labyrinth_of_legends%20%281%29",
+    "title": "Wizardry-style RPG: Labyrinth of Legends (Enhanced)",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/wizardry_style_rpg_labyrinth_of_legends%20%281%29.html"
+  },
+  {
+    "id": "game:wizardry_style_rpg_labyrinth_of_legends",
+    "title": "Wizardry-style RPG: Labyrinth of Legends (Enhanced)",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/wizardry_style_rpg_labyrinth_of_legends.html"
+  },
+  {
+    "id": "game:svg_sprite_demo",
+    "title": "SVGスプライト デモ - ペンギンの星集め",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/svg_sprite_demo.html"
+  },
+  {
+    "id": "game:cassette_orbit_1989",
+    "title": "レトロフューチャーアドベンチャー: Cassette Orbit 1989 | AI-GAME-PORTFOLIO",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/cassette_orbit_1989.html"
+  },
+  {
+    "id": "game:yamanobori",
+    "title": "山のぼりゲーム 〜エレメカ再現〜",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/yamanobori.html"
+  },
+  {
+    "id": "game:neo_world_gal",
+    "title": "ネオワールドサーガー ― アーカイブの彼女たち ―",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/neo_world_gal.html"
+  },
+  {
+    "id": "game:pipe_master",
+    "title": "PIPE MASTER - シェルスクリプト学習カードゲーム",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/pipe_master.html"
+  },
+  {
+    "id": "game:rina_penguin",
+    "title": "リナのペンギン救出大作戦",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/rina_penguin.html"
+  },
+  {
+    "id": "game:ghost_mission",
+    "title": "ゴーストミッション — ドローン潜入ステルスアクション",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/ghost_mission.html"
+  },
+  {
+    "id": "game:code_artifact%20%286%29",
+    "title": "紋章カードと漆黒の狙撃手 - Mouse Aim Rune Action | AI-GAME-PORTFOLIO",
+    "category": "ゲーム（PC向け）",
+    "url": "https://morinokum.github.io/my-website/games/code_artifact%20%286%29.html"
+  },
+  {
+    "id": "game:gemini-code-1791672889300",
+    "title": "エピック・アドベンチャー",
+    "category": "ゲーム（PC向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1791672889300.html"
+  },
+  {
+    "id": "game:gemini-code-1791741278843",
+    "title": "エピック・アドベンチャー",
+    "category": "ゲーム（PC向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1791741278843.html"
+  },
+  {
+    "id": "game:gemini-code-1791971187588",
+    "title": "エピック・アドベンチャー",
+    "category": "ゲーム（PC向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1791971187588.html"
+  },
+  {
+    "id": "game:gemini-code-1791973327125",
+    "title": "NEON BLADE - Cyber Action",
+    "category": "ゲーム（PC向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1791973327125.html"
+  },
+  {
+    "id": "game:gemini-code-1792291598101",
+    "title": "紋章カードと漆黒の狙撃手 - Mouse Aim Rune Action | AI-GAME-PORTFOLIO",
+    "category": "ゲーム（PC向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1792291598101.html"
+  },
+  {
+    "id": "game:gemini-code-1792292913438",
+    "title": "紋章カードと漆黒の狙撃手 - Mouse Aim Rune Action | AI-GAME-PORTFOLIO",
+    "category": "ゲーム（PC向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1792292913438.html"
+  },
+  {
+    "id": "game:gemini-code-1793233633945",
+    "title": "Chrono Shadow: Parallel Infiltrator",
+    "category": "ゲーム（PC向け）",
+    "url": "https://morinokum.github.io/my-website/games/gemini-code-1793233633945.html"
+  },
+  {
+    "id": "app:code_artifact%20%2812%29",
+    "title": "自動動画開発 ヴォイスボックス ほか",
+    "category": "アプリ（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/apps/code_artifact%20%2812%29.html"
+  },
+  {
+    "id": "app:context_anchor",
+    "title": "Context Anchor",
+    "category": "アプリ（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/apps/context_anchor.html"
+  },
+  {
+    "id": "app:gemini-code-1792965732590",
+    "title": "認知負荷バランサー",
+    "category": "アプリ（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/apps/gemini-code-1792965732590.html"
+  },
+  {
+    "id": "app:gemini-code-1793051127840",
+    "title": "Diverge &amp; Converge Canvas",
+    "category": "アプリ（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/apps/gemini-code-1793051127840.html"
+  },
+  {
+    "id": "app:gemini-code-1793051390949",
+    "title": "Diverge &amp; Converge Canvas",
+    "category": "アプリ（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/apps/gemini-code-1793051390949.html"
+  },
+  {
+    "id": "app:gemini-code-1793052869486",
+    "title": "ゆっくり・ずんだもん動画生成Webツール",
+    "category": "アプリ（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/apps/gemini-code-1793052869486.html"
+  },
+  {
+    "id": "app:gemini-code-1793224764105",
+    "title": "Thought Prism - 思考リフレーミングツール",
+    "category": "アプリ（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/apps/gemini-code-1793224764105.html"
+  },
+  {
+    "id": "app:gemini-code-1793224927915",
+    "title": "Serendipity Canvas - 思考結合器",
+    "category": "アプリ（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/apps/gemini-code-1793224927915.html"
+  },
+  {
+    "id": "app:gemini-code-1793227682079",
+    "title": "Cinematic Typist",
+    "category": "アプリ（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/apps/gemini-code-1793227682079.html"
+  },
+  {
+    "id": "app:gemini-code-1793228153763",
+    "title": "Cinematic Typist - Visual Edition",
+    "category": "アプリ（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/apps/gemini-code-1793228153763.html"
+  },
+  {
+    "id": "app:web",
+    "title": "ゆっくり・ずんだもん動画生成Webツール",
+    "category": "アプリ（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/apps/web.html"
+  },
+  {
+    "id": "app:ai_suisha_navi",
+    "title": "AI水車ナビ — 無料〜課金をワンタッチ判定",
+    "category": "アプリ（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/apps/ai_suisha_navi.html"
+  },
+  {
+    "id": "app:neo_world_studio",
+    "title": "NEO WORLD SAGA - 自動映像・ナレーション合成スタジオ",
+    "category": "アプリ（PC向け）",
+    "url": "https://morinokum.github.io/my-website/apps/neo_world_studio.html"
+  },
+  {
+    "id": "app:alter_insert_editor",
+    "title": "オルターインサート型エディタ｜リ研工業 プロトタイプ",
+    "category": "アプリ（PC向け）",
+    "url": "https://morinokum.github.io/my-website/apps/alter_insert_editor.html"
+  },
+  {
+    "id": "app:oracle_gatekeeper",
+    "title": "ORACLE GATEKEEPER — 文脈・エピソード記憶認証デモ",
+    "category": "アプリ（PC向け）",
+    "url": "https://morinokum.github.io/my-website/apps/oracle_gatekeeper.html"
+  },
+  {
+    "id": "app:neon_pulse",
+    "title": "NEON PULSE — 録画スタジオ内蔵アーケードゲーム",
+    "category": "アプリ（PC向け）",
+    "url": "https://morinokum.github.io/my-website/apps/neon_pulse.html"
+  },
+  {
+    "id": "app:senior_scam_checker",
+    "title": "シニア向け詐欺チェッカー — 大きな3ボタンで詐欺を判定",
+    "category": "アプリ（PC向け）",
+    "url": "https://morinokum.github.io/my-website/apps/senior_scam_checker.html"
+  },
+  {
+    "id": "app:tachiemon",
+    "title": "タチエモン — 立ち絵メーカー＆口パク・まばたきスタジオ",
+    "category": "アプリ（PC向け）",
+    "url": "https://morinokum.github.io/my-website/apps/tachiemon.html"
+  },
+  {
+    "id": "app:koutei_scanner",
+    "title": "工程スキャナー — 動画マニュアル×QRコード",
+    "category": "アプリ（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/apps/koutei_scanner.html"
+  },
+  {
+    "id": "app:sketch2ai",
+    "title": "Sketch2AI — 下絵＆プロンプト作成スタジオ",
+    "category": "アプリ（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/apps/sketch2ai.html"
+  }
 ]

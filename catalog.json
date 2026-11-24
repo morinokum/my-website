@@ -691,5 +691,12 @@
     "category": "アプリ（スマホ向け）",
     "url": "https://morinokum.github.io/my-website/apps/sketch2ai.html",
     "added": "2026-11-23"
+  },
+  {
+    "id": "app:koemon",
+    "title": "コエモン — 自然派ボイスチェンジャー（ケロケロ防止搭載）",
+    "category": "アプリ（PC向け）",
+    "url": "https://morinokum.github.io/my-website/apps/koemon.html",
+    "added": "2026-11-24"
   }
 ]

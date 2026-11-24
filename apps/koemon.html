@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>コエモン｜自然派ボイスチェンジャー（ケロケロ防止搭載）</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <style>
+    body {
+      font-family: 'Inter', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+    }
+    input[type="range"] {
+      accent-color: #38bdf8;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-sky-500 flex items-center justify-center font-black text-slate-950 text-lg shadow">
+          声
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-white leading-tight flex items-center gap-2">
+            コエモン
+            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">自然派ボイチェン</span>
+          </h1>
+          <p class="text-xs text-slate-400">音声ファイル読込＆録音対応｜ピッチ・フォルマント独立変換＋ケロケロ防止DSP</p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="btnProcess" class="px-4 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition cursor-pointer disabled:opacity-40" disabled>
+          ✨ 自然な声に変換する
+        </button>
+        <button id="btnDownloadWav" class="px-4 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition cursor-pointer disabled:opacity-40" disabled>
+          ⬇ WAV保存（タチエモン用）
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-4 right-4 z-50 hidden bg-slate-800 border border-sky-500/50 text-white px-4 py-2.5 rounded-xl shadow-xl text-sm"></div>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
+    <!-- Left Column: Audio Input (File & Mic) + Waveform Preview -->
+    <section class="lg:col-span-5 flex flex-col gap-3">
+      <!-- Input Source Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold text-white">1. 音声を取り込む（または録音）</h2>
+          <span id="sourceBadge" class="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">未読み込み</span>
+        </div>
+
+        <!-- Drop Zone for Audio File -->
+        <label id="dropZone" class="flex flex-col items-center justify-center gap-1.5 p-5 rounded-xl bg-slate-950 border-2 border-dashed border-slate-700 hover:border-sky-400 transition cursor-pointer text-center">
+          <div class="text-2xl">📂</div>
+          <div class="text-xs font-semibold text-slate-200">音声ファイルをドロップ または クリックして選択</div>
+          <div class="text-[11px] text-slate-400">WAV / MP3 / M4A / OGG / WebM 対応（ブラウザ録音制限なし）</div>
+          <input id="inpAudioFile" type="file" accept="audio/*,video/webm,video/mp4" class="hidden" />
+        </label>
+
+        <!-- Mic Recording Fallback / Optional -->
+        <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+          <div class="flex items-center gap-2">
+            <button id="btnRecord" class="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-semibold text-xs transition cursor-pointer">
+              🎙️ マイクで録音
+            </button>
+            <span id="recTimer" class="text-xs font-mono text-slate-400">00:00</span>
+          </div>
+          <span class="text-[11px] text-slate-500">※マイク非対応時は上のファイル読込を使用</span>
+        </div>
+      </div>
+
+      <!-- Waveform & Player Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold text-white">2. 波形＆聞き比べ</h2>
+          <span id="durationInfo" class="text-[11px] font-mono text-slate-400">0.00 秒</span>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <div class="text-[11px] text-slate-400 flex items-center justify-between">
+            <span>変換前の波形（原音）</span>
+            <button id="btnPlayOrig" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] cursor-pointer disabled:opacity-40" disabled>▶ 原音を再生</button>
+          </div>
+          <canvas id="cvOrig" width="520" height="80" class="w-full h-20 rounded-lg bg-slate-950 border border-slate-800"></canvas>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <div class="text-[11px] text-emerald-300 flex items-center justify-between">
+            <span>変換後の波形（自然派ボイチェン）</span>
+            <button id="btnPlayOut" class="px-2.5 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-[11px] font-semibold cursor-pointer disabled:opacity-40" disabled>▶ 変換後を再生</button>
+          </div>
+          <canvas id="cvOut" width="520" height="80" class="w-full h-20 rounded-lg bg-slate-950 border border-slate-800"></canvas>
+        </div>
+
+        <!-- Processing Progress -->
+        <div id="procBox" class="hidden bg-slate-950 border border-sky-500/40 rounded-xl p-2.5">
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span id="procLabel" class="text-sky-300 font-semibold">ピッチ解析・ケロケロ防止変換中...</span>
+            <span id="procPct" class="font-mono text-slate-300">0%</span>
+          </div>
+          <div class="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden">
+            <div id="procBar" class="h-full bg-sky-400 transition-all duration-75" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Presets + Anti-Kerokero DSP Controls -->
+    <section class="lg:col-span-7 flex flex-col gap-3">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-4">
+        <!-- Presets -->
+        <div>
+          <h2 class="text-sm font-bold text-white mb-2">声質プリセット（ワンクリック設定）</h2>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <button data-preset="rabbit" class="preset-btn p-2.5 rounded-xl bg-pink-500/15 border border-pink-500/50 text-left cursor-pointer hover:bg-pink-500/25 transition">
+              <div class="text-xs font-bold text-pink-300">🐰 スペースウサギ風</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">自然な高め・可愛い声</div>
+            </button>
+            <button data-preset="cat" class="preset-btn p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-left cursor-pointer hover:border-amber-400 transition">
+              <div class="text-xs font-bold text-amber-300">🐱 スペース猫風</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">少し高め・まろやか</div>
+            </button>
+            <button data-preset="natural_f" class="preset-btn p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-left cursor-pointer hover:border-sky-400 transition">
+              <div class="text-xs font-bold text-sky-300">👩 自然な女性風</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">ヘリウム感なし補正</div>
+            </button>
+            <button data-preset="narrator" class="preset-btn p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-left cursor-pointer hover:border-indigo-400 transition">
+              <div class="text-xs font-bold text-indigo-300">🎙️ 落ち着いた低音</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">太く聞きやすい解説声</div>
+            </button>
+            <button data-preset="clean" class="preset-btn p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-left cursor-pointer hover:border-emerald-400 transition">
+              <div class="text-xs font-bold text-emerald-300">✨ 地声クリア補正</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">高さそのまま音質向上</div>
+            </button>
+            <button data-preset="radio" class="preset-btn p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-left cursor-pointer hover:border-purple-400 transition">
+              <div class="text-xs font-bold text-purple-300">📡 無線・マスコット風</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">少しだけ機械的な味</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Pitch & Formant Independent Controls -->
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold text-sky-300">ピッチ ＆ フォルマント（独立調整）</h3>
+            <span class="text-[11px] text-slate-400">別々に動かすことでヘリウム声を防ぎます</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <label class="flex flex-col gap-1">
+              <div class="flex justify-between">
+                <span class="text-slate-200 font-semibold">音の高さ（ピッチ）</span>
+                <span id="valPitch" class="font-mono text-sky-400">+5.0 半音</span>
+              </div>
+              <input id="rngPitch" type="range" min="-12" max="12" step="0.5" value="5" />
+              <div class="flex justify-between text-[10px] text-slate-500">
+                <span>-12（低い）</span><span>0（原音）</span><span>+12（高い）</span>
+              </div>
+            </label>
+
+            <label class="flex flex-col gap-1">
+              <div class="flex justify-between">
+                <span class="text-slate-200 font-semibold">声質・太さ（フォルマント）</span>
+                <span id="valFormant" class="font-mono text-pink-400">+2.5 半音</span>
+              </div>
+              <input id="rngFormant" type="range" min="-8" max="8" step="0.5" value="2.5" />
+              <div class="flex justify-between text-[10px] text-slate-500">
+                <span>-8（太い）</span><span>0（原音）</span><span>+8（細い）</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Anti-Kerokero Engine Settings -->
+        <div class="bg-slate-950 border border-emerald-500/30 rounded-xl p-3.5 flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+              🛡️ ケロケロ防止エンジン（TD-PSOLA＋子音保護）
+            </h3>
+            <label class="flex items-center gap-1.5 text-xs cursor-pointer text-emerald-200">
+              <input id="chkAntiKero" type="checkbox" checked class="rounded" />
+              有効にする
+            </label>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <label class="flex flex-col gap-1">
+              <div class="flex justify-between">
+                <span class="text-slate-300">ピッチ安定化</span>
+                <span id="valSmooth" class="font-mono text-emerald-400">80%</span>
+              </div>
+              <input id="rngSmooth" type="range" min="0" max="100" step="5" value="80" />
+              <span class="text-[10px] text-slate-500">音程の急な飛び・揺れを抑制</span>
+            </label>
+
+            <label class="flex flex-col gap-1">
+              <div class="flex justify-between">
+                <span class="text-slate-300">子音・息の保護</span>
+                <span id="valConsonant" class="font-mono text-emerald-400">85%</span>
+              </div>
+              <input id="rngConsonant" type="range" min="0" max="100" step="5" value="85" />
+              <span class="text-[10px] text-slate-500">サ行のジャリジャリ感を防止</span>
+            </label>
+
+            <label class="flex flex-col gap-1">
+              <div class="flex justify-between">
+                <span class="text-slate-300">声の丸み（高域補正）</span>
+                <span id="valWarmth" class="font-mono text-emerald-400">45%</span>
+              </div>
+              <input id="rngWarmth" type="range" min="0" max="100" step="5" value="45" />
+              <span class="text-[10px] text-slate-500">金属音・耳障りな高音を丸める</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Mastering FX Chain -->
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 flex flex-col gap-3">
+          <h3 class="text-xs font-bold text-amber-300">仕上げマスタリング（ノイズ除去＆動画向け音圧）</h3>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
+              <input id="chkNoiseCut" type="checkbox" checked class="rounded" />
+              低域ノイズ除去
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
+              <input id="chkComp" type="checkbox" checked class="rounded" />
+              音圧均一化(コンプ)
+            </label>
+            <label class="flex flex-col gap-1 col-span-2">
+              <div class="flex justify-between">
+                <span class="text-slate-300">自然な部屋鳴り（リバーブ）</span>
+                <span id="valReverb" class="font-mono text-amber-400">8%</span>
+              </div>
+              <input id="rngReverb" type="range" min="0" max="40" step="2" value="8" />
+            </label>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // =========================================================================
+    // Koemon Anti-Kerokero DSP Engine (TD-PSOLA + Voiced/Unvoiced + Formant)
+    // =========================================================================
+    const KoemonDSP = {
+      // Detect fundamental period (in samples) and voicedness [0..1] via normalized autocorrelation
+      analyzeFrame(frame, sampleRate, minF0 = 65, maxF0 = 450) {
+        const n = frame.length;
+        let energy = 0;
+        let zcr = 0;
+        for (let i = 0; i < n; i++) {
+          energy += frame[i] * frame[i];
+          if (i > 0 && ((frame[i] >= 0) !== (frame[i - 1] >= 0))) zcr++;
+        }
+        const rms = Math.sqrt(energy / n);
+        if (rms < 0.008) {
+          return { period: Math.round(sampleRate / 150), voiced: 0, rms };
+        }
+
+        const zcrRate = zcr / n;
+        const minLag = Math.max(20, Math.floor(sampleRate / maxF0));
+        const maxLag = Math.min(Math.floor(n * 0.65), Math.floor(sampleRate / minF0));
+
+        let bestLag = Math.round(sampleRate / 150);
+        let bestCorr = -1;
+
+        for (let lag = minLag; lag <= maxLag; lag++) {
+          let num = 0;
+          let denA = 0;
+          let denB = 0;
+          const limit = n - lag;
+          for (let i = 0; i < limit; i++) {
+            const a = frame[i];
+            const b = frame[i + lag];
+            num += a * b;
+            denA += a * a;
+            denB += b * b;
+          }
+          const den = Math.sqrt(denA * denB) + 1e-12;
+          const corr = num / den;
+          if (corr > bestCorr) {
+            bestCorr = corr;
+            bestLag = lag;
+          }
+        }
+
+        // Unvoiced consonants (e.g. 's', 'sh', 't', breath) have high ZCR and low periodicity
+        let voiced = 0;
+        if (bestCorr > 0.42 && zcrRate < 0.28) {
+          voiced = Math.min(1, (bestCorr - 0.35) / 0.45);
+        }
+        return { period: bestLag, voiced, rms };
+      },
+
+      // Median + smoothing filter on pitch periods to prevent octave jumps (anti-kerokero)
+      smoothPeriods(analyses, strength01) {
+        const m = analyses.length;
+        if (m < 3 || strength01 <= 0) return analyses.map(a => a.period);
+
+        const raw = analyses.map(a => a.period);
+        const med = new Array(m);
+        for (let i = 0; i < m; i++) {
+          const win = [];
+          for (let k = -2; k <= 2; k++) {
+            const idx = Math.max(0, Math.min(m - 1, i + k));
+            if (analyses[idx].voiced > 0.25) win.push(raw[idx]);
+          }
+          if (win.length === 0) {
+            med[i] = raw[i];
+          } else {
+            win.sort((a, b) => a - b);
+            med[i] = win[Math.floor(win.length / 2)];
+          }
+        }
+
+        // Exponential moving average blend based on strength01
+        const out = new Array(m);
+        let prev = med[0];
+        const alpha = 1.0 - strength01 * 0.65;
+        for (let i = 0; i < m; i++) {
+          if (analyses[i].voiced > 0.2) {
+            prev = prev * (1 - alpha) + med[i] * alpha;
+            out[i] = Math.round(prev);
+          } else {
+            out[i] = med[i];
+          }
+        }
+        return out;
+      },
+
+      // Linear/Cubic-friendly grain resampling for independent formant scaling
+      resampleGrain(input, centerIdx, halfLen, formantRatio) {
+        const outHalf = Math.max(16, Math.round(halfLen / formantRatio));
+        const outLen = outHalf * 2 + 1;
+        const grain = new Float32Array(outLen);
+        const n = input.length;
+
+        for (let i = 0; i < outLen; i++) {
+          const relOut = i - outHalf;
+          const srcPos = centerIdx + relOut * formantRatio;
+          const idx0 = Math.floor(srcPos);
+          const frac = srcPos - idx0;
+          let s = 0;
+          if (idx0 >= 0 && idx0 < n - 1) {
+            s = input[idx0] * (1 - frac) + input[idx0 + 1] * frac;
+          } else if (idx0 >= 0 && idx0 < n) {
+            s = input[idx0];
+          }
+          // Hann window
+          const w = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (outLen - 1)));
+          grain[i] = s * w;
+        }
+        return { grain, outHalf };
+      },
+
+      // Main TD-PSOLA pitch + independent formant processor with anti-kerokero consonant protection
+      processBuffer(input, sampleRate, opts, onProgress) {
+        const {
+          pitchSemitones = 0,
+          formantSemitones = 0,
+          antiKero = true,
+          smoothPct = 80,
+          consonantPct = 85
+        } = opts;
+
+        const pitchRatio = Math.pow(2, pitchSemitones / 12);
+        const formantRatio = Math.pow(2, formantSemitones / 12);
+        const n = input.length;
+
+        // If near-unity, return copy directly
+        if (Math.abs(pitchSemitones) < 0.05 && Math.abs(formantSemitones) < 0.05) {
+          if (onProgress) onProgress(100);
+          return new Float32Array(input);
+        }
+
+        // 1. Frame-level pitch & voicedness analysis
+        const hopAna = Math.round(sampleRate * 0.01); // 10ms
+        const winSize = Math.round(sampleRate * 0.032); // 32ms
+        const analyses = [];
+        for (let pos = 0; pos < n; pos += hopAna) {
+          const end = Math.min(n, pos + winSize);
+          const frame = input.subarray(pos, end);
+          analyses.push(this.analyzeFrame(frame, sampleRate));
+        }
+
+        const smoothStrength = antiKero ? (smoothPct / 100) : 0;
+        const periods = this.smoothPeriods(analyses, smoothStrength);
+        const consonantProtect = antiKero ? (consonantPct / 100) : 0;
+
+        // 2. Build analysis pitch marks
+        const marks = [];
+        const markVoiced = [];
+        let p = 0;
+        while (p < n) {
+          const aIdx = Math.min(analyses.length - 1, Math.floor(p / hopAna));
+          const T0 = Math.max(40, Math.min(Math.round(sampleRate / 60), periods[aIdx]));
+          const v = analyses[aIdx].voiced;
+          marks.push(p);
+          markVoiced.push(v);
+          p += T0;
+        }
+
+        // 3. Synthesis overlap-add
+        const output = new Float32Array(n);
+        const norm = new Float32Array(n);
+        let synthPos = 0;
+        let markIdx = 0;
+
+        while (synthPos < n) {
+          while (markIdx < marks.length - 1 && marks[markIdx + 1] < synthPos) {
+            markIdx++;
+          }
+          const aIdx = Math.min(analyses.length - 1, Math.floor(synthPos / hopAna));
+          const T0 = Math.max(40, Math.min(Math.round(sampleRate / 60), periods[aIdx]));
+          const voiced = analyses[aIdx].voiced;
+
+          // Effective pitch & formant blend for unvoiced consonants (anti-kerokero!)
+          const vWeight = voiced + (1 - voiced) * (1 - consonantProtect);
+          const effPitchRatio = 1 + (pitchRatio - 1) * vWeight;
+          const effFormantRatio = 1 + (formantRatio - 1) * vWeight;
+
+          const synthStep = Math.max(24, Math.round(T0 / effPitchRatio));
+          const halfLen = T0;
+
+          const { grain, outHalf } = this.resampleGrain(input, marks[markIdx], halfLen, effFormantRatio);
+          const startOut = synthPos - outHalf;
+
+          for (let i = 0; i < grain.length; i++) {
+            const dst = startOut + i;
+            if (dst >= 0 && dst < n) {
+              output[dst] += grain[i];
+              const w = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (grain.length - 1)));
+              norm[dst] += w;
+            }
+          }
+
+          // For unvoiced frames, add slight jitter to prevent metallic buzz
+          const jitter = voiced < 0.25 && antiKero ? Math.round((Math.random() - 0.5) * 8) : 0;
+          synthPos += Math.max(20, synthStep + jitter);
+
+          if (onProgress && (synthPos % (hopAna * 25) < synthStep)) {
+            onProgress(Math.min(95, Math.round((synthPos / n) * 95)));
+          }
+        }
+
+        // Normalize and soft-clip to prevent distortion
+        for (let i = 0; i < n; i++) {
+          let val = norm[i] > 0.05 ? output[i] / norm[i] : input[i];
+          // Blend original unvoiced consonant detail when consonantProtect is high
+          const aIdx = Math.min(analyses.length - 1, Math.floor(i / hopAna));
+          const v = analyses[aIdx].voiced;
+          if (v < 0.2 && consonantProtect > 0.3) {
+            const origBlend = (1 - v / 0.2) * consonantProtect * 0.6;
+            val = val * (1 - origBlend) + input[i] * origBlend;
+          }
+          output[i] = Math.tanh(val);
+        }
+
+        if (onProgress) onProgress(100);
+        return output;
+      },
+
+      // Encode mono Float32Array to 16-bit PCM WAV Blob
+      encodeWav(samples, sampleRate) {
+        const buffer = new ArrayBuffer(44 + samples.length * 2);
+        const view = new DataView(buffer);
+        const writeStr = (offset, str) => {
+          for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+        };
+        writeStr(0, 'RIFF');
+        view.setUint32(4, 36 + samples.length * 2, true);
+        writeStr(8, 'WAVE');
+        writeStr(12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true); // PCM
+        view.setUint16(22, 1, true); // Mono
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * 2, true);
+        view.setUint16(32, 2, true);
+        view.setUint16(34, 16, true);
+        writeStr(36, 'data');
+        view.setUint32(40, samples.length * 2, true);
+
+        let offset = 44;
+        for (let i = 0; i < samples.length; i++) {
+          const s = Math.max(-1, Math.min(1, samples[i]));
+          view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+          offset += 2;
+        }
+        return new Blob([view], { type: 'audio/wav' });
+      }
+    };
+
+    // Export for Node unit testing if running outside browser
+    if (typeof module !== 'undefined' && module.exports) {
+      module.exports = KoemonDSP;
+    }
+
+    // =========================================================================
+    // Browser UI & Web Audio Mastering Chain
+    // =========================================================================
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      const PRESETS = {
+        rabbit: { pitch: 5.0, formant: 2.5, smooth: 80, consonant: 85, warmth: 45, reverb: 8 },
+        cat: { pitch: 3.5, formant: 1.5, smooth: 80, consonant: 85, warmth: 55, reverb: 10 },
+        natural_f: { pitch: 4.5, formant: 2.0, smooth: 85, consonant: 90, warmth: 50, reverb: 6 },
+        narrator: { pitch: -3.5, formant: -2.0, smooth: 80, consonant: 80, warmth: 35, reverb: 6 },
+        clean: { pitch: 0.0, formant: 0.0, smooth: 75, consonant: 95, warmth: 30, reverb: 4 },
+        radio: { pitch: 2.0, formant: 1.0, smooth: 20, consonant: 30, warmth: 15, reverb: 18 }
+      };
+
+      const state = {
+        sampleRate: 44100,
+        origSamples: null,
+        outSamples: null,
+        outBlob: null,
+        origName: '',
+        isRecording: false,
+        mediaRecorder: null,
+        recChunks: [],
+        recInterval: null,
+        recSeconds: 0,
+        activeSource: null,
+        audioCtx: null
+      };
+
+      const toastEl = document.getElementById('toast');
+      let toastTimer = null;
+      function showToast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.remove('hidden');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toastEl.classList.add('hidden'), 3200);
+      }
+
+      const rngPitch = document.getElementById('rngPitch');
+      const rngFormant = document.getElementById('rngFormant');
+      const rngSmooth = document.getElementById('rngSmooth');
+      const rngConsonant = document.getElementById('rngConsonant');
+      const rngWarmth = document.getElementById('rngWarmth');
+      const rngReverb = document.getElementById('rngReverb');
+      const chkAntiKero = document.getElementById('chkAntiKero');
+      const chkNoiseCut = document.getElementById('chkNoiseCut');
+      const chkComp = document.getElementById('chkComp');
+
+      function updateSliderLabels() {
+        const p = parseFloat(rngPitch.value);
+        const f = parseFloat(rngFormant.value);
+        document.getElementById('valPitch').textContent = `${p > 0 ? '+' : ''}${p.toFixed(1)} 半音`;
+        document.getElementById('valFormant').textContent = `${f > 0 ? '+' : ''}${f.toFixed(1)} 半音`;
+        document.getElementById('valSmooth').textContent = `${rngSmooth.value}%`;
+        document.getElementById('valConsonant').textContent = `${rngConsonant.value}%`;
+        document.getElementById('valWarmth').textContent = `${rngWarmth.value}%`;
+        document.getElementById('valReverb').textContent = `${rngReverb.value}%`;
+      }
+
+      [rngPitch, rngFormant, rngSmooth, rngConsonant, rngWarmth, rngReverb].forEach(el => {
+        el.addEventListener('input', updateSliderLabels);
+      });
+
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const p = PRESETS[btn.dataset.preset];
+          if (!p) return;
+          rngPitch.value = p.pitch;
+          rngFormant.value = p.formant;
+          rngSmooth.value = p.smooth;
+          rngConsonant.value = p.consonant;
+          rngWarmth.value = p.warmth;
+          rngReverb.value = p.reverb;
+          updateSliderLabels();
+
+          document.querySelectorAll('.preset-btn').forEach(b => {
+            b.className = 'preset-btn p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-left cursor-pointer hover:border-sky-400 transition';
+          });
+          btn.className = 'preset-btn p-2.5 rounded-xl bg-sky-500/15 border border-sky-400 text-left cursor-pointer transition';
+          showToast('プリセットを適用しました');
+        });
+      });
+
+      function drawWaveform(canvasId, samples, color) {
+        const cv = document.getElementById(canvasId);
+        const c = cv.getContext('2d');
+        const w = cv.width;
+        const h = cv.height;
+        c.clearRect(0, 0, w, h);
+        c.fillStyle = '#020617';
+        c.fillRect(0, 0, w, h);
+
+        c.strokeStyle = '#1e293b';
+        c.beginPath();
+        c.moveTo(0, h / 2);
+        c.lineTo(w, h / 2);
+        c.stroke();
+
+        if (!samples || samples.length === 0) return;
+        const step = Math.max(1, Math.floor(samples.length / w));
+        c.fillStyle = color;
+        for (let x = 0; x < w; x++) {
+          const start = x * step;
+          let min = 1, max = -1;
+          for (let j = 0; j < step && start + j < samples.length; j++) {
+            const v = samples[start + j];
+            if (v < min) min = v;
+            if (v > max) max = v;
+          }
+          const y1 = (1 - max) * 0.5 * h;
+          const y2 = (1 - min) * 0.5 * h;
+          c.fillRect(x, y1, 1, Math.max(1, y2 - y1));
+        }
+      }
+
+      async function decodeAudioBlob(blob, labelName) {
+        const arrBuf = await blob.arrayBuffer();
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const decoded = await ctx.decodeAudioData(arrBuf);
+        state.sampleRate = decoded.sampleRate;
+
+        // Mix down to mono Float32Array
+        const len = decoded.length;
+        const mono = new Float32Array(len);
+        const chCount = decoded.numberOfChannels;
+        for (let ch = 0; ch < chCount; ch++) {
+          const chData = decoded.getChannelData(ch);
+          for (let i = 0; i < len; i++) mono[i] += chData[i] / chCount;
+        }
+        try { await ctx.close(); } catch (e) {}
+
+        state.origSamples = mono;
+        state.outSamples = null;
+        state.outBlob = null;
+        state.origName = labelName;
+
+        document.getElementById('sourceBadge').textContent = labelName;
+        document.getElementById('sourceBadge').className = 'text-[11px] px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 max-w-[180px] truncate';
+        document.getElementById('durationInfo').textContent = `${(len / state.sampleRate).toFixed(2)} 秒 (${state.sampleRate}Hz)`;
+        document.getElementById('btnProcess').disabled = false;
+        document.getElementById('btnPlayOrig').disabled = false;
+        document.getElementById('btnPlayOut').disabled = true;
+        document.getElementById('btnDownloadWav').disabled = true;
+
+        drawWaveform('cvOrig', mono, '#38bdf8');
+        drawWaveform('cvOut', null, '#34d399');
+        showToast(`${labelName} を読み込みました`);
+      }
+
+      // Apply OfflineAudioContext mastering (Highpass, Warmth Lowpass, Compressor, Subtle Reverb)
+      async function applyMasteringChain(samples, sampleRate) {
+        const reverbPct = parseFloat(rngReverb.value) / 100;
+        const warmthPct = parseFloat(rngWarmth.value) / 100;
+        const extraTail = reverbPct > 0 ? Math.round(sampleRate * 0.25) : 0;
+
+        const offCtx = new OfflineAudioContext(1, samples.length + extraTail, sampleRate);
+        const buf = offCtx.createBuffer(1, samples.length, sampleRate);
+        buf.copyToChannel(samples, 0);
+
+        const src = offCtx.createBufferSource();
+        src.buffer = buf;
+
+        let lastNode = src;
+
+        // 1. Low-cut noise filter
+        if (chkNoiseCut.checked) {
+          const hp = offCtx.createBiquadFilter();
+          hp.type = 'highpass';
+          hp.frequency.value = 85;
+          lastNode.connect(hp);
+          lastNode = hp;
+        }
+
+        // 2. Anti-kerokero warmth (soft high-shelf / lowpass smoothing metallic harshness)
+        if (warmthPct > 0.05) {
+          const hs = offCtx.createBiquadFilter();
+          hs.type = 'highshelf';
+          hs.frequency.value = 4200;
+          hs.gain.value = -warmthPct * 8.0;
+          lastNode.connect(hs);
+          lastNode = hs;
+        }
+
+        // 3. Compressor for natural broadcast punch
+        if (chkComp.checked) {
+          const comp = offCtx.createDynamicsCompressor();
+          comp.threshold.value = -20;
+          comp.knee.value = 18;
+          comp.ratio.value = 4;
+          comp.attack.value = 0.005;
+          comp.release.value = 0.15;
+          lastNode.connect(comp);
+          lastNode = comp;
+        }
+
+        // 4. Dry + Subtle Room Reverb
+        const dryGain = offCtx.createGain();
+        dryGain.gain.value = 1.0;
+        lastNode.connect(dryGain);
+        dryGain.connect(offCtx.destination);
+
+        if (reverbPct > 0.01) {
+          const irLen = Math.round(sampleRate * 0.35);
+          const irBuf = offCtx.createBuffer(1, irLen, sampleRate);
+          const irData = irBuf.getChannelData(0);
+          for (let i = 0; i < irLen; i++) {
+            irData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (sampleRate * 0.08));
+          }
+          const conv = offCtx.createConvolver();
+          conv.buffer = irBuf;
+          const wetGain = offCtx.createGain();
+          wetGain.gain.value = reverbPct * 0.55;
+          lastNode.connect(conv);
+          conv.connect(wetGain);
+          wetGain.connect(offCtx.destination);
+        }
+
+        src.start(0);
+        const rendered = await offCtx.startRendering();
+        const out = rendered.getChannelData(0);
+
+        // Peak normalize to -1dB
+        let peak = 0;
+        for (let i = 0; i < out.length; i++) {
+          const a = Math.abs(out[i]);
+          if (a > peak) peak = a;
+        }
+        const scale = peak > 0.01 ? 0.89 / peak : 1.0;
+        const finalArr = new Float32Array(out.length);
+        for (let i = 0; i < out.length; i++) finalArr[i] = out[i] * scale;
+        return finalArr;
+      }
+
+      document.getElementById('btnProcess').addEventListener('click', async () => {
+        if (!state.origSamples) return;
+        const procBox = document.getElementById('procBox');
+        const procBar = document.getElementById('procBar');
+        const procPct = document.getElementById('procPct');
+        procBox.classList.remove('hidden');
+        procBar.style.width = '5%';
+        procPct.textContent = '5%';
+
+        // Yield to UI render before heavy DSP
+        await new Promise(r => setTimeout(r, 30));
+
+        try {
+          const processed = KoemonDSP.processBuffer(
+            state.origSamples,
+            state.sampleRate,
+            {
+              pitchSemitones: parseFloat(rngPitch.value),
+              formantSemitones: parseFloat(rngFormant.value),
+              antiKero: chkAntiKero.checked,
+              smoothPct: parseFloat(rngSmooth.value),
+              consonantPct: parseFloat(rngConsonant.value)
+            },
+            (pct) => {
+              procBar.style.width = `${pct}%`;
+              procPct.textContent = `${pct}%`;
+            }
+          );
+
+          const mastered = await applyMasteringChain(processed, state.sampleRate);
+          state.outSamples = mastered;
+          state.outBlob = KoemonDSP.encodeWav(mastered, state.sampleRate);
+
+          drawWaveform('cvOut', mastered, '#34d399');
+          document.getElementById('btnPlayOut').disabled = false;
+          document.getElementById('btnDownloadWav').disabled = false;
+          procBar.style.width = '100%';
+          procPct.textContent = '100%';
+          showToast('変換が完了しました！聞き比べてみてください');
+        } catch (err) {
+          console.error(err);
+          showToast('変換中にエラーが発生しました');
+        }
+      });
+
+      function playSamples(samples) {
+        if (!samples) return;
+        if (state.activeSource) {
+          try { state.activeSource.stop(); } catch (e) {}
+        }
+        if (!state.audioCtx) {
+          state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (state.audioCtx.state === 'suspended') state.audioCtx.resume();
+        const buf = state.audioCtx.createBuffer(1, samples.length, state.sampleRate);
+        buf.copyToChannel(samples, 0);
+        const src = state.audioCtx.createBufferSource();
+        src.buffer = buf;
+        src.connect(state.audioCtx.destination);
+        src.start(0);
+        state.activeSource = src;
+      }
+
+      document.getElementById('btnPlayOrig').addEventListener('click', () => playSamples(state.origSamples));
+      document.getElementById('btnPlayOut').addEventListener('click', () => playSamples(state.outSamples));
+
+      document.getElementById('btnDownloadWav').addEventListener('click', () => {
+        if (!state.outBlob) return;
+        const base = (state.origName || 'voice').replace(/\.[^.]+$/, '');
+        const url = URL.createObjectURL(state.outBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${base}_koemon.wav`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        showToast(`${base}_koemon.wav を保存しました！`);
+      });
+
+      // File Input & Drag-Drop
+      const inpFile = document.getElementById('inpAudioFile');
+      inpFile.addEventListener('change', (e) => {
+        const f = e.target.files[0];
+        if (f) decodeAudioBlob(f, f.name).catch(() => showToast('音声ファイルのデコードに失敗しました'));
+      });
+      const dropZone = document.getElementById('dropZone');
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-sky-400');
+      });
+      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-sky-400'));
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-sky-400');
+        const f = e.dataTransfer.files[0];
+        if (f) decodeAudioBlob(f, f.name).catch(() => showToast('音声ファイルのデコードに失敗しました'));
+      });
+
+      // Optional Mic Recording
+      const btnRecord = document.getElementById('btnRecord');
+      const recTimerEl = document.getElementById('recTimer');
+      btnRecord.addEventListener('click', async () => {
+        if (state.isRecording && state.mediaRecorder) {
+          state.mediaRecorder.stop();
+          return;
+        }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          showToast('この環境はマイク録音に非対応です。ファイル読込をご利用ください');
+          return;
+        }
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const mr = new MediaRecorder(stream);
+          state.mediaRecorder = mr;
+          state.recChunks = [];
+          state.isRecording = true;
+          state.recSeconds = 0;
+          recTimerEl.textContent = '00:00';
+          btnRecord.textContent = '⏹ 録音停止';
+
+          state.recInterval = setInterval(() => {
+            state.recSeconds++;
+            const m = String(Math.floor(state.recSeconds / 60)).padStart(2, '0');
+            const s = String(state.recSeconds % 60).padStart(2, '0');
+            recTimerEl.textContent = `${m}:${s}`;
+          }, 1000);
+
+          mr.ondataavailable = (e) => { if (e.data.size > 0) state.recChunks.push(e.data); };
+          mr.onstop = () => {
+            clearInterval(state.recInterval);
+            stream.getTracks().forEach(t => t.stop());
+            state.isRecording = false;
+            btnRecord.textContent = '🎙️ マイクで録音';
+            const blob = new Blob(state.recChunks, { type: mr.mimeType || 'audio/webm' });
+            decodeAudioBlob(blob, 'マイク録音.wav').catch(() => showToast('録音の読み込みに失敗しました'));
+          };
+          mr.start();
+        } catch (err) {
+          showToast('マイク権限が許可されていないため録音できません（ファイル読込をご利用ください）');
+        }
+      });
+
+      updateSliderLabels();
+    }
+  </script>
+</body>
+</html>

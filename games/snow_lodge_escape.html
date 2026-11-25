@@ -1,0 +1,1685 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>雪山山荘脱出劇 ── 真相と逃走</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@400;500;700;800&family=Noto+Serif+JP:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #e8e0d0;
+    --blood: #a30000;
+    --blood-bright: #dc2626;
+    --frost: #a8c4d4;
+    --shadow: #06070d;
+    --candle: #f5c842;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: #000;
+    overflow: hidden;
+    font-family: 'Shippori Mincho B1', 'Noto Serif JP', serif;
+    color: var(--ink);
+    user-select: none;
+    touch-action: manipulation;
+  }
+
+  /* ========== TITLE SCREEN ========== */
+  #title-screen {
+    position: fixed; inset: 0; z-index: 200;
+    background: #000;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    transition: opacity 0.8s ease;
+    padding: 1.2rem;
+    overflow-y: auto;
+  }
+  #title-screen.fade-out { opacity: 0; pointer-events: none; }
+
+  .title-blizzard {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 40%, #0a1628 0%, #000 72%);
+    overflow: hidden;
+  }
+  .title-mountain { position: absolute; bottom: 0; left: 0; right: 0; height: 50%; pointer-events: none; }
+  .title-lodge { position: absolute; bottom: 18%; left: 50%; transform: translateX(-50%); width: 130px; height: 95px; opacity: 0.9; pointer-events: none; }
+
+  .title-content {
+    position: relative; z-index: 10;
+    text-align: center;
+    display: flex; flex-direction: column; align-items: center;
+    max-width: 660px; width: 100%;
+  }
+
+  .title-eyebrow {
+    font-size: 0.72rem; letter-spacing: 0.42em;
+    color: var(--blood-bright); margin-bottom: 0.7rem; font-weight: 500;
+  }
+  .title-jp {
+    font-size: clamp(2rem, 6vw, 3.8rem);
+    font-weight: 800; letter-spacing: 0.25em; line-height: 1.15;
+    color: var(--ink);
+    text-shadow: 0 0 50px rgba(163,0,0,0.45), 0 2px 6px rgba(0,0,0,0.9);
+    animation: titlePulse 4s ease-in-out infinite;
+  }
+  @keyframes titlePulse {
+    0%,100% { text-shadow: 0 0 40px rgba(163,0,0,0.35), 0 2px 6px rgba(0,0,0,0.9); }
+    50% { text-shadow: 0 0 70px rgba(220,38,38,0.6), 0 0 20px rgba(168,196,212,0.25), 0 2px 6px rgba(0,0,0,0.9); }
+  }
+  .title-divider {
+    width: 180px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--blood-bright), transparent);
+    margin: 0.9rem auto; opacity: 0.65;
+  }
+
+  .synopsis-card {
+    background: rgba(8, 10, 18, 0.86);
+    border: 1px solid rgba(168,196,212,0.22);
+    border-left: 3px solid var(--blood-bright);
+    padding: 0.9rem 1.15rem;
+    margin-bottom: 1.25rem;
+    text-align: left;
+    font-size: clamp(0.76rem, 1.85vw, 0.86rem);
+    line-height: 1.75;
+    color: rgba(232,224,208,0.9);
+    backdrop-filter: blur(6px);
+  }
+  .synopsis-title {
+    font-size: 0.72rem; letter-spacing: 0.25em; color: var(--candle);
+    margin-bottom: 0.35rem; font-weight: 700;
+  }
+
+  #start-btn {
+    padding: 0.88rem 2.6rem;
+    border: 1px solid rgba(220,38,38,0.65);
+    background: rgba(45,0,0,0.55);
+    color: var(--ink);
+    font-family: inherit; font-size: 1rem; letter-spacing: 0.32em;
+    cursor: pointer; transition: all 0.25s;
+  }
+  #start-btn:hover {
+    border-color: var(--blood-bright); background: rgba(120,0,0,0.6); color: #fff;
+    box-shadow: 0 0 25px rgba(220,38,38,0.35);
+  }
+
+  .title-warning { margin-top: 0.9rem; font-size: 0.68rem; color: rgba(232,224,208,0.55); }
+
+  .end-badge-list {
+    margin-top: 0.8rem; display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: center;
+  }
+  .end-badge {
+    font-size: 0.62rem; padding: 0.16rem 0.48rem;
+    border: 1px solid rgba(168,196,212,0.22); color: rgba(168,196,212,0.55); border-radius: 2px;
+  }
+  .end-badge.unlocked {
+    border-color: rgba(245,200,66,0.65); color: var(--candle); background: rgba(245,200,66,0.08);
+  }
+
+  /* ========== GAME SCREEN ========== */
+  #game-screen {
+    position: fixed; inset: 0; z-index: 100;
+    opacity: 0; transition: opacity 0.6s;
+    display: none; flex-direction: column;
+  }
+  #game-screen.visible { opacity: 1; }
+
+  #hud-bar {
+    position: relative; z-index: 35;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 0.5rem; padding: 0.45rem 0.85rem;
+    background: rgba(5, 6, 12, 0.96);
+    border-bottom: 1px solid rgba(168,196,212,0.2);
+    font-size: 0.74rem; flex-wrap: wrap;
+  }
+  .hud-group { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+  .hud-item { display: flex; align-items: center; gap: 0.32rem; }
+  .hud-label { color: rgba(168,196,212,0.65); font-size: 0.66rem; }
+  #clock-val { color: var(--frost); font-weight: 700; font-size: 0.86rem; }
+  #room-name-val { color: var(--candle); font-weight: 700; font-size: 0.8rem; }
+
+  .meter-wrap {
+    width: 72px; height: 8px;
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18);
+    overflow: hidden; border-radius: 2px;
+  }
+  .meter-fill { height: 100%; width: 0%; transition: width 0.35s ease; }
+  #threat-fill { background: #dc2626; }
+  #stamina-fill { background: #60a5fa; }
+
+  .hud-controls { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+  .hud-btn {
+    background: rgba(168,196,212,0.08); border: 1px solid rgba(168,196,212,0.28);
+    color: var(--frost); padding: 0.24rem 0.52rem;
+    font-family: inherit; font-size: 0.68rem; letter-spacing: 0.08em;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .hud-btn:hover { background: rgba(168,196,212,0.22); color: #fff; }
+  .hud-btn.accent { border-color: rgba(245,200,66,0.5); color: var(--candle); }
+
+  /* Scene Area */
+  #scene-area {
+    position: relative; flex: 1; overflow: hidden;
+    background: var(--shadow);
+  }
+  #scene-area.shake { animation: screenShake 0.42s cubic-bezier(.36,.07,.19,.97) both; }
+  #scene-area.heavy-shake { animation: heavyShake 0.6s cubic-bezier(.36,.07,.19,.97) both; }
+  @keyframes screenShake {
+    10%, 90% { transform: translate3d(-3px, 1px, 0); }
+    20%, 80% { transform: translate3d(5px, -2px, 0); }
+    30%, 50%, 70% { transform: translate3d(-6px, 2px, 0); }
+    40%, 60% { transform: translate3d(6px, -1px, 0); }
+  }
+  @keyframes heavyShake {
+    0%, 100% { transform: translate(0,0); }
+    15% { transform: translate(-10px, 6px); }
+    30% { transform: translate(10px, -6px); }
+    45% { transform: translate(-8px, -4px); }
+    60% { transform: translate(8px, 4px); }
+  }
+
+  #bg-img { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #vignette {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 75% 75% at 50% 50%, transparent 40%, rgba(0,0,0,0.78) 100%);
+    pointer-events: none; z-index: 5;
+  }
+  #danger-vignette {
+    position: absolute; inset: 0; pointer-events: none; z-index: 8;
+    opacity: 0; box-shadow: inset 0 0 115px rgba(185, 0, 0, 0.9);
+    transition: opacity 0.35s ease;
+  }
+  #danger-vignette.pulsing { animation: dangerPulse 0.9s ease-in-out infinite; }
+  @keyframes dangerPulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.92; } }
+
+  #snow-canvas, #particle-canvas { position: absolute; inset: 0; pointer-events: none; }
+  #snow-canvas { z-index: 6; }
+  #particle-canvas { z-index: 7; }
+
+  /* Explore Hotspots & Navigation UI */
+  #explore-ui {
+    position: absolute; inset: 0; z-index: 18;
+    display: none; flex-direction: column; justify-content: space-between;
+    padding: 0.7rem 0.9rem; pointer-events: none;
+  }
+  #explore-ui.active { display: flex; }
+
+  .explore-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; flex-wrap: wrap; }
+  .room-desc-badge {
+    background: rgba(5, 7, 14, 0.82); border: 1px solid rgba(168,196,212,0.22);
+    padding: 0.32rem 0.65rem; font-size: 0.72rem; color: rgba(232,224,208,0.88);
+    pointer-events: auto;
+  }
+  .killer-presence-badge {
+    background: rgba(65, 5, 5, 0.88); border: 1px solid rgba(239,68,68,0.65);
+    padding: 0.32rem 0.7rem; font-size: 0.72rem; color: #fecaca;
+    font-weight: 700; display: none; animation: blink 1s infinite;
+  }
+  .killer-presence-badge.visible { display: block; }
+
+  .hotspots-grid {
+    display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center;
+    margin: auto 0; pointer-events: none;
+  }
+  .hotspot-btn {
+    pointer-events: auto; padding: 0.52rem 0.9rem;
+    background: rgba(10, 14, 24, 0.88); border: 1px solid rgba(245, 200, 66, 0.48);
+    color: var(--ink); font-family: inherit; font-size: 0.8rem; letter-spacing: 0.08em;
+    cursor: pointer; border-radius: 3px; transition: all 0.2s; backdrop-filter: blur(4px);
+  }
+  .hotspot-btn:hover { background: rgba(40, 35, 18, 0.95); border-color: var(--candle); color: #fff; transform: translateY(-2px); }
+
+  .nav-bar { display: flex; flex-wrap: wrap; gap: 0.45rem; justify-content: center; pointer-events: none; }
+  .nav-btn {
+    pointer-events: auto; padding: 0.42rem 0.85rem;
+    background: rgba(12, 20, 36, 0.9); border: 1px solid rgba(168,196,212,0.42);
+    color: var(--frost); font-family: inherit; font-size: 0.76rem; letter-spacing: 0.1em;
+    cursor: pointer; border-radius: 3px; transition: all 0.2s;
+  }
+  .nav-btn:hover { background: rgba(28, 46, 78, 0.95); color: #fff; border-color: #fff; }
+  .nav-btn.locked { border-color: rgba(220,38,38,0.55); color: #fca5a5; }
+  .nav-btn.danger-hint { border-color: #ef4444; box-shadow: 0 0 10px rgba(239,68,68,0.35); }
+
+  #speaker-tag {
+    position: absolute; bottom: 0; left: 0;
+    padding: 0.28rem 1rem;
+    background: rgba(10,10,18,0.95);
+    border-top: 1px solid rgba(168,196,212,0.35); border-right: 1px solid rgba(168,196,212,0.2);
+    font-size: 0.8rem; letter-spacing: 0.2em; color: var(--frost);
+    z-index: 20; opacity: 0; transition: opacity 0.2s;
+  }
+  #speaker-tag.visible { opacity: 1; }
+  #speaker-tag.killer { color: #f87171; border-color: rgba(220,38,38,0.5); }
+
+  /* Choices overlay */
+  #choices-overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 30; background: rgba(0,0,0,0); opacity: 0; pointer-events: none;
+    transition: opacity 0.25s; padding: 1rem;
+  }
+  #choices-overlay.visible { opacity: 1; pointer-events: auto; background: rgba(0,0,0,0.58); }
+  #choices-wrap { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 0.65rem; }
+
+  #timer-box { width: 100%; max-width: 500px; margin-bottom: 0.8rem; display: none; flex-direction: column; gap: 0.3rem; }
+  #timer-box.active { display: flex; }
+  #timer-label { font-size: 0.78rem; letter-spacing: 0.2em; color: #fca5a5; text-align: center; font-weight: 700; }
+  #timer-track { width: 100%; height: 6px; background: rgba(255,255,255,0.15); border-radius: 3px; overflow: hidden; }
+  #timer-bar { height: 100%; width: 100%; background: linear-gradient(90deg, #f59e0b, #dc2626); transition: width 0.08s linear; }
+
+  .choice-btn {
+    padding: 0.85rem 1.2rem;
+    background: rgba(10,12,20,0.94); border: 1px solid rgba(168,196,212,0.35);
+    color: var(--ink); font-family: inherit; font-size: 0.92rem; letter-spacing: 0.1em;
+    text-align: left; cursor: pointer; transition: all 0.2s;
+  }
+  .choice-btn:hover { background: rgba(24,36,64,0.98); border-color: var(--frost); color: #fff; }
+  .choice-btn.danger { border-color: rgba(220,38,38,0.58); background: rgba(35,6,6,0.94); }
+  .choice-btn.danger:hover { border-color: #ef4444; background: rgba(85,10,10,0.98); }
+
+  /* Stealth Hold-Still (Pointer Events) */
+  #stealth-overlay {
+    position: absolute; inset: 0; z-index: 32;
+    background: rgba(0,0,0,0.8);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    padding: 1.5rem; text-align: center;
+  }
+  #stealth-overlay.active { display: flex; }
+  .stealth-title { font-size: clamp(1.1rem, 3vw, 1.45rem); color: #fca5a5; letter-spacing: 0.2em; margin-bottom: 0.5rem; font-weight: 700; }
+  .stealth-desc { font-size: 0.85rem; color: var(--ink); line-height: 1.7; max-width: 440px; margin-bottom: 1.1rem; }
+  #stealth-action-btn {
+    padding: 1rem 2.2rem; border: 2px solid #dc2626; background: rgba(80,0,0,0.7);
+    color: #fff; font-family: inherit; font-size: 1rem; letter-spacing: 0.18em; cursor: pointer; border-radius: 4px;
+    touch-action: none;
+  }
+  #stealth-action-btn.holding { background: rgba(20,55,90,0.92); border-color: var(--frost); transform: scale(0.97); }
+  .stealth-meter-wrap { width: 100%; max-width: 320px; height: 10px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); margin-top: 1rem; border-radius: 5px; overflow: hidden; }
+  #stealth-progress { height: 100%; width: 0%; background: linear-gradient(90deg, #60a5fa, #34d399); }
+  #stealth-noise-text { margin-top: 0.55rem; font-size: 0.78rem; letter-spacing: 0.15em; color: var(--frost); }
+
+  /* Keypad Modal */
+  #keypad-modal {
+    position: absolute; inset: 0; z-index: 34; background: rgba(0,0,0,0.84);
+    display: none; flex-direction: column; align-items: center; justify-content: center; padding: 1rem;
+  }
+  #keypad-modal.active { display: flex; }
+  .keypad-box {
+    background: #0d111a; border: 1px solid rgba(168,196,212,0.35);
+    padding: 1.2rem 1.4rem; border-radius: 6px; width: 100%; max-width: 300px; text-align: center;
+  }
+  .keypad-title { font-size: 0.86rem; letter-spacing: 0.16em; color: var(--candle); margin-bottom: 0.7rem; }
+  .keypad-display { font-size: 1.6rem; letter-spacing: 0.45em; padding: 0.45rem; background: #04060a; border: 1px solid rgba(255,255,255,0.2); margin-bottom: 0.8rem; color: #fff; }
+  .keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; margin-bottom: 0.7rem; }
+  .kp-btn { padding: 0.62rem; background: rgba(255,255,255,0.06); border: 1px solid rgba(168,196,212,0.25); color: #fff; font-family: inherit; font-size: 1rem; cursor: pointer; }
+  .kp-btn:hover { background: rgba(168,196,212,0.2); }
+  .kp-actions { display: flex; gap: 0.5rem; }
+  .kp-actions button { flex: 1; padding: 0.5rem; font-family: inherit; cursor: pointer; border: 1px solid rgba(168,196,212,0.35); background: rgba(20,30,50,0.8); color: #fff; }
+
+  #flash { position: absolute; inset: 0; background: #fff; z-index: 50; opacity: 0; pointer-events: none; transition: opacity 0.08s; }
+
+  /* Bottom Panel */
+  #bottom-panel {
+    position: relative; z-index: 20;
+    background: linear-gradient(to top, rgba(4,5,12,0.99) 0%, rgba(7,9,17,0.95) 100%);
+    border-top: 1px solid rgba(168,196,212,0.22);
+    display: flex; flex-direction: column;
+    height: 35%; min-height: 170px; max-height: 255px;
+  }
+  #inventory-bar {
+    display: flex; align-items: center; gap: 0.4rem; padding: 0.38rem 1rem;
+    background: rgba(3,4,9,0.92); border-bottom: 1px solid rgba(168,196,212,0.12);
+    overflow-x: auto; min-height: 36px;
+  }
+  .inv-label { font-size: 0.68rem; color: rgba(168,196,212,0.6); white-space: nowrap; }
+  .inv-item {
+    font-size: 0.72rem; padding: 0.18rem 0.58rem;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(168,196,212,0.3);
+    color: var(--ink); font-family: inherit; cursor: pointer; white-space: nowrap; border-radius: 2px;
+  }
+  .inv-item.selected { background: rgba(245,200,66,0.2); border-color: var(--candle); color: var(--candle); font-weight: 700; }
+
+  #msg-box { flex: 1; display: flex; flex-direction: column; cursor: pointer; overflow: hidden; }
+  #msg-inner { flex: 1; padding: 0.8rem 1.25rem 0.3rem; overflow-y: auto; }
+  #main-text { font-size: clamp(0.88rem, 2.05vw, 1.04rem); line-height: 1.82; letter-spacing: 0.07em; color: var(--ink); }
+  #msg-footer { padding: 0.24rem 1.25rem 0.42rem; display: flex; align-items: center; justify-content: space-between; }
+  #click-hint { font-size: 0.68rem; letter-spacing: 0.22em; color: rgba(168,196,212,0.55); opacity: 0; }
+  #click-hint.visible { opacity: 1; animation: blink 1.4s ease-in-out infinite; }
+  @keyframes blink { 0%,100% { opacity: 0.35; } 50% { opacity: 0.9; } }
+
+  .scanlines {
+    position: fixed; inset: 0; pointer-events: none; z-index: 999;
+    background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px);
+  }
+
+  /* Modals (Log / Map / Evidence) */
+  .overlay-modal {
+    position: fixed; inset: 0; z-index: 150;
+    background: rgba(0,0,0,0.93); backdrop-filter: blur(4px);
+    display: none; flex-direction: column; padding: 1.4rem;
+  }
+  .overlay-modal.open { display: flex; }
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1rem; border-bottom: 1px solid rgba(168,196,212,0.2); padding-bottom: 0.6rem;
+  }
+  .modal-header h2 { font-size: 0.9rem; letter-spacing: 0.28em; color: var(--frost); }
+  .modal-close {
+    background: none; border: 1px solid rgba(168,196,212,0.35); color: var(--frost);
+    padding: 0.3rem 0.85rem; font-family: inherit; font-size: 0.75rem; cursor: pointer;
+  }
+  .modal-scroll { flex: 1; overflow-y: auto; }
+  .log-entry { padding: 0.58rem 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.84rem; line-height: 1.7; color: rgba(232,224,208,0.82); }
+  .log-entry .log-speaker { font-size: 0.72rem; color: var(--frost); margin-bottom: 0.15rem; }
+
+  .ev-card {
+    padding: 0.85rem 1rem; margin-bottom: 0.7rem;
+    background: rgba(16, 20, 32, 0.85); border: 1px solid rgba(245,200,66,0.3); border-left: 3px solid var(--candle);
+  }
+  .ev-card h3 { font-size: 0.86rem; color: var(--candle); margin-bottom: 0.3rem; }
+  .ev-card p { font-size: 0.82rem; line-height: 1.65; color: var(--ink); }
+
+  .map-diagram {
+    margin: auto; max-width: 540px; width: 100%;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+  }
+  .map-node {
+    padding: 0.85rem; border: 1px solid rgba(168,196,212,0.3); background: rgba(15,20,32,0.8);
+    text-align: center; font-size: 0.82rem; border-radius: 4px;
+  }
+  .map-node.here { border-color: var(--candle); color: var(--candle); background: rgba(45,35,10,0.65); font-weight: 700; }
+  .map-node.killer-near { border-color: #ef4444; color: #fca5a5; background: rgba(65,10,10,0.65); }
+
+  /* END screen */
+  #end-screen {
+    position: fixed; inset: 0; z-index: 180; background: #000;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 2rem; overflow-y: auto;
+  }
+  #end-screen.show { display: flex; }
+  .end-type { font-size: 0.78rem; letter-spacing: 0.5em; margin-bottom: 0.75rem; }
+  .end-title { font-size: clamp(1.7rem, 5vw, 2.8rem); font-weight: 800; letter-spacing: 0.22em; margin-bottom: 0.8rem; }
+  .end-desc { font-size: 0.86rem; line-height: 1.9; letter-spacing: 0.08em; max-width: 520px; color: rgba(232,224,208,0.82); margin-bottom: 1.8rem; white-space: pre-line; }
+  #retry-btn {
+    padding: 0.85rem 2.4rem; border: 1px solid rgba(168,196,212,0.45);
+    background: rgba(255,255,255,0.04); color: var(--ink);
+    font-family: inherit; font-size: 0.9rem; letter-spacing: 0.35em; cursor: pointer;
+  }
+  #retry-btn:hover { border-color: var(--frost); background: rgba(168,196,212,0.12); color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="scanlines"></div>
+
+<!-- ========== TITLE ========== -->
+<div id="title-screen">
+  <div class="title-blizzard">
+    <canvas id="title-snow" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></canvas>
+    <svg class="title-mountain" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMax meet" fill="none">
+      <polygon points="0,600 300,120 500,600" fill="#0d1520" opacity="0.7"/>
+      <polygon points="200,600 550,60 800,600" fill="#111c2d" opacity="0.8"/>
+      <polygon points="600,600 900,90 1200,600" fill="#0a1322" opacity="0.7"/>
+      <polygon points="0,600 150,280 350,600" fill="#161e2c"/>
+      <polygon points="300,600 480,250 700,600" fill="#1a2436"/>
+      <polygon points="600,600 780,260 1000,600" fill="#161e2c"/>
+      <polygon points="0,600 0,480 200,380 400,430 600,370 800,420 1000,360 1200,410 1200,600" fill="#0d1520"/>
+    </svg>
+    <svg class="title-lodge" viewBox="0 0 120 90" fill="none">
+      <polygon points="10,50 60,10 110,50" fill="#1a1410" stroke="#3a3028" stroke-width="1"/>
+      <rect x="20" y="50" width="80" height="35" fill="#1a1410" stroke="#3a3028" stroke-width="1"/>
+      <rect x="50" y="62" width="20" height="23" fill="#0d0d0d"/>
+      <rect x="25" y="57" width="14" height="12" fill="#5c0000" opacity="0.85"/>
+      <rect x="81" y="57" width="14" height="12" fill="#f5c84240"/>
+    </svg>
+  </div>
+  <div class="title-content">
+    <p class="title-eyebrow">SOUND NOVEL × ESCAPE HORROR</p>
+    <h1 class="title-jp">雪山山荘<br>脱出劇</h1>
+    <div class="title-divider"></div>
+
+    <div class="synopsis-card">
+      <div class="synopsis-title">あらすじ ── なぜ惨劇は起きたのか</div>
+      1938年12月、猛吹雪に閉ざされた雪山山荘。大富豪・神崎道彦は夕食の席で突如「全財産を他人の小説家・桐島玲子へ譲る」と宣言した。<br>
+      長年父に尽くしてきた令嬢・<b>神崎澄江</b>は裏切りに狂気へと堕ち、深夜、父と異変に気づいた執事・重蔵を惨殺する。<br>
+      そして宿泊客のあなたは、その現場を見てしまった──。山荘を巡回する澄江の追跡から逃げ延び、なぜ道彦がそんな遺言を残したのか「真相」を突き止めて脱出せよ。
+    </div>
+
+    <button id="start-btn">脱出を始める</button>
+    <p class="title-warning">※ 巡回AI・証拠収集・謎解き・追跡ステルス演出を含みます</p>
+    <div class="end-badge-list" id="end-badge-list"></div>
+  </div>
+</div>
+
+<!-- ========== GAME ========== -->
+<div id="game-screen">
+  <div id="hud-bar">
+    <div class="hud-group">
+      <div class="hud-item">
+        <span class="hud-label">現在</span>
+        <span id="room-name-val">2F 廊下</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">時刻</span>
+        <span id="clock-val">01:50</span>
+        <span class="hud-label">/ 06:00警察</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">危険度</span>
+        <div class="meter-wrap"><div id="threat-fill" class="meter-fill"></div></div>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">体力</span>
+        <div class="meter-wrap"><div id="stamina-fill" class="meter-fill" style="width:100%"></div></div>
+      </div>
+    </div>
+    <div class="hud-controls">
+      <button id="evidence-btn" class="hud-btn accent">証拠 (0/4)</button>
+      <button id="map-btn" class="hud-btn">見取り図</button>
+      <button id="mute-btn" class="hud-btn">音: ON</button>
+      <button id="msg-log-btn" class="hud-btn">LOG</button>
+    </div>
+  </div>
+
+  <div id="scene-area">
+    <div id="bg-img"><canvas id="scene-canvas"></canvas></div>
+    <div id="vignette"></div>
+    <canvas id="snow-canvas"></canvas>
+    <canvas id="particle-canvas"></canvas>
+    <div id="danger-vignette"></div>
+    <div id="flash"></div>
+
+    <!-- Explore UI -->
+    <div id="explore-ui">
+      <div class="explore-top">
+        <div class="room-desc-badge" id="room-hint-badge">部屋を調べて脱出の手がかりを探せ</div>
+        <div class="killer-presence-badge" id="killer-presence-badge">⚠ 隣の部屋から足音が聞こえる…</div>
+      </div>
+      <div class="hotspots-grid" id="hotspots-grid"></div>
+      <div class="nav-bar" id="nav-bar"></div>
+    </div>
+
+    <div id="speaker-tag"></div>
+
+    <!-- Choices -->
+    <div id="choices-overlay">
+      <div id="timer-box">
+        <div id="timer-label">決断せよ！ 残り <span id="timer-sec">7.0</span> 秒</div>
+        <div id="timer-track"><div id="timer-bar"></div></div>
+      </div>
+      <div id="choices-wrap"></div>
+    </div>
+
+    <!-- Stealth Hold-Still (Pointer Events) -->
+    <div id="stealth-overlay">
+      <p class="stealth-title">息を殺して隠れろ！</p>
+      <p class="stealth-desc" id="stealth-desc">澄江の足音がすぐそこまで迫っている！ ボタン（またはSpaceキー）を長押ししてやり過ごせ！</p>
+      <button id="stealth-action-btn">息を殺す（長押し）</button>
+      <div class="stealth-meter-wrap"><div id="stealth-progress"></div></div>
+      <p id="stealth-noise-text">気配を消している...</p>
+    </div>
+
+    <!-- 3-Digit Keypad Modal -->
+    <div id="keypad-modal">
+      <div class="keypad-box">
+        <div class="keypad-title">地下室の鉄箱（3桁の暗証番号）</div>
+        <div class="keypad-display" id="kp-display">---</div>
+        <div class="keypad-grid" id="kp-grid"></div>
+        <div class="kp-actions">
+          <button id="kp-clear">消去</button>
+          <button id="kp-submit">解錠</button>
+          <button id="kp-cancel">閉じる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="bottom-panel">
+    <div id="inventory-bar">
+      <span class="inv-label">所持品（クリックで選択）:</span>
+    </div>
+    <div id="msg-box">
+      <div id="msg-inner"><p id="main-text"></p></div>
+      <div id="msg-footer">
+        <div id="click-hint">▼ クリック / Spaceで続ける</div>
+        <span id="selected-item-hint" style="font-size:0.68rem;color:var(--candle);"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Log Modal -->
+<div id="log-overlay" class="overlay-modal">
+  <div class="modal-header">
+    <h2>記録ログ</h2>
+    <button id="log-close" class="modal-close">閉じる</button>
+  </div>
+  <div id="log-content" class="modal-scroll"></div>
+</div>
+
+<!-- Evidence Modal -->
+<div id="evidence-overlay" class="overlay-modal">
+  <div class="modal-header">
+    <h2>事件の証拠・手がかり</h2>
+    <button id="evidence-close" class="modal-close">閉じる</button>
+  </div>
+  <div id="evidence-content" class="modal-scroll"></div>
+</div>
+
+<!-- Map Modal -->
+<div id="map-overlay" class="overlay-modal">
+  <div class="modal-header">
+    <h2>雪山山荘 見取り図（赤い部屋に犯人の気配）</h2>
+    <button id="map-close" class="modal-close">閉じる</button>
+  </div>
+  <div class="map-diagram" id="map-diagram"></div>
+</div>
+
+<!-- End Screen -->
+<div id="end-screen">
+  <p class="end-type" id="end-type-text"></p>
+  <h2 class="end-title" id="end-title-text"></h2>
+  <div class="title-divider" style="margin:1rem auto;"></div>
+  <p class="end-desc" id="end-desc-text"></p>
+  <button id="retry-btn">タイトルに戻る</button>
+</div>
+
+<script>
+/* =============================================
+   AUDIO ENGINE
+   ============================================= */
+class AudioEngine {
+  constructor() {
+    this.ctx = null; this.master = null; this.bgmGain = null; this.sfxGain = null; this.reverb = null;
+    this.bgmStep = 0; this.bgmTimer = null; this.currentTheme = null; this.muted = false;
+  }
+  async init() {
+    if (this.ctx) return;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    this.ctx = new AudioCtx();
+    this.master = this.ctx.createGain(); this.master.gain.value = 0.75; this.master.connect(this.ctx.destination);
+    this.bgmGain = this.ctx.createGain(); this.bgmGain.gain.value = 0.45; this.bgmGain.connect(this.master);
+    this.sfxGain = this.ctx.createGain(); this.sfxGain.gain.value = 0.85; this.sfxGain.connect(this.master);
+    this.reverb = await this.createReverb(2.0);
+    const rg = this.ctx.createGain(); rg.gain.value = 0.24; this.reverb.connect(rg); rg.connect(this.master);
+  }
+  toggleMute() {
+    this.muted = !this.muted;
+    if (this.master && this.ctx) this.master.gain.setValueAtTime(this.muted ? 0 : 0.75, this.ctx.currentTime);
+    return this.muted;
+  }
+  async createReverb(dur) {
+    const rate = this.ctx.sampleRate, len = Math.floor(rate * dur), buf = this.ctx.createBuffer(2, len, rate);
+    for (let c = 0; c < 2; c++) { const d = buf.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.2); }
+    const cv = this.ctx.createConvolver(); cv.buffer = buf; return cv;
+  }
+  tone(freq, dur, vol = 0.15, type = 'sine', attack = 0.01) {
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    const t = this.ctx.currentTime, osc = this.ctx.createOscillator(), env = this.ctx.createGain();
+    osc.type = type; osc.frequency.value = freq; osc.connect(env); env.connect(this.sfxGain);
+    if (this.reverb) env.connect(this.reverb);
+    env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(vol, t + attack);
+    env.gain.exponentialRampToValueAtTime(0.001, t + dur); osc.start(t); osc.stop(t + dur + 0.04);
+  }
+  fm(carrier, ratio, idx, dur, vol = 0.15, target = 'sfx') {
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    const t = this.ctx.currentTime, mod = this.ctx.createOscillator(), mg = this.ctx.createGain(), car = this.ctx.createOscillator(), env = this.ctx.createGain();
+    mod.frequency.value = carrier * ratio; mg.gain.value = carrier * idx; car.frequency.value = carrier;
+    mod.connect(mg); mg.connect(car.frequency); car.connect(env);
+    env.connect(target === 'bgm' ? this.bgmGain : this.sfxGain);
+    if (this.reverb) env.connect(this.reverb);
+    env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(vol, t + 0.015);
+    env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    mod.start(t); car.start(t); mod.stop(t + dur + 0.02); car.stop(t + dur + 0.02);
+  }
+  noise(dur, vol = 0.05, lp = 800) {
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    const t = this.ctx.currentTime, len = Math.ceil(this.ctx.sampleRate * dur), buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    const src = this.ctx.createBufferSource(); src.buffer = buf;
+    const flt = this.ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = lp;
+    const env = this.ctx.createGain(); src.connect(flt); flt.connect(env); env.connect(this.sfxGain);
+    env.gain.setValueAtTime(vol, t); env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    src.start(t); src.stop(t + dur);
+  }
+  sfx(name) {
+    switch (name) {
+      case 'cursor':    this.tone(240, 0.04, 0.05, 'sine'); break;
+      case 'choice':    this.fm(330, 2, 1, 0.14, 0.18); break;
+      case 'item':      this.tone(523, 0.12, 0.18, 'triangle'); setTimeout(() => this.tone(659, 0.18, 0.18, 'triangle'), 90); break;
+      case 'unlock':    this.tone(440, 0.1, 0.2, 'square'); setTimeout(() => this.tone(587, 0.22, 0.2, 'triangle'), 100); break;
+      case 'locked':    this.tone(130, 0.14, 0.2, 'sawtooth'); break;
+      case 'door':      this.noise(0.32, 0.16, 220); this.fm(75, 1, 3, 0.32, 0.2); break;
+      case 'bang':      this.noise(0.25, 0.35, 320); this.fm(52, 0.8, 5, 0.4, 0.4); break;
+      case 'footstep':  this.noise(0.12, 0.2, 400); this.tone(90, 0.09, 0.22, 'triangle'); break;
+      case 'horror':    this.fm(52, 0.47, 10, 1.8, 0.45); this.tone(440, 0.6, 0.12, 'sawtooth'); this.noise(1.5, 0.08, 350); break;
+      case 'scream':    [520, 660, 410, 740].forEach((f, i) => setTimeout(() => this.fm(f, 0.4, 9, 0.45, 0.25), i * 65)); this.noise(1.2, 0.12, 1800); break;
+      case 'heartbeat': this.tone(58, 0.14, 0.35, 'sine'); setTimeout(() => this.tone(48, 0.12, 0.28, 'sine'), 180); break;
+      case 'siren':     [660, 520, 660, 520].forEach((f, i) => setTimeout(() => this.tone(f, 0.45, 0.16, 'triangle', 0.05), i * 480)); break;
+      case 'good_end':  [261, 329, 392, 523].forEach((f, i) => setTimeout(() => this.fm(f, 2, 0.4, 1.5, 0.15), i * 190)); break;
+      case 'bad_end':   [185, 165, 146, 110].forEach((f, i) => setTimeout(() => this.fm(f, 2.2, 4, 1.4, 0.24), i * 260)); break;
+    }
+  }
+  startBgm(theme) {
+    if (this.currentTheme === theme) return;
+    this.stopBgm(); this.currentTheme = theme;
+    const map = { blizzard: () => this.bgmBlizzard(), horror: () => this.bgmHorror(), chase: () => this.bgmChase(), dawn: () => this.bgmDawn() };
+    if (map[theme]) map[theme]();
+  }
+  stopBgm() { clearTimeout(this.bgmTimer); this.bgmStep = 0; this.currentTheme = null; }
+  bgmBlizzard() {
+    const bass = [55, 41.2, 43.65, 49];
+    const loop = () => {
+      if (this.currentTheme !== 'blizzard') return;
+      const i = this.bgmStep, b = bass[Math.floor(i / 4) % bass.length];
+      if (i % 4 === 0) this.fm(b, 1, 0.3, 2.5, 0.28, 'bgm');
+      if (i % 8 === 0) this.noise(2.0, 0.03, 480);
+      this.bgmStep++; this.bgmTimer = setTimeout(loop, 750);
+    }; loop();
+  }
+  bgmHorror() {
+    const loop = () => {
+      if (this.currentTheme !== 'horror') return;
+      const i = this.bgmStep;
+      if (i % 2 === 0) this.fm(42 + Math.random() * 8, 0.6, 9, 1.4, 0.26, 'bgm');
+      if (i % 5 === 0) this.tone(110 + Math.random() * 15, 0.8, 0.06, 'sawtooth');
+      this.bgmStep++; this.bgmTimer = setTimeout(loop, 700);
+    }; loop();
+  }
+  bgmChase() {
+    const notes = [55, 65.4, 61.7, 73.4];
+    const loop = () => {
+      if (this.currentTheme !== 'chase') return;
+      const i = this.bgmStep, n = notes[i % notes.length];
+      this.fm(n, 0.5, 5, 0.32, 0.28, 'bgm');
+      if (i % 2 === 0) this.tone(58, 0.1, 0.22, 'sine');
+      this.bgmStep++; this.bgmTimer = setTimeout(loop, 290);
+    }; loop();
+  }
+  bgmDawn() {
+    const ch = [[261, 329, 392], [294, 370, 440], [329, 415, 494]];
+    const loop = () => {
+      if (this.currentTheme !== 'dawn') return;
+      ch[this.bgmStep % ch.length].forEach((f, idx) => setTimeout(() => this.fm(f, 2, 0.25, 2.2, 0.11, 'bgm'), idx * 70));
+      this.bgmStep++; this.bgmTimer = setTimeout(loop, 1900);
+    }; loop();
+  }
+}
+
+/* =============================================
+   SNOW & PARTICLE SYSTEMS
+   ============================================= */
+class SnowSystem {
+  constructor(canvas) { this.canvas = canvas; this.ctx = canvas.getContext('2d'); this.flakes = []; this.intensity = 1; this.running = false; this.raf = null; }
+  resize() { this.canvas.width = this.canvas.offsetWidth || 800; this.canvas.height = this.canvas.offsetHeight || 400; }
+  spawn() {
+    const n = Math.floor(60 * this.intensity);
+    while (this.flakes.length < n) this.flakes.push({ x: Math.random() * this.canvas.width, y: Math.random() * this.canvas.height, r: Math.random() * 2.4 + 0.6, sx: (Math.random() - 0.35) * 1.8, sy: Math.random() * 1.6 + 0.6, o: Math.random() * 0.6 + 0.15 });
+    while (this.flakes.length > n) this.flakes.pop();
+  }
+  start(v = 1) { this.intensity = v; this.spawn(); if (!this.running) { this.running = true; this.loop(); } }
+  setIntensity(v) { this.intensity = v; if (v <= 0) { this.stop(); this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); return; } this.start(v); }
+  stop() { this.running = false; cancelAnimationFrame(this.raf); }
+  loop() {
+    if (!this.running) return;
+    const w = this.canvas.width, h = this.canvas.height;
+    this.ctx.clearRect(0, 0, w, h); this.ctx.fillStyle = 'rgba(220,235,248,0.9)';
+    for (const f of this.flakes) {
+      f.x += f.sx; f.y += f.sy;
+      if (f.y > h + 4) { f.y = -4; f.x = Math.random() * w; }
+      if (f.x > w + 4) f.x = -4; if (f.x < -4) f.x = w + 4;
+      this.ctx.globalAlpha = f.o; this.ctx.beginPath(); this.ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); this.ctx.fill();
+    }
+    this.ctx.globalAlpha = 1; this.raf = requestAnimationFrame(() => this.loop());
+  }
+}
+
+class ParticleSystem {
+  constructor(canvas) { this.canvas = canvas; this.ctx = canvas.getContext('2d'); this.particles = []; this.raf = null; this.running = false; }
+  resize() { this.canvas.width = this.canvas.offsetWidth || 800; this.canvas.height = this.canvas.offsetHeight || 400; }
+  emit(type, x, y, count = 28) {
+    const cx = x ?? this.canvas.width / 2, cy = y ?? this.canvas.height / 2;
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2, sp = Math.random() * 4.5 + 1.2;
+      this.particles.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1.5, life: 1, decay: Math.random() * 0.02 + 0.01, size: Math.random() * 5 + 2, color: type === 'blood' ? `rgba(${130 + Math.floor(Math.random() * 70)},0,0,` : `rgba(245,180,60,`, gravity: type === 'blood' ? 0.16 : -0.04 });
+    }
+    if (!this.running) { this.running = true; this.loop(); }
+  }
+  loop() {
+    if (!this.running) return;
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.particles = this.particles.filter(p => p.life > 0);
+    if (this.particles.length === 0) { this.running = false; return; }
+    for (const p of this.particles) {
+      p.x += p.vx; p.y += p.vy; p.vy += p.gravity; p.life -= p.decay;
+      this.ctx.fillStyle = p.color + Math.max(0, p.life) + ')';
+      this.ctx.beginPath(); this.ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2); this.ctx.fill();
+    }
+    this.raf = requestAnimationFrame(() => this.loop());
+  }
+}
+
+/* =============================================
+   SCENE PAINTER
+   ============================================= */
+class ScenePainter {
+  constructor(canvas) { this.canvas = canvas; this.ctx = canvas.getContext('2d'); }
+  resize(w, h) { this.canvas.width = w || 800; this.canvas.height = h || 400; }
+  draw(type, killerNear = false) {
+    const { ctx, canvas: { width: w, height: h } } = this;
+    ctx.clearRect(0, 0, w, h);
+
+    if (type === 'corridor') {
+      const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#070810'); g.addColorStop(1, '#16110c');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#1b140d';
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(w * 0.35, h * 0.2); ctx.lineTo(w * 0.35, h * 0.72); ctx.lineTo(0, h); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(w, 0); ctx.lineTo(w * 0.65, h * 0.2); ctx.lineTo(w * 0.65, h * 0.72); ctx.lineTo(w, h); ctx.fill();
+      ctx.fillStyle = '#0e0a07'; ctx.fillRect(w * 0.41, h * 0.25, w * 0.18, h * 0.47);
+      ctx.strokeStyle = '#3a2818'; ctx.lineWidth = 2; ctx.strokeRect(w * 0.41, h * 0.25, w * 0.18, h * 0.47);
+    } else if (type === 'horror_sight') {
+      ctx.fillStyle = '#090203'; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = 'rgba(130,0,0,0.78)';
+      ctx.beginPath(); ctx.ellipse(w * 0.5, h * 0.72, w * 0.24, h * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+      this.drawKillerSilhouette(ctx, w * 0.5, h * 0.52, 1.15, true);
+    } else if (type === 'lobby') {
+      const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#100c08'); g.addColorStop(1, '#1e150c');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#140e09'; ctx.fillRect(w * 0.38, h * 0.2, w * 0.24, h * 0.55);
+      const fg = ctx.createRadialGradient(w * 0.5, h * 0.62, 5, w * 0.5, h * 0.56, w * 0.25);
+      fg.addColorStop(0, 'rgba(245,150,35,0.65)'); fg.addColorStop(1, 'transparent');
+      ctx.fillStyle = fg; ctx.fillRect(w * 0.2, h * 0.2, w * 0.6, h * 0.65);
+    } else if (type === 'library') {
+      ctx.fillStyle = '#0b0907'; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#1e140b'; ctx.fillRect(0, 0, w * 0.24, h); ctx.fillRect(w * 0.76, 0, w * 0.24, h);
+      ctx.fillStyle = '#2b1c0e'; ctx.fillRect(w * 0.32, h * 0.6, w * 0.36, 12);
+    } else if (type === 'guestroom_blood') {
+      ctx.fillStyle = '#0e0707'; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#241812'; ctx.fillRect(w * 0.25, h * 0.42, w * 0.5, h * 0.35);
+      ctx.fillStyle = 'rgba(130,0,0,0.7)';
+      ctx.beginPath(); ctx.ellipse(w * 0.45, h * 0.52, 48, 26, 0.2, 0, Math.PI * 2); ctx.fill();
+    } else if (type === 'cellar') {
+      ctx.fillStyle = '#050507'; ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = 'rgba(55,50,45,0.5)'; ctx.lineWidth = 1;
+      for (let y = 0; y < h; y += 36) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+      ctx.fillStyle = '#24180d'; ctx.fillRect(w * 0.4, h * 0.22, w * 0.2, h * 0.45);
+    } else if (type === 'entrance') {
+      ctx.fillStyle = '#080b12'; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#1d140c'; ctx.fillRect(w * 0.36, h * 0.14, w * 0.28, h * 0.66);
+      ctx.strokeStyle = '#64748b'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(w * 0.36, h * 0.45); ctx.lineTo(w * 0.64, h * 0.55); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(w * 0.36, h * 0.55); ctx.lineTo(w * 0.64, h * 0.45); ctx.stroke();
+    } else if (type === 'dawn') {
+      const sky = ctx.createLinearGradient(0, 0, 0, h);
+      sky.addColorStop(0, '#0f1c30'); sky.addColorStop(0.65, '#2b4568'); sky.addColorStop(1, '#d97746');
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
+      const b1 = ctx.createRadialGradient(w * 0.35, h * 0.72, 2, w * 0.35, h * 0.72, 90);
+      b1.addColorStop(0, 'rgba(239,68,68,0.85)'); b1.addColorStop(1, 'transparent');
+      ctx.fillStyle = b1; ctx.fillRect(0, h * 0.4, w, h * 0.6);
+      const b2 = ctx.createRadialGradient(w * 0.65, h * 0.72, 2, w * 0.65, h * 0.72, 90);
+      b2.addColorStop(0, 'rgba(59,130,246,0.85)'); b2.addColorStop(1, 'transparent');
+      ctx.fillStyle = b2; ctx.fillRect(0, h * 0.4, w, h * 0.6);
+    }
+
+    if (killerNear && type !== 'horror_sight' && type !== 'dawn') {
+      this.drawKillerSilhouette(ctx, w * 0.78, h * 0.56, 0.85, true);
+    }
+  }
+
+  drawKillerSilhouette(ctx, cx, cy, scale = 1, holdingBlade = true) {
+    ctx.save(); ctx.translate(cx, cy); ctx.scale(scale, scale);
+    ctx.fillStyle = 'rgba(4, 4, 8, 0.94)';
+    ctx.beginPath(); ctx.moveTo(-42, 130); ctx.lineTo(-34, -20); ctx.lineTo(34, -20); ctx.lineTo(42, 130); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, -48, 25, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath(); ctx.arc(-8, -50, 2.5, 0, Math.PI * 2); ctx.arc(8, -50, 2.5, 0, Math.PI * 2); ctx.fill();
+    if (holdingBlade) {
+      ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(32, 20); ctx.lineTo(74, -28); ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+/* =============================================
+   ROOMS & EVIDENCE DATA
+   ============================================= */
+const ROOMS = {
+  corridor2f: {
+    name: '2F 廊下',
+    bg: 'corridor',
+    hint: '薄暗い二階の廊下。壁の肖像画がこちらを見下ろしている。',
+    neighbors: ['guestroom', 'library', 'lobby1f'],
+    hotspots: [
+      { id: 'hs_painting', label: '壁の肖像画を調べる' },
+      { id: 'hs_closet2f', label: '物入れ（隠れる）' }
+    ],
+    exits: [
+      { to: 'guestroom', label: '神崎の客室へ' },
+      { to: 'library', label: '図書室へ', reqItem: '図書室の鍵', lockMsg: '図書室の扉には鍵がかかっている。' },
+      { to: 'lobby1f', label: '1F ロビーへ降りる' }
+    ]
+  },
+  guestroom: {
+    name: '神崎の客室（現場）',
+    bg: 'guestroom_blood',
+    hint: '惨劇の現場。ベッドには血痕が残り、奥に暗いクローゼットがある。',
+    neighbors: ['corridor2f'],
+    hotspots: [
+      { id: 'hs_bed', label: '遺体のあったベッドを調べる' },
+      { id: 'hs_dark_closet', label: '暗いクローゼットの奥を調べる' }
+    ],
+    exits: [{ to: 'corridor2f', label: '2F 廊下へ戻る' }]
+  },
+  library: {
+    name: '2F 図書室',
+    bg: 'library',
+    hint: '神崎道彦の書斎兼図書室。机の上に日記が開かれている。',
+    neighbors: ['corridor2f'],
+    hotspots: [
+      { id: 'hs_diary', label: '神崎の日記を読む' },
+      { id: 'hs_desk_drawer', label: '机の引き出しを調べる' }
+    ],
+    exits: [{ to: 'corridor2f', label: '2F 廊下へ戻る' }]
+  },
+  lobby1f: {
+    name: '1F ロビー',
+    bg: 'lobby',
+    hint: '暖炉の火が揺れる広間。玄関ホールと地下室へ繋がっている。',
+    neighbors: ['corridor2f', 'entrance', 'cellar'],
+    hotspots: [
+      { id: 'hs_fireplace', label: '暖炉の灰を調べる' },
+      { id: 'hs_poker_stand', label: '暖炉横の道具立て' },
+      { id: 'hs_curtain', label: '厚いカーテンの裏（隠れる）' }
+    ],
+    exits: [
+      { to: 'corridor2f', label: '2F 廊下へ上がる' },
+      { to: 'entrance', label: '1F 玄関ホールへ' },
+      { to: 'cellar', label: '地下室へ降りる' }
+    ]
+  },
+  cellar: {
+    name: '地下室',
+    bg: 'cellar',
+    hint: '冷え切った石造りの地下室。頑丈なダイヤル式の鉄箱が置かれている。',
+    neighbors: ['lobby1f'],
+    hotspots: [
+      { id: 'hs_safebox', label: '3桁ダイヤル錠の鉄箱' },
+      { id: 'hs_barrels', label: '木樽の隙間を調べる' }
+    ],
+    exits: [{ to: 'lobby1f', label: '1F ロビーへ戻る' }]
+  },
+  entrance: {
+    name: '1F 玄関ホール',
+    bg: 'entrance',
+    hint: '山荘の正面玄関。重い鎖と錠前で閉ざされている。',
+    neighbors: ['lobby1f'],
+    hotspots: [{ id: 'hs_front_door', label: '玄関の鎖と錠前を調べる' }],
+    exits: [{ to: 'lobby1f', label: '1F ロビーへ戻る' }]
+  }
+};
+
+const EVIDENCE_LIST = {
+  ev_cipher: { title: '肖像画の裏メモ', desc: '「道彦の暗号は常に逆から読め」と記されていた。' },
+  ev_diary: { title: '神崎道彦の日記', desc: '「地下の箱の番号は俺の最も大切な番号【183】にした。……玲子に遺産を譲るのは、あの子が実の娘だからだ」' },
+  ev_secret: { title: '血染めの出生証明書', desc: '客室のクローゼットの奥から発見。桐島玲子は道彦の実娘であり、澄江は戦災で引き取った養女だったという衝撃の事実。' },
+  ev_body: { title: '惨劇の証拠', desc: '澄江は父が真実を語らぬまま他人に遺産を渡そうとしたと思い込み、狂気に駆られて凶行に及んだ。' }
+};
+
+const END_CATALOG = [
+  { id: 'TRUE', label: 'TRUE: 雪夜と偽りの遺言' },
+  { id: 'ESCAPE', label: 'ESCAPE: 雪夜からの逃亡' },
+  { id: 'SURVIVAL', label: 'SURVIVAL: 夜明けのサイレン' },
+  { id: 'BAD_CAUGHT', label: 'BAD1: 見られた者の末路' },
+  { id: 'BAD_BREATH', label: 'BAD2: 息を殺しきれず' },
+  { id: 'BAD_HP', label: 'BAD3: 力尽きて' }
+];
+
+/* =============================================
+   UNIFIED STATE & MESSAGE ENGINE
+   ============================================= */
+const audio = new AudioEngine();
+let snow, particles, painter;
+
+let GAME_STATE = {
+  phase: 'intro', // intro | explore | event | end
+  room: 'corridor2f',
+  killerRoom: 'cellar',
+  chaseCount: 0,
+  time: 110, // 01:50 (360 = 06:00)
+  threat: 20,
+  stamina: 100,
+  items: new Set(),
+  selectedItem: null,
+  evidences: new Set(),
+  flags: new Set(),
+  log: [],
+  busy: false,
+  msgToken: 0,
+  typingActive: false,
+  skipTyping: false,
+  choiceTimer: null,
+  advanceCleanup: null,
+  kpInput: ''
+};
+
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function formatTime(mins) {
+  return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+}
+
+function getUnlockedEnds() {
+  try { return JSON.parse(localStorage.getItem('snow_escape_v3_ends') || '[]'); } catch { return []; }
+}
+function saveUnlockedEnd(id) {
+  try {
+    const arr = getUnlockedEnds();
+    if (!arr.includes(id)) { arr.push(id); localStorage.setItem('snow_escape_v3_ends', JSON.stringify(arr)); }
+  } catch {}
+}
+function renderEndBadges() {
+  const unlocked = getUnlockedEnds();
+  $('end-badge-list').innerHTML = END_CATALOG.map(e =>
+    `<span class="end-badge ${unlocked.includes(e.id) ? 'unlocked' : ''}">${unlocked.includes(e.id) ? '★ ' : ''}${e.label}</span>`
+  ).join('');
+}
+
+function isKillerAdjacent() {
+  return ROOMS[GAME_STATE.room]?.neighbors.includes(GAME_STATE.killerRoom);
+}
+
+function updateHUD() {
+  $('room-name-val').textContent = ROOMS[GAME_STATE.room]?.name || '';
+  $('clock-val').textContent = formatTime(GAME_STATE.time);
+  $('threat-fill').style.width = Math.min(100, GAME_STATE.threat) + '%';
+  $('stamina-fill').style.width = Math.max(0, GAME_STATE.stamina) + '%';
+  $('stamina-fill').style.background = GAME_STATE.stamina <= 30 ? '#f87171' : '#60a5fa';
+  $('evidence-btn').textContent = `証拠 (${GAME_STATE.evidences.size}/4)`;
+
+  const dv = $('danger-vignette');
+  const near = isKillerAdjacent() || GAME_STATE.threat >= 70;
+  if (near) dv.classList.add('pulsing');
+  else { dv.classList.remove('pulsing'); dv.style.opacity = GAME_STATE.threat >= 45 ? '0.25' : '0'; }
+
+  $('killer-presence-badge').classList.toggle('visible', isKillerAdjacent() && GAME_STATE.phase === 'explore');
+  renderInventory();
+}
+
+function renderInventory() {
+  const bar = $('inventory-bar');
+  bar.innerHTML = '<span class="inv-label">所持品（クリックで選択）:</span>';
+  if (GAME_STATE.items.size === 0) {
+    bar.innerHTML += '<span style="font-size:0.72rem;color:rgba(232,224,208,0.4);">なし</span>';
+    $('selected-item-hint').textContent = '';
+    return;
+  }
+  GAME_STATE.items.forEach(item => {
+    const btn = document.createElement('button');
+    btn.className = 'inv-item' + (GAME_STATE.selectedItem === item ? ' selected' : '');
+    btn.textContent = item;
+    btn.addEventListener('click', () => {
+      GAME_STATE.selectedItem = GAME_STATE.selectedItem === item ? null : item;
+      audio.sfx('cursor');
+      renderInventory();
+    });
+    bar.appendChild(btn);
+  });
+  $('selected-item-hint').textContent = GAME_STATE.selectedItem ? `選択中: 【${GAME_STATE.selectedItem}】` : '';
+}
+
+function addItem(name) {
+  if (!GAME_STATE.items.has(name)) {
+    GAME_STATE.items.add(name);
+    GAME_STATE.selectedItem = name;
+    audio.sfx('item');
+    updateHUD();
+  }
+}
+function consumeItem(name) {
+  GAME_STATE.items.delete(name);
+  if (GAME_STATE.selectedItem === name) GAME_STATE.selectedItem = null;
+  updateHUD();
+}
+function addEvidence(id) {
+  if (!GAME_STATE.evidences.has(id)) {
+    GAME_STATE.evidences.add(id);
+    audio.sfx('item');
+    updateHUD();
+  }
+}
+
+/* 一元化されたメッセージ再生（重複・競合防止） */
+async function setMessage(text, speaker = '') {
+  const token = ++GAME_STATE.msgToken;
+  GAME_STATE.typingActive = true;
+  GAME_STATE.skipTyping = false;
+
+  const sp = $('speaker-tag');
+  if (speaker) {
+    sp.textContent = speaker; sp.classList.add('visible');
+    sp.classList.toggle('killer', speaker.includes('澄江'));
+  } else {
+    sp.classList.remove('visible', 'killer'); sp.textContent = '';
+  }
+
+  GAME_STATE.log.push({ speaker, text });
+  const el = $('main-text');
+  el.innerHTML = '';
+
+  for (const ch of text) {
+    if (token !== GAME_STATE.msgToken) return;
+    if (GAME_STATE.skipTyping) { el.innerHTML = text.replace(/\n/g, '<br>'); break; }
+    if (ch === '\n') { el.innerHTML += '<br>'; await sleep(40); }
+    else {
+      el.innerHTML += ch;
+      if (!'　 '.includes(ch)) audio.sfx('cursor');
+      await sleep(22);
+    }
+  }
+  if (token === GAME_STATE.msgToken) GAME_STATE.typingActive = false;
+}
+
+function waitForAdvance() {
+  if (GAME_STATE.advanceCleanup) GAME_STATE.advanceCleanup();
+  return new Promise(resolve => {
+    $('click-hint').classList.add('visible');
+    const done = () => {
+      $('click-hint').classList.remove('visible');
+      document.removeEventListener('click', onClick);
+      document.removeEventListener('keydown', onKey);
+      GAME_STATE.advanceCleanup = null;
+      resolve();
+    };
+    const onClick = (e) => {
+      if (e.target.closest('#hud-bar') || e.target.closest('#inventory-bar') || e.target.closest('.overlay-modal')) return;
+      if (GAME_STATE.typingActive) { GAME_STATE.skipTyping = true; return; }
+      done();
+    };
+    const onKey = (e) => {
+      if (['Enter', 'Space'].includes(e.code)) {
+        e.preventDefault();
+        if (GAME_STATE.typingActive) { GAME_STATE.skipTyping = true; return; }
+        done();
+      }
+    };
+    GAME_STATE.advanceCleanup = done;
+    document.addEventListener('click', onClick);
+    document.addEventListener('keydown', onKey);
+  });
+}
+
+function flashScreen(color) {
+  const fl = $('flash'); fl.style.background = color; fl.style.opacity = '1';
+  setTimeout(() => { fl.style.opacity = '0'; }, 140);
+}
+function shakeScreen(heavy = false) {
+  const sa = $('scene-area'); sa.classList.remove('shake', 'heavy-shake'); void sa.offsetWidth;
+  sa.classList.add(heavy ? 'heavy-shake' : 'shake');
+}
+
+/* =============================================
+   KILLER PATROL AI & EXPLORATION
+   ============================================= */
+function stepKillerAI(noiseLevel = 1) {
+  const cur = ROOMS[GAME_STATE.killerRoom];
+  if (!cur) return;
+  const candidates = cur.neighbors;
+  // プレイヤーの部屋、またはプレイヤーに近い部屋へ寄ってきやすいAI
+  if (candidates.includes(GAME_STATE.room) && (Math.random() < 0.45 * noiseLevel || GAME_STATE.threat >= 75)) {
+    GAME_STATE.killerRoom = GAME_STATE.room;
+  } else {
+    GAME_STATE.killerRoom = candidates[Math.floor(Math.random() * candidates.length)];
+  }
+}
+
+function renderRoom() {
+  const r = ROOMS[GAME_STATE.room];
+  painter.draw(r.bg, GAME_STATE.killerRoom === GAME_STATE.room || GAME_STATE.threat >= 80);
+  snow.setIntensity(GAME_STATE.room === 'entrance' ? 0.5 : 0.25);
+  $('room-hint-badge').textContent = r.hint;
+
+  const hsGrid = $('hotspots-grid'); hsGrid.innerHTML = '';
+  r.hotspots.forEach(hs => {
+    const btn = document.createElement('button');
+    btn.className = 'hotspot-btn'; btn.textContent = hs.label;
+    btn.addEventListener('click', () => inspectHotspot(hs.id));
+    hsGrid.appendChild(btn);
+  });
+
+  const navBar = $('nav-bar'); navBar.innerHTML = '';
+  r.exits.forEach(ex => {
+    const btn = document.createElement('button');
+    const locked = ex.reqItem && !GAME_STATE.flags.has('unlocked_' + ex.to);
+    const killerHere = GAME_STATE.killerRoom === ex.to;
+    btn.className = 'nav-btn' + (locked ? ' locked' : '') + (killerHere ? ' danger-hint' : '');
+    btn.textContent = (locked ? '🔒 ' : '→ ') + ex.label + (killerHere ? ' ⚠' : '');
+    btn.addEventListener('click', () => moveToRoom(ex));
+    navBar.appendChild(btn);
+  });
+
+  $('explore-ui').classList.add('active');
+  updateHUD();
+}
+
+async function advanceTurn(minsDelta, threatDelta, noiseLevel = 1) {
+  GAME_STATE.time += minsDelta;
+  GAME_STATE.threat = Math.max(0, Math.min(100, GAME_STATE.threat + threatDelta));
+  stepKillerAI(noiseLevel);
+  updateHUD();
+
+  if (GAME_STATE.time >= 360) {
+    await triggerPoliceArrival();
+    return true;
+  }
+  if (GAME_STATE.killerRoom === GAME_STATE.room || GAME_STATE.threat >= 88) {
+    await triggerChaseEncounter();
+    return true;
+  }
+  if (isKillerAdjacent()) {
+    audio.sfx('footstep');
+  }
+  return false;
+}
+
+async function moveToRoom(ex) {
+  if (GAME_STATE.phase !== 'explore' || GAME_STATE.busy) return;
+  GAME_STATE.busy = true;
+  try {
+    if (ex.reqItem && !GAME_STATE.flags.has('unlocked_' + ex.to)) {
+      if (GAME_STATE.selectedItem === ex.reqItem) {
+        GAME_STATE.flags.add('unlocked_' + ex.to);
+        consumeItem(ex.reqItem);
+        audio.sfx('unlock');
+        await setMessage(`【${ex.reqItem}】を使って鍵を開けた！`);
+      } else {
+        audio.sfx('locked');
+        await setMessage(ex.lockMsg + (GAME_STATE.items.has(ex.reqItem) ? `（所持品から【${ex.reqItem}】を選択して使おう）` : ''));
+        return;
+      }
+    }
+
+    audio.sfx('door');
+    GAME_STATE.room = ex.to;
+    renderRoom();
+    await setMessage(`${ROOMS[ex.to].name}に移動した。`);
+    await advanceTurn(12, 12, 1.1);
+    if (GAME_STATE.phase === 'explore') renderRoom();
+  } finally {
+    GAME_STATE.busy = false;
+  }
+}
+
+async function inspectHotspot(id) {
+  if (GAME_STATE.phase !== 'explore' || GAME_STATE.busy) return;
+  GAME_STATE.busy = true;
+  try {
+    switch (id) {
+      case 'hs_painting':
+        addEvidence('ev_cipher');
+        await setMessage('神崎家の肖像画だ。裏側に「道彦の暗号は常に逆から読め」とメモが貼られている。（証拠を記録した）');
+        break;
+      case 'hs_closet2f':
+      case 'hs_curtain':
+        GAME_STATE.threat = Math.max(10, GAME_STATE.threat - 30);
+        audio.sfx('heartbeat');
+        await setMessage('物陰に身を潜めて呼吸を整えた。足音が少し遠ざかっていく。（危険度が下がった）');
+        await advanceTurn(10, 0, 0.3);
+        return;
+      case 'hs_poker_stand':
+        if (!GAME_STATE.flags.has('got_poker')) {
+          GAME_STATE.flags.add('got_poker');
+          addItem('鉄の火かき棒');
+          await setMessage('暖炉の横からずっしり重い【鉄の火かき棒】を手に入れた！');
+        } else {
+          await setMessage('もう道具立てには何もない。');
+        }
+        break;
+      case 'hs_fireplace':
+        if (GAME_STATE.flags.has('got_libkey')) {
+          await setMessage('暖炉の灰はもう調べた。');
+        } else if (GAME_STATE.selectedItem === '鉄の火かき棒') {
+          GAME_STATE.flags.add('got_libkey');
+          addItem('図書室の鍵');
+          await setMessage('【鉄の火かき棒】で熱い灰を掻き出すと、焼け焦げた【図書室の鍵】が見つかった！');
+        } else {
+          await setMessage('灰の中に金属の鍵が光っているが、熱くて素手では取れない。長い棒があれば……。');
+        }
+        break;
+      case 'hs_diary':
+        addEvidence('ev_diary');
+        await setMessage('神崎道彦の日記だ。「地下の箱の番号は俺の最も大切な番号【183】にした。……玲子に遺産を譲るのは、あの子が実の娘だからだ」（証拠を記録した）');
+        break;
+      case 'hs_desk_drawer':
+        if (!GAME_STATE.flags.has('got_light')) {
+          GAME_STATE.flags.add('got_light');
+          addItem('懐中電灯');
+          await setMessage('引き出しの奥から【懐中電灯】を見つけた！');
+        } else {
+          await setMessage('引き出しは空だ。');
+        }
+        break;
+      case 'hs_bed':
+        flashScreen('rgba(160,0,0,0.45)');
+        addEvidence('ev_body');
+        await setMessage('シーツは血の海だ……。澄江は父が真実を語らぬまま裏切ったと思い込み、凶行に及んだのだ。（証拠を記録した）');
+        break;
+      case 'hs_dark_closet':
+        if (GAME_STATE.selectedItem === '懐中電灯') {
+          audio.sfx('unlock');
+          addEvidence('ev_secret');
+          await setMessage('【懐中電灯】で奥を照らした！ 隠された桐箱から「血染めの出生証明書」を発見──桐島玲子は道彦の実娘で、澄江は養女だったのだ！（証拠を記録した）');
+        } else {
+          await setMessage('真っ暗で奥がまったく見えない。明かりがあれば照らせそうだ。');
+        }
+        break;
+      case 'hs_barrels':
+        if (!GAME_STATE.flags.has('got_bandage')) {
+          GAME_STATE.flags.add('got_bandage');
+          GAME_STATE.stamina = Math.min(100, GAME_STATE.stamina + 35);
+          audio.sfx('item');
+          await setMessage('木樽の陰に救急箱があった！ 応急処置をして体力が回復した。');
+        } else {
+          await setMessage('空の木樽が並んでいる。');
+        }
+        break;
+      case 'hs_safebox':
+        if (GAME_STATE.flags.has('got_masterkey')) {
+          await setMessage('鉄箱はすでに開いている。');
+        } else {
+          openKeypad();
+        }
+        return;
+      case 'hs_front_door':
+        if (GAME_STATE.selectedItem === '玄関のマスターキー') {
+          consumeItem('玄関のマスターキー');
+          await triggerEscapeWin();
+          return;
+        } else {
+          audio.sfx('locked');
+          await setMessage('太い鎖と錠前で閉ざされている。脱出するには【玄関のマスターキー】が必要だ！');
+        }
+        break;
+    }
+    await advanceTurn(10, 12, 1.0);
+    if (GAME_STATE.phase === 'explore') renderRoom();
+  } finally {
+    GAME_STATE.busy = false;
+  }
+}
+
+/* =============================================
+   KEYPAD PUZZLE
+   ============================================= */
+function openKeypad() { GAME_STATE.kpInput = ''; $('kp-display').textContent = '---'; $('keypad-modal').classList.add('active'); }
+function closeKeypad() { $('keypad-modal').classList.remove('active'); }
+
+/* =============================================
+   STEALTH (POINTER EVENTS) & CHASE
+   ============================================= */
+function runStealthEvent(durationMs) {
+  return new Promise(resolve => {
+    const overlay = $('stealth-overlay'), btn = $('stealth-action-btn'), prog = $('stealth-progress'), status = $('stealth-noise-text');
+    prog.style.width = '0%'; overlay.classList.add('active');
+
+    let holding = false, heldMs = 0, graceMs = 1800, last = performance.now(), rafId = null;
+    const setHold = v => { holding = v; btn.classList.toggle('holding', v); };
+
+    const onDown = (e) => {
+      e.preventDefault();
+      if (btn.setPointerCapture && e.pointerId !== undefined) {
+        try { btn.setPointerCapture(e.pointerId); } catch {}
+      }
+      setHold(true);
+    };
+    const onUp = () => setHold(false);
+    const onKD = (e) => { if (e.code === 'Space') { e.preventDefault(); setHold(true); } };
+    const onKU = (e) => { if (e.code === 'Space') setHold(false); };
+
+    btn.addEventListener('pointerdown', onDown);
+    btn.addEventListener('pointerup', onUp);
+    btn.addEventListener('pointercancel', onUp);
+    btn.addEventListener('pointerleave', onUp);
+    window.addEventListener('keydown', onKD);
+    window.addEventListener('keyup', onKU);
+
+    const cleanup = () => {
+      cancelAnimationFrame(rafId);
+      btn.removeEventListener('pointerdown', onDown);
+      btn.removeEventListener('pointerup', onUp);
+      btn.removeEventListener('pointercancel', onUp);
+      btn.removeEventListener('pointerleave', onUp);
+      window.removeEventListener('keydown', onKD);
+      window.removeEventListener('keyup', onKU);
+      setHold(false); overlay.classList.remove('active');
+    };
+
+    const tick = now => {
+      const dt = now - last; last = now;
+      if (holding) {
+        heldMs += dt; status.textContent = '息を殺している……動くな……'; status.style.color = '#93c5fd';
+      } else {
+        graceMs -= dt; status.textContent = '早く長押しして！ 澄江がすぐそこに！'; status.style.color = '#f87171';
+      }
+      prog.style.width = Math.min(100, (heldMs / durationMs) * 100) + '%';
+      if (heldMs >= durationMs) { cleanup(); resolve(true); return; }
+      if (graceMs <= 0) { cleanup(); resolve(false); return; }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+  });
+}
+
+function showTimedChoice(choices, sec) {
+  return new Promise(resolve => {
+    clearInterval(GAME_STATE.choiceTimer);
+    const wrap = $('choices-wrap'); wrap.innerHTML = '';
+    choices.forEach(c => {
+      const btn = document.createElement('button');
+      btn.className = 'choice-btn danger'; btn.textContent = c.text;
+      btn.addEventListener('click', () => {
+        clearInterval(GAME_STATE.choiceTimer);
+        $('timer-box').classList.remove('active');
+        $('choices-overlay').classList.remove('visible');
+        audio.sfx('choice'); resolve(c.id);
+      });
+      wrap.appendChild(btn);
+    });
+
+    const totalMs = sec * 1000, start = Date.now();
+    $('timer-box').classList.add('active'); $('timer-bar').style.width = '100%'; $('timer-sec').textContent = sec.toFixed(1);
+    GAME_STATE.choiceTimer = setInterval(() => {
+      const rem = Math.max(0, totalMs - (Date.now() - start));
+      $('timer-bar').style.width = (rem / totalMs * 100) + '%';
+      $('timer-sec').textContent = (rem / 1000).toFixed(1);
+      if (rem <= 0) {
+        clearInterval(GAME_STATE.choiceTimer);
+        $('timer-box').classList.remove('active');
+        $('choices-overlay').classList.remove('visible');
+        resolve('timeout');
+      }
+    }, 60);
+    $('choices-overlay').classList.add('visible');
+  });
+}
+
+async function triggerChaseEncounter() {
+  GAME_STATE.phase = 'event';
+  GAME_STATE.chaseCount++;
+  $('explore-ui').classList.remove('active');
+  audio.startBgm('chase'); audio.sfx('bang');
+  flashScreen('rgba(180,0,0,0.75)'); shakeScreen(true);
+  painter.draw(ROOMS[GAME_STATE.room].bg, true);
+
+  const lines = [
+    'ドンッ！！ 扉が開き、神崎澄江が血まみれの鋸を構えて飛び込んできた！\n「みぃつけた……逃がさないよぉ！」',
+    '背後の暗がりから、乾いた笑い声とともに澄江が現れた！\n「まだ生きてたの？ お父様と同じにしてあげる！」'
+  ];
+  await setMessage(lines[(GAME_STATE.chaseCount - 1) % lines.length], '神崎澄江');
+
+  const picked = await showTimedChoice([
+    { id: 'hide', text: '物陰に飛び込んで息を殺す' },
+    { id: 'run', text: '全力で別の部屋へ走り抜ける' }
+  ], 7.0);
+
+  if (picked === 'timeout') {
+    await triggerEnd({ id: 'BAD_CAUGHT', type: 'BAD END 1', title: '見られた者の末路', color: '#ef4444', desc: '一瞬の迷いで足がすくみ、澄江の刃に捕まってしまった。' });
+    return;
+  }
+
+  if (picked === 'hide') {
+    const ok = await runStealthEvent(3400);
+    if (!ok) {
+      await triggerEnd({ id: 'BAD_BREATH', type: 'BAD END 2', title: '息を殺しきれず', color: '#ef4444', desc: '震える息を聞きつけられ、隠れ場所を引き開けられてしまった。' });
+      return;
+    }
+    GAME_STATE.threat = 20;
+    GAME_STATE.killerRoom = GAME_STATE.room === 'cellar' ? 'corridor2f' : 'cellar';
+    audio.startBgm('blizzard');
+    await setMessage('澄江は部屋を見回し、舌打ちをして別の階へ去っていった……危機を脱した！');
+  } else {
+    GAME_STATE.stamina -= 35;
+    particles.emit('blood', null, null, 25);
+    audio.sfx('scream');
+    if (GAME_STATE.stamina <= 0) {
+      await triggerEnd({ id: 'BAD_HP', type: 'BAD END 3', title: '力尽きて', color: '#ef4444', desc: '逃げ切る体力が残っておらず、廊下の冷たい床に倒れ込んだ。' });
+      return;
+    }
+    GAME_STATE.room = GAME_STATE.room === 'lobby1f' ? 'corridor2f' : 'lobby1f';
+    GAME_STATE.killerRoom = GAME_STATE.room === 'lobby1f' ? 'corridor2f' : 'cellar';
+    GAME_STATE.threat = 30;
+    audio.startBgm('blizzard');
+    await setMessage('すれ違いざまに腕を負傷したが、なんとか振り切って別の階へ逃げ込んだ！');
+  }
+
+  GAME_STATE.phase = 'explore';
+  renderRoom();
+}
+
+/* =============================================
+   STORY INTRO & TRUTH-BRANCHING ENDINGS
+   ============================================= */
+async function playOpening() {
+  GAME_STATE.phase = 'event';
+  $('explore-ui').classList.remove('active');
+  audio.startBgm('horror');
+  painter.draw('horror_sight', true);
+  flashScreen('rgba(180,0,0,0.85)'); shakeScreen(true);
+  particles.emit('blood', null, null, 35);
+  audio.sfx('horror');
+
+  await setMessage('深夜1時50分。「全財産を桐島玲子へ譲る」という父の宣言に逆上した令嬢・神崎澄江が、血まみれの鋸を手に遺体を処理していた──。');
+  await waitForAdvance();
+
+  audio.sfx('scream');
+  await setMessage('「……あ。見ちゃったんだ」\n澄江と目が合う！ 山荘を徘徊する澄江から逃げながら、玄関の鍵と「なぜ道彦がそんな遺言を残したのか」の真相を突き止めろ！', '神崎澄江');
+  await waitForAdvance();
+
+  audio.startBgm('blizzard');
+  GAME_STATE.phase = 'explore';
+  renderRoom();
+  await setMessage('2F廊下に逃げ出した！ 各部屋を探索して脱出の手がかりと証拠を集めよう。');
+}
+
+async function triggerEscapeWin() {
+  GAME_STATE.phase = 'end';
+  $('explore-ui').classList.remove('active');
+  audio.startBgm('dawn'); audio.sfx('siren');
+  painter.draw('dawn', false); snow.setIntensity(0.4);
+  await setMessage('ガチャリ、と重い錠前が外れた！ 吹雪の外へ飛び出すと、雪道からパトカーのサイレンと赤色灯が近づいてくる！');
+  await waitForAdvance();
+
+  const hasTruth = GAME_STATE.evidences.size >= 3 && GAME_STATE.evidences.has('ev_secret');
+  if (hasTruth) {
+    await triggerEnd({
+      id: 'TRUE', type: 'TRUE END（真相解明）', title: '雪夜と偽りの遺言', color: '#60a5fa',
+      desc: '玄関から脱出し、山岳警察へすべての証拠を引き渡した。\n桐島玲子は道彦の実の娘であり、道彦は養女の澄江を傷つけないよう真実を隠したまま遺産を分けようとしていたのだ。\n真実を知らぬまま凶行に及んだ澄江の悲劇は、雪の朝に幕を閉じた。'
+    });
+  } else {
+    await triggerEnd({
+      id: 'ESCAPE', type: 'ESCAPE END（通常脱出）', title: '雪夜からの逃亡', color: '#a78bfa',
+      desc: '山荘の鎖を解き、無事に脱出して警察に保護された。\nしかし、なぜ道彦が他人の桐島玲子に全財産を譲ろうとしたのか──その本当の理由は闇の中に残された。'
+    });
+  }
+}
+
+async function triggerPoliceArrival() {
+  GAME_STATE.phase = 'end';
+  $('explore-ui').classList.remove('active');
+  audio.startBgm('dawn'); audio.sfx('siren');
+  painter.draw('dawn', false);
+  await setMessage('時計の針が午前6時を指した！ 玄関の扉が叩き開けられ、山岳警察が突入してくる！');
+  await waitForAdvance();
+  await triggerEnd({
+    id: 'SURVIVAL', type: 'SURVIVAL END', title: '夜明けのサイレン', color: '#34d399',
+    desc: '脱出の鍵は見つからなかったが、午前6時の警察到着まで執念で逃げ切った。\n澄江は吹雪の中へ逃亡し、山荘には静寂が戻った。'
+  });
+}
+
+async function triggerEnd(info) {
+  GAME_STATE.phase = 'end';
+  $('explore-ui').classList.remove('active');
+  audio.stopBgm();
+  audio.sfx(info.id.startsWith('BAD') ? 'bad_end' : 'good_end');
+  saveUnlockedEnd(info.id);
+  $('end-type-text').textContent = info.type; $('end-type-text').style.color = info.color;
+  $('end-title-text').textContent = info.title; $('end-title-text').style.color = info.color;
+  $('end-desc-text').textContent = info.desc;
+  $('end-screen').classList.add('show');
+}
+
+function resetGame() {
+  clearInterval(GAME_STATE.choiceTimer);
+  if (GAME_STATE.advanceCleanup) GAME_STATE.advanceCleanup();
+  audio.stopBgm();
+  GAME_STATE = {
+    phase: 'intro', room: 'corridor2f', killerRoom: 'cellar', chaseCount: 0,
+    time: 110, threat: 20, stamina: 100,
+    items: new Set(), selectedItem: null, evidences: new Set(), flags: new Set(),
+    log: [], busy: false, msgToken: 0, typingActive: false, skipTyping: false,
+    choiceTimer: null, advanceCleanup: null, kpInput: ''
+  };
+  $('end-screen').classList.remove('show');
+  $('choices-overlay').classList.remove('visible');
+  $('stealth-overlay').classList.remove('active');
+  closeKeypad();
+  $('game-screen').classList.remove('visible'); $('game-screen').style.display = 'none';
+  $('title-screen').style.display = 'flex';
+  setTimeout(() => $('title-screen').classList.remove('fade-out'), 30);
+  renderEndBadges();
+}
+
+/* =============================================
+   INIT & CONTROLS
+   ============================================= */
+function initCanvases() {
+  const area = $('scene-area'), sc = $('scene-canvas');
+  const resizeAll = () => {
+    const w = area.offsetWidth || window.innerWidth, h = area.offsetHeight || 360;
+    painter.resize(w, h); snow.resize(); particles.resize();
+    if (ROOMS[GAME_STATE.room]) painter.draw(ROOMS[GAME_STATE.room].bg, GAME_STATE.killerRoom === GAME_STATE.room || GAME_STATE.threat >= 80);
+  };
+  painter = new ScenePainter(sc);
+  snow = new SnowSystem($('snow-canvas'));
+  particles = new ParticleSystem($('particle-canvas'));
+  resizeAll();
+  window.addEventListener('resize', resizeAll);
+}
+
+function initTitleSnow() {
+  const tc = $('title-snow'), ctx = tc.getContext('2d');
+  const setSize = () => { tc.width = tc.offsetWidth || window.innerWidth; tc.height = tc.offsetHeight || window.innerHeight; };
+  setSize();
+  const flakes = Array.from({ length: 120 }, () => ({ x: Math.random() * tc.width, y: Math.random() * tc.height, r: Math.random() * 2 + 0.5, s: Math.random() * 1.5 + 0.4, sx: (Math.random() - 0.3) * 0.9, o: Math.random() * 0.55 + 0.15 }));
+  function loop() {
+    ctx.clearRect(0, 0, tc.width, tc.height); ctx.fillStyle = 'rgba(215,230,245,0.9)';
+    flakes.forEach(f => { f.y += f.s; f.x += f.sx; if (f.y > tc.height) { f.y = -4; f.x = Math.random() * tc.width; } ctx.globalAlpha = f.o; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill(); });
+    ctx.globalAlpha = 1; requestAnimationFrame(loop);
+  }
+  loop();
+  window.addEventListener('resize', setSize);
+}
+
+window.onload = () => {
+  initTitleSnow();
+  renderEndBadges();
+
+  const kpGrid = $('kp-grid');
+  ['1','2','3','4','5','6','7','8','9','0'].forEach(d => {
+    const b = document.createElement('button');
+    b.className = 'kp-btn'; b.textContent = d;
+    b.addEventListener('click', () => {
+      if (GAME_STATE.kpInput.length < 3) {
+        GAME_STATE.kpInput += d;
+        $('kp-display').textContent = GAME_STATE.kpInput.padEnd(3, '-');
+        audio.sfx('cursor');
+      }
+    });
+    kpGrid.appendChild(b);
+  });
+  $('kp-clear').addEventListener('click', () => { GAME_STATE.kpInput = ''; $('kp-display').textContent = '---'; });
+  $('kp-cancel').addEventListener('click', closeKeypad);
+  $('kp-submit').addEventListener('click', async () => {
+    if (GAME_STATE.kpInput === '381') {
+      closeKeypad();
+      GAME_STATE.flags.add('got_masterkey');
+      addItem('玄関のマスターキー');
+      audio.sfx('unlock');
+      await setMessage('カチリと重い錠が外れた！ 中から【玄関のマスターキー】を手に入れた！');
+    } else {
+      audio.sfx('locked');
+      GAME_STATE.kpInput = ''; $('kp-display').textContent = 'ERR';
+      setTimeout(() => { $('kp-display').textContent = '---'; }, 600);
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#choices-overlay') || e.target.closest('#hud-bar') || e.target.closest('#inventory-bar')) return;
+    if (GAME_STATE.typingActive) GAME_STATE.skipTyping = true;
+  });
+  document.addEventListener('keydown', (e) => {
+    if (['Enter', 'Space'].includes(e.code) && GAME_STATE.typingActive) GAME_STATE.skipTyping = true;
+  });
+
+  $('mute-btn').addEventListener('click', () => {
+    const m = audio.toggleMute();
+    $('mute-btn').textContent = m ? '音: OFF' : '音: ON';
+  });
+
+  $('msg-log-btn').addEventListener('click', () => {
+    $('log-content').innerHTML = GAME_STATE.log.slice().reverse().map(m =>
+      `<div class="log-entry">${m.speaker ? `<div class="log-speaker">${m.speaker}</div>` : ''}${m.text.replace(/\n/g, '<br>')}</div>`
+    ).join('');
+    $('log-overlay').classList.add('open');
+  });
+  $('log-close').addEventListener('click', () => $('log-overlay').classList.remove('open'));
+
+  $('evidence-btn').addEventListener('click', () => {
+    const wrap = $('evidence-content');
+    if (GAME_STATE.evidences.size === 0) {
+      wrap.innerHTML = '<p style="color:rgba(232,224,208,0.6);font-size:0.85rem;">まだ事件の証拠は見つかっていない。</p>';
+    } else {
+      wrap.innerHTML = Array.from(GAME_STATE.evidences).map(id => {
+        const ev = EVIDENCE_LIST[id];
+        return `<div class="ev-card"><h3>${ev.title}</h3><p>${ev.desc}</p></div>`;
+      }).join('');
+    }
+    $('evidence-overlay').classList.add('open');
+  });
+  $('evidence-close').addEventListener('click', () => $('evidence-overlay').classList.remove('open'));
+
+  $('map-btn').addEventListener('click', () => {
+    $('map-diagram').innerHTML = Object.entries(ROOMS).map(([id, r]) => {
+      const isHere = GAME_STATE.room === id;
+      const isKiller = GAME_STATE.killerRoom === id && isKillerAdjacent();
+      return `<div class="map-node ${isHere ? 'here' : ''} ${isKiller ? 'killer-near' : ''}">${isHere ? '📍 ' : ''}${isKiller ? '⚠ ' : ''}${r.name}</div>`;
+    }).join('');
+    $('map-overlay').classList.add('open');
+  });
+  $('map-close').addEventListener('click', () => $('map-overlay').classList.remove('open'));
+
+  $('retry-btn').addEventListener('click', resetGame);
+
+  let starting = false;
+  $('start-btn').addEventListener('click', async () => {
+    if (starting) return; starting = true;
+    await audio.init();
+    if (audio.ctx && audio.ctx.state === 'suspended') await audio.ctx.resume();
+
+    $('title-screen').classList.add('fade-out');
+    await sleep(750);
+    $('title-screen').style.display = 'none';
+    $('game-screen').style.display = 'flex';
+    initCanvases();
+    await sleep(50);
+    $('game-screen').classList.add('visible');
+    starting = false;
+    playOpening();
+  });
+};
+</script>
+</body>
+</html>

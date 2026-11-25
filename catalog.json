@@ -652,10 +652,10 @@
   },
   {
     "id": "app:oracle_gatekeeper",
-    "title": "ORACLE GATEKEEPER — 文脈・エピソード記憶認証デモ",
+    "title": "ORACLE GATEKEEPER v2 — 壁打ち記憶で守るAI認証デモ",
     "category": "アプリ（PC向け）",
     "url": "https://morinokum.github.io/my-website/apps/oracle_gatekeeper.html",
-    "added": "2026-11-21"
+    "added": "2026-11-25"
   },
   {
     "id": "app:neon_pulse",

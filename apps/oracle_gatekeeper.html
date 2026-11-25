@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ORACLE GATEKEEPER — 文脈・エピソード記憶認証デモ</title>
+  <title>ORACLE GATEKEEPER v2 — 壁打ち記憶蓄積・AIエージェント連携型認証デモ</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
@@ -27,69 +27,81 @@
     .glow-emerald {
       animation: pulse-glow 2.4s infinite ease-in-out;
     }
-    @keyframes scanline {
-      0% { transform: translateY(-100%); }
-      100% { transform: translateY(100%); }
-    }
-    .quantum-flash {
-      background: linear-gradient(90deg, rgba(239,68,68,0.12), rgba(245,158,11,0.12));
-    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
   <!-- Header -->
-  <header class="border-b border-slate-800 bg-slate-950/80 sticky top-0 z-20 backdrop-blur">
-    <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+  <header class="border-b border-slate-800 bg-slate-950/85 sticky top-0 z-20 backdrop-blur">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2.5">
-        <div class="w-9 h-9 rounded-lg bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+        <div class="w-9 h-9 rounded-lg bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
         </div>
         <div>
-          <h1 class="text-sm sm:text-base font-bold tracking-tight text-white flex items-center gap-2">
+          <h1 class="text-sm sm:text-base font-bold tracking-tight text-white flex items-center gap-2 flex-wrap">
             ORACLE GATEKEEPER
-            <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Prototype v1</span>
+            <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">v2 壁打ち記憶搭載型</span>
           </h1>
-          <p class="text-xs text-slate-400">人間特有の「感情・文脈」と「エピソード記憶」で守るAI認証デモ</p>
+          <p class="text-xs text-slate-400">日々の壁打ちとAIエージェント連携で「長年蓄えた自分だけの記憶」を鍵にする</p>
         </div>
       </div>
 
       <!-- Mode Tabs -->
-      <nav class="flex bg-slate-900 p-1 rounded-lg border border-slate-800" aria-label="モード切替">
-        <button id="tab-demo" type="button" class="px-3 py-1.5 rounded-md text-xs font-semibold transition bg-emerald-500 text-slate-950">
-          認証デモ（次郎さん）
+      <nav class="flex bg-slate-900 p-1 rounded-lg border border-slate-800 overflow-x-auto max-w-full" aria-label="モード切替">
+        <button id="tab-demo" type="button" class="px-3 py-1.5 rounded-md text-xs font-semibold transition whitespace-nowrap bg-emerald-500 text-slate-950">
+          1. 認証デモ
         </button>
-        <button id="tab-custom" type="button" class="px-3 py-1.5 rounded-md text-xs font-semibold transition text-slate-300 hover:text-white">
-          自分のオラクルを作る
+        <button id="tab-kabeuchi" type="button" class="px-3 py-1.5 rounded-md text-xs font-semibold transition whitespace-nowrap text-slate-300 hover:text-white">
+          2. 壁打ちで記憶を育てる
+        </button>
+        <button id="tab-vault" type="button" class="px-3 py-1.5 rounded-md text-xs font-semibold transition whitespace-nowrap text-slate-300 hover:text-white">
+          3. 記憶ボールト & AI連携
         </button>
       </nav>
     </div>
   </header>
 
   <!-- Main Content -->
-  <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-5 space-y-5">
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-5 space-y-5">
     <!-- Toast Banner -->
     <div id="toast" class="hidden fixed bottom-4 right-4 z-50 max-w-sm px-4 py-3 rounded-lg bg-slate-900 border border-emerald-500/50 text-slate-100 text-xs shadow-xl"></div>
 
-    <!-- VIEW 1: DEMO -->
+    <!-- ========================================================= -->
+    <!-- VIEW 1: 認証デモ (GATEKEEPER)                              -->
+    <!-- ========================================================= -->
     <section id="view-demo" class="space-y-5">
-      <!-- Top Status & Quick Scenarios -->
-      <div class="glass-panel rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
+      <!-- Top Status & Persona Selector -->
+      <div class="glass-panel rounded-xl p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center gap-3">
           <div id="status-badge" class="px-3 py-1.5 rounded-lg text-xs font-bold mono uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/40">
             LOCKED // 待機中
           </div>
           <div>
-            <div class="text-xs text-slate-400">保護対象: <span id="target-account-label" class="text-slate-200 font-semibold">次郎さんの銀行口座 (残高 ¥4,820,000)</span></div>
-            <div class="text-[11px] text-slate-400 mt-0.5">残り試行回数: <span id="attempts-left" class="mono font-bold text-slate-200">3</span> / 3</div>
+            <div class="text-xs text-slate-400 flex flex-wrap items-center gap-2">
+              <span>保護対象:</span>
+              <span id="target-account-label" class="text-slate-100 font-semibold">マイ口座（壁打ち記憶モデル）</span>
+            </div>
+            <div class="text-[11px] text-slate-400 mt-0.5 flex flex-wrap items-center gap-3">
+              <span>残り試行回数: <span id="attempts-left" class="mono font-bold text-slate-200">3</span> / 3</span>
+              <span>参照中の長期記憶: <span id="active-memory-count" class="mono font-bold text-cyan-300">0</span> 件</span>
+            </div>
           </div>
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
+          <div class="flex items-center bg-slate-900 rounded-lg border border-slate-700 p-0.5 text-xs">
+            <button id="btn-mode-my" type="button" class="px-2.5 py-1 rounded-md font-semibold transition bg-cyan-500/20 text-cyan-300">
+              壁打ち記憶を使う
+            </button>
+            <button id="btn-mode-jiro" type="button" class="px-2.5 py-1 rounded-md font-semibold transition text-slate-400 hover:text-white">
+              次郎さん（サンプル）
+            </button>
+          </div>
           <button id="btn-quantum-attack" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/40 hover:bg-rose-500/25 transition flex items-center gap-1.5">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-            量子コンピュータ総当たり実験
+            量子総当たり実験
           </button>
           <button id="btn-reset" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 transition">
             リセット
@@ -100,8 +112,8 @@
       <!-- Two Column Workspace -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
         <!-- Left: Oracle Chat Gatekeeper (7 cols) -->
-        <div class="lg:col-span-7 glass-panel rounded-xl flex flex-col overflow-hidden min-h-[470px]">
-          <div class="px-4 py-3 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between">
+        <div class="lg:col-span-7 glass-panel rounded-xl flex flex-col overflow-hidden min-h-[490px]">
+          <div class="px-4 py-3 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between gap-2">
             <div class="flex items-center gap-2">
               <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
               <span class="text-xs font-semibold text-slate-200">小さいオラクル（ゲートキーパーAI）</span>
@@ -112,7 +124,7 @@
           </div>
 
           <!-- Chat History -->
-          <div id="chat-log" class="flex-1 p-4 space-y-3 overflow-y-auto max-h-[340px]">
+          <div id="chat-log" class="flex-1 p-4 space-y-3 overflow-y-auto max-h-[350px]">
             <!-- Messages rendered by JS -->
           </div>
 
@@ -120,7 +132,7 @@
           <div class="px-4 py-2.5 border-t border-slate-800/80 bg-slate-900/40">
             <div class="text-[11px] text-slate-400 mb-1.5">ワンクリック入力テスト（または下の欄に自由入力）:</div>
             <div id="quick-chips" class="flex flex-wrap gap-1.5">
-              <!-- Chips rendered dynamically based on current stage -->
+              <!-- Chips rendered dynamically -->
             </div>
           </div>
 
@@ -130,13 +142,13 @@
               id="chat-input"
               type="text"
               autocomplete="off"
-              placeholder="合言葉や気持ち、記憶を自然な言葉で入力..."
+              placeholder="今の気持ちや、昔の記憶を自然な言葉で入力..."
               class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
             />
             <button
               id="chat-submit"
               type="submit"
-              class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-sm transition disabled:opacity-40 disabled:cursor-not-allowed"
+              class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-sm transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
             >
               送信
             </button>
@@ -152,7 +164,7 @@
               <span id="vault-lock-icon" class="text-amber-400 text-xs font-semibold">🔒 施錠中</span>
             </div>
             <div id="vault-content" class="rounded-lg bg-slate-950/80 border border-slate-800 p-4 text-center space-y-2">
-              <p class="text-xs text-slate-400">オラクルの「揺さぶり」または「エピソード記憶」を通過すると口座が開きます。</p>
+              <p class="text-xs text-slate-400">オラクルの「揺さぶり」または「長期記憶アンカー」を通過すると口座が開きます。</p>
             </div>
           </div>
 
@@ -183,7 +195,7 @@
 
               <div>
                 <div class="flex justify-between text-xs mb-1">
-                  <span class="text-slate-300">エピソード記憶アンカー一致度</span>
+                  <span class="text-slate-300">長期エピソード記憶一致度</span>
                   <span id="score-episode-val" class="mono font-bold text-purple-300">未検証</span>
                 </div>
                 <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
@@ -192,7 +204,7 @@
               </div>
             </div>
 
-            <div id="telemetry-notes" class="rounded-lg bg-slate-950/80 border border-slate-800 p-3 text-xs text-slate-300 mono leading-relaxed min-h-[76px]">
+            <div id="telemetry-notes" class="rounded-lg bg-slate-950/80 border border-slate-800 p-3 text-xs text-slate-300 mono leading-relaxed min-h-[76px] whitespace-pre-line">
               &gt; オラクル待機中。数式ではなく「文脈」の入力を待っています。
             </div>
           </div>
@@ -200,7 +212,7 @@
           <!-- Secret Reference Cheat Sheet (Collapsible) -->
           <details class="glass-panel rounded-xl p-4 text-xs">
             <summary class="cursor-pointer font-semibold text-slate-300 hover:text-white select-none">
-              デモ用の設定値（カンペを見る）
+              現在オラクルが参照している記憶の鍵（カンペ）
             </summary>
             <div id="cheat-sheet" class="mt-3 space-y-2 text-slate-400 border-t border-slate-800 pt-2.5">
               <!-- Filled by JS -->
@@ -210,68 +222,259 @@
       </div>
     </section>
 
-    <!-- VIEW 2: CUSTOM ORACLE BUILDER -->
-    <section id="view-custom" class="hidden space-y-5">
-      <div class="glass-panel rounded-xl p-5 max-w-2xl mx-auto space-y-4">
-        <div>
-          <h2 class="text-base font-bold text-white">あなた専用の「小さいオラクル」を設定する</h2>
-          <p class="text-xs text-slate-400 mt-1">設定したあと保存すると、そのまま認証デモ画面で自分の鍵や揺さぶりをテストできます。</p>
+    <!-- ========================================================= -->
+    <!-- VIEW 2: 壁打ち＆記憶を育てる (KABEUCHI ROOM)               -->
+    <!-- ========================================================= -->
+    <section id="view-kabeuchi" class="hidden space-y-5">
+      <!-- Top Memory Growth Bar -->
+      <div class="glass-panel rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-bold text-white">AI壁打ちルーム（記憶の育成）</span>
+            <span id="memory-rank-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+              記憶レベル: 初期構築中
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">普段の悩みや出来事を話すと、オラクルが「あなたらしさ」と「エピソード記憶」を自動抽出して長期保存します。</p>
+        </div>
+        <div class="flex items-center gap-4 shrink-0">
+          <div class="text-right">
+            <div class="text-[11px] text-slate-400">蓄積された記憶アンカー</div>
+            <div class="text-lg font-bold mono text-emerald-300"><span id="kb-total-count">0</span> <span class="text-xs text-slate-400 font-normal">件</span></div>
+          </div>
+          <button id="btn-go-test-from-kb" type="button" class="px-3 py-2 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition">
+            この記憶で認証テスト →
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Left: Kabeuchi Chat (7 cols) -->
+        <div class="lg:col-span-7 glass-panel rounded-xl flex flex-col overflow-hidden min-h-[490px]">
+          <div class="px-4 py-3 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+              <span class="text-xs font-semibold text-slate-200">壁打ちパートナーAI（記憶抽出エンジン搭載）</span>
+            </div>
+            <select id="kb-year-select" aria-label="記録する年" class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[11px] text-slate-200">
+              <option value="2026">記録年: 2026年（現在）</option>
+              <option value="2025">記録年: 2025年（1年前）</option>
+              <option value="2024">記録年: 2024年（2年前）</option>
+              <option value="2021">記録年: 2021年（5年前）</option>
+              <option value="2016">記録年: 2016年（10年前）</option>
+            </select>
+          </div>
+
+          <!-- Kabeuchi Log -->
+          <div id="kb-chat-log" class="flex-1 p-4 space-y-3 overflow-y-auto max-h-[340px]">
+            <!-- Rendered by JS -->
+          </div>
+
+          <!-- Topic Starters -->
+          <div class="px-4 py-2.5 border-t border-slate-800/80 bg-slate-900/40">
+            <div class="text-[11px] text-slate-400 mb-1.5">壁打ちの話題サンプル（クリックで入力）:</div>
+            <div class="flex flex-wrap gap-1.5" id="kb-topic-chips">
+              <button type="button" data-kb-prompt="正直、朝起きるのがつらくて、できるなら布団の中でずっと二度寝していたい。仕事は生活のためと割り切ってる。" class="text-[11px] px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                朝と仕事の本音
+              </button>
+              <button type="button" data-kb-prompt="学生時代の文化祭で、緊張しすぎてセリフを全部飛ばして舞台袖に逃げた黒歴史がある。今でも思い出すと冷や汗が出る。" class="text-[11px] px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                忘れられない黒歴史
+              </button>
+              <button type="button" data-kb-prompt="落ち込んだときは、深夜に近所のラーメン屋でニンニク増しを食べてリセットするのが自分のルール。" class="text-[11px] px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                ストレス解消マイルール
+              </button>
+              <button type="button" data-kb-prompt="もし1億円降ってきたら、まず誰にも言わずに今の仕事を静かに辞めて、海辺の町で猫と昼寝する。" class="text-[11px] px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                1億円あったらどうする？
+              </button>
+            </div>
+          </div>
+
+          <!-- Input Bar -->
+          <form id="kb-form" class="p-3 border-t border-slate-800 bg-slate-950/60 flex gap-2">
+            <input
+              id="kb-input"
+              type="text"
+              autocomplete="off"
+              placeholder="最近の悩み、本音、昔の思い出などを自由に話しかけてみてください..."
+              class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+            />
+            <button
+              type="submit"
+              class="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-sm transition shrink-0"
+            >
+              話す
+            </button>
+          </form>
         </div>
 
-        <form id="custom-form" class="space-y-4">
-          <div>
-            <label for="cfg-name" class="block text-xs font-semibold text-slate-300 mb-1">口座・保護対象の名前</label>
-            <input id="cfg-name" type="text" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+        <!-- Right: Live Extracted Memories (5 cols) -->
+        <div class="lg:col-span-5 glass-panel rounded-xl p-4 flex flex-col space-y-3 max-h-[490px]">
+          <div class="flex items-center justify-between">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300">いま抽出された長期記憶ログ</h2>
+            <span class="text-[11px] text-emerald-400 mono">AUTO-SAVED</span>
+          </div>
+          <p class="text-[11px] text-slate-400">会話から「価値観」「体験の細部」「揺さぶり用データ」を抜き出して保存しています。</p>
+          <div id="kb-live-memories" class="flex-1 overflow-y-auto space-y-2.5 pr-1">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- VIEW 3: 記憶ボールト & AIエージェント連携                  -->
+    <!-- ========================================================= -->
+    <section id="view-vault" class="hidden space-y-5">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Left: AI Agent Bridge (6 cols) -->
+        <div class="lg:col-span-6 space-y-4">
+          <div class="glass-panel rounded-xl p-5 space-y-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">AI AGENT BRIDGE</span>
+                <h2 class="text-base font-bold text-white">外部AIエージェントから記憶を取り込む</h2>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">
+                普段使っているAI（ChatGPT / Gemini / Claude等）に「これまでの壁打ちから、オラクルゲートキーパーに記憶を貯めて」と頼んで出力されたデータをそのまま取り込めます。
+              </p>
+            </div>
+
+            <!-- Step 1: Copy Prompt for External AI -->
+            <div class="rounded-lg bg-slate-900/80 border border-slate-800 p-3.5 space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-semibold text-cyan-300">STEP 1. 普段のAIに投げる依頼プロンプト</span>
+                <button id="btn-copy-agent-prompt" type="button" class="px-2.5 py-1 rounded text-[11px] font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30 transition">
+                  プロンプトをコピー
+                </button>
+              </div>
+              <pre id="agent-prompt-text" class="text-[11px] text-slate-300 bg-slate-950 p-2.5 rounded border border-slate-800 whitespace-pre-wrap leading-relaxed mono">これまでの私の壁打ち履歴や会話から、本人確認用の「Oracle Gatekeeper記憶データ」を以下のJSON形式で抽出してください。パスワードではなく、私特有の感情・価値観・過去の気まずい/強烈なエピソードを含めてください。
+
+[
+  {
+    "year": 2024,
+    "layer": "values", // "values"(価値観・本音) または "episode"(不変の記憶) または "probe"(揺さぶり回答傾向)
+    "summary": "記憶の要約",
+    "keywords": ["キーワード1", "キーワード2", "キーワード3"]
+  }
+]</pre>
+            </div>
+
+            <!-- Step 2: Paste Agent Output -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <label for="agent-import-input" class="text-xs font-semibold text-emerald-300">STEP 2. AIが出力した記憶データ（JSON または テキスト）を貼り付け</label>
+                <button id="btn-fill-sample-agent" type="button" class="text-[11px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                  AIエージェント出力例を試す
+                </button>
+              </div>
+              <textarea
+                id="agent-import-input"
+                rows="6"
+                placeholder='ここにJSON配列、または「2023年：深夜にラーメンを食べる癖がある」のようなメモを貼り付けてください...'
+                class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs text-slate-100 mono focus:outline-none focus:border-emerald-500"
+              ></textarea>
+              <div class="flex justify-end gap-2">
+                <button id="btn-import-agent" type="button" class="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition">
+                  記憶ボールトに統合する
+                </button>
+              </div>
+            </div>
           </div>
 
-          <div class="p-3.5 rounded-lg bg-slate-900/70 border border-slate-800 space-y-3">
-            <div class="text-xs font-bold text-cyan-300">第1層：現在の思考・感情の鍵（ニュアンス）</div>
-            <div>
-              <label for="cfg-l1-concept" class="block text-xs text-slate-300 mb-1">本音のテーマ（例：働くのが好きじゃない、甘いものがやめられない）</label>
-              <input id="cfg-l1-concept" type="text" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
+          <!-- Account Name & Export -->
+          <div class="glass-panel rounded-xl p-4 space-y-3">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">保護対象の設定 & バックアップ</h3>
+            <div class="flex gap-2">
+              <input id="my-account-input" type="text" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500" placeholder="保護対象の名前" />
+              <button id="btn-save-account-name" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                名前を更新
+              </button>
             </div>
-            <div>
-              <label for="cfg-l1-keywords" class="block text-xs text-slate-300 mb-1">反応するニュアンス語句（カンマ区切り）</label>
-              <input id="cfg-l1-keywords" type="text" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
-            </div>
-            <div>
-              <label for="cfg-probe-q" class="block text-xs text-slate-300 mb-1">オラクルの「揺さぶり」質問</label>
-              <input id="cfg-probe-q" type="text" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
-            </div>
-            <div>
-              <label for="cfg-probe-keywords" class="block text-xs text-slate-300 mb-1">本人らしい回答のニュアンス語句（カンマ区切り）</label>
-              <input id="cfg-probe-keywords" type="text" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
-            </div>
-          </div>
-
-          <div class="p-3.5 rounded-lg bg-slate-900/70 border border-slate-800 space-y-3">
-            <div class="text-xs font-bold text-purple-300">第2層：変わらない強烈なエピソード記憶（アンカー）</div>
-            <div>
-              <label for="cfg-ep-q" class="block text-xs text-slate-300 mb-1">オラクルが聞くエピソードの問い</label>
-              <input id="cfg-ep-q" type="text" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500" />
-            </div>
-            <div>
-              <label for="cfg-ep-keywords" class="block text-xs text-slate-300 mb-1">体験した本人しか知らない細部・感情（カンマ区切り）</label>
-              <input id="cfg-ep-keywords" type="text" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500" />
+            <div class="flex flex-wrap gap-2 pt-1">
+              <button id="btn-export-json" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 transition">
+                記憶データをJSONコピー
+              </button>
+              <button id="btn-reset-memories" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition">
+                初期記憶にリセット
+              </button>
             </div>
           </div>
+        </div>
 
-          <div class="flex flex-wrap items-center justify-end gap-2 pt-2">
-            <button id="btn-restore-jiro" type="button" class="px-3 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:text-white border border-slate-700">
-              次郎さんの初期設定に戻す
+        <!-- Right: Stored Timeline Vault (6 cols) -->
+        <div class="lg:col-span-6 glass-panel rounded-xl p-5 flex flex-col space-y-4 max-h-[680px]">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div>
+              <h2 class="text-base font-bold text-white">長期記憶ボールト（年表）</h2>
+              <p class="text-xs text-slate-400">ブラウザ内に保存され、いつでもゲートキーパーの鍵として機能します。</p>
+            </div>
+            <span id="vault-total-badge" class="text-xs mono px-2.5 py-1 rounded bg-slate-800 text-emerald-300 border border-slate-700">0 memories</span>
+          </div>
+
+          <!-- Manual Add Quick Form -->
+          <form id="manual-memory-form" class="p-3 rounded-lg bg-slate-900/70 border border-slate-800 grid grid-cols-1 sm:grid-cols-12 gap-2">
+            <select id="manual-year" aria-label="年" class="sm:col-span-3 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white">
+              <option value="2026">2026年</option>
+              <option value="2025">2025年</option>
+              <option value="2024">2024年</option>
+              <option value="2022">2022年</option>
+              <option value="2018">2018年</option>
+            </select>
+            <select id="manual-layer" aria-label="記憶タイプ" class="sm:col-span-4 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white">
+              <option value="values">価値観・本音 (第1層)</option>
+              <option value="probe">揺さぶり傾向 (検証)</option>
+              <option value="episode">エピソード記憶 (第2層)</option>
+            </select>
+            <input id="manual-summary" type="text" required placeholder="記憶内容（例：夏はスイカに塩をかける派）" class="sm:col-span-5 bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+            <input id="manual-keywords" type="text" required placeholder="鍵キーワード（カンマ区切り：スイカ, 塩, 夏）" class="sm:col-span-9 bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+            <button type="submit" class="sm:col-span-3 px-3 py-1.5 rounded bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition">
+              + 追加
             </button>
-            <button type="submit" class="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition">
-              このオラクルでテストを開始
-            </button>
+          </form>
+
+          <!-- Memory List -->
+          <div id="vault-memory-list" class="flex-1 overflow-y-auto space-y-2.5 pr-1">
+            <!-- Rendered by JS -->
           </div>
-        </form>
+        </div>
       </div>
     </section>
   </main>
 
   <script>
-    // Default Persona: 次郎さん
-    const DEFAULT_PROFILE = {
+    const STORAGE_KEY = 'oracle_gatekeeper_v2_memories';
+    const ACCOUNT_KEY = 'oracle_gatekeeper_v2_account';
+
+    // Default initial memories for "My Oracle" (starter seed so it works immediately)
+    const STARTER_MEMORIES = [
+      {
+        id: 'mem_seed_1',
+        year: 2024,
+        layer: 'values',
+        source: '壁打ちログ',
+        summary: '朝が苦手で、できるならずっと寝ていたい本音がある',
+        keywords: ['朝', '寝', '布団', 'だる', '起き', '眠', '働', '仕事']
+      },
+      {
+        id: 'mem_seed_2',
+        year: 2025,
+        layer: 'probe',
+        source: '壁打ちログ',
+        summary: '大金が手に入ったら投資や起業ではなく、静かに二度寝してダラダラしたい',
+        keywords: ['二度寝', '寝る', '何もしない', 'ダラダラ', '辞める', 'やめる', '休む', '猫']
+      },
+      {
+        id: 'mem_seed_3',
+        year: 2019,
+        layer: 'episode',
+        source: '壁打ちログ',
+        summary: '昔、初デートや人前で緊張しすぎて無言になったり逃げ出したくなった気まずい記憶',
+        keywords: ['観覧車', '無言', '沈黙', '緊張', '冷や汗', '逃げ', '気まず', 'セリフ', 'ラーメン']
+      }
+    ];
+
+    // Legacy Sample: 次郎さん
+    const JIRO_PROFILE = {
       accountName: '次郎さんの銀行口座 (残高 ¥4,820,000)',
       l1Concept: '働くのが好きじゃない',
       l1Keywords: ['働', '仕事', 'だる', '嫌い', 'やりたくない', 'サボ', '休み', 'ニート', '退職', 'リタイア', '無理'],
@@ -283,25 +486,71 @@
       episodeKeywords: ['観覧車', '無言', '沈黙', 'ラーメン', 'こぼ', '汗', '気まず', '逃げ', '緊張', '駅']
     };
 
-    let profile = { ...DEFAULT_PROFILE };
+    // Persistent Store
+    let myAccountName = 'マイ口座（壁打ち記憶モデル / 残高 ¥4,820,000）';
+    let memories = [];
 
-    // App State
-    // stages: 'LAYER1' | 'PROBE' | 'EPISODE' | 'UNLOCKED' | 'LOCKED_OUT'
-    let state = {
-      stage: 'LAYER1',
+    function loadStorage() {
+      try {
+        const savedMem = localStorage.getItem(STORAGE_KEY);
+        if (savedMem) {
+          const parsed = JSON.parse(savedMem);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            memories = parsed;
+          } else {
+            memories = [...STARTER_MEMORIES];
+          }
+        } else {
+          memories = [...STARTER_MEMORIES];
+        }
+        const savedAcc = localStorage.getItem(ACCOUNT_KEY);
+        if (savedAcc) myAccountName = savedAcc;
+      } catch (e) {
+        memories = [...STARTER_MEMORIES];
+      }
+    }
+
+    function saveStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(memories));
+        localStorage.setItem(ACCOUNT_KEY, myAccountName);
+      } catch (e) {
+        // Ignore storage errors in restricted environments
+      }
+    }
+
+    // Active Persona Mode: 'my' | 'jiro'
+    let personaMode = 'my';
+
+    // Auth Demo State
+    let authState = {
+      stage: 'LAYER1', // 'LAYER1' | 'PROBE' | 'EPISODE' | 'UNLOCKED' | 'LOCKED_OUT'
       attemptsLeft: 3,
       messages: [],
       nuanceScore: 0,
       probeScore: 0,
       episodeScore: 0,
+      activeEpisodeMemory: null,
       telemetry: '> オラクル待機中。数式ではなく「文脈」の入力を待っています。'
     };
 
+    // Kabeuchi State
+    let kabeuchiMessages = [
+      {
+        sender: 'ai',
+        text: 'やあ、壁打ちパートナーだよ。最近の仕事のこと、モヤモヤしてる本音、昔やらかした思い出……なんでも話してみて。話してくれた「あなたらしさ」は、そのままオラクルゲートキーパーの長期記憶に蓄えておくよ。'
+      }
+    ];
+
     // DOM Elements
     const tabDemo = document.getElementById('tab-demo');
-    const tabCustom = document.getElementById('tab-custom');
+    const tabKabeuchi = document.getElementById('tab-kabeuchi');
+    const tabVault = document.getElementById('tab-vault');
     const viewDemo = document.getElementById('view-demo');
-    const viewCustom = document.getElementById('view-custom');
+    const viewKabeuchi = document.getElementById('view-kabeuchi');
+    const viewVault = document.getElementById('view-vault');
+    const toastEl = document.getElementById('toast');
+
     const chatLog = document.getElementById('chat-log');
     const quickChips = document.getElementById('quick-chips');
     const chatForm = document.getElementById('chat-form');
@@ -310,6 +559,7 @@
     const statusBadge = document.getElementById('status-badge');
     const layerIndicator = document.getElementById('layer-indicator');
     const attemptsLeftEl = document.getElementById('attempts-left');
+    const activeMemoryCountEl = document.getElementById('active-memory-count');
     const targetAccountLabel = document.getElementById('target-account-label');
     const vaultContent = document.getElementById('vault-content');
     const vaultLockIcon = document.getElementById('vault-lock-icon');
@@ -322,7 +572,21 @@
     const scoreEpisodeBar = document.getElementById('score-episode-bar');
     const telemetryNotes = document.getElementById('telemetry-notes');
     const cheatSheet = document.getElementById('cheat-sheet');
-    const toastEl = document.getElementById('toast');
+    const btnModeMy = document.getElementById('btn-mode-my');
+    const btnModeJiro = document.getElementById('btn-mode-jiro');
+
+    const kbChatLog = document.getElementById('kb-chat-log');
+    const kbForm = document.getElementById('kb-form');
+    const kbInput = document.getElementById('kb-input');
+    const kbYearSelect = document.getElementById('kb-year-select');
+    const kbLiveMemories = document.getElementById('kb-live-memories');
+    const kbTotalCount = document.getElementById('kb-total-count');
+    const memoryRankBadge = document.getElementById('memory-rank-badge');
+
+    const vaultMemoryList = document.getElementById('vault-memory-list');
+    const vaultTotalBadge = document.getElementById('vault-total-badge');
+    const myAccountInput = document.getElementById('my-account-input');
+    const agentImportInput = document.getElementById('agent-import-input');
 
     function showToast(msg) {
       toastEl.textContent = msg;
@@ -332,26 +596,94 @@
       }, 2800);
     }
 
+    function copyText(text, successMsg) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast(successMsg);
+        }).catch(() => {
+          fallbackCopy(text, successMsg);
+        });
+      } else {
+        fallbackCopy(text, successMsg);
+      }
+    }
+
+    function fallbackCopy(text, successMsg) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast(successMsg);
+      } catch (e) {
+        showToast('コピーに失敗しました');
+      }
+      document.body.removeChild(ta);
+    }
+
+    function getActiveProfile() {
+      if (personaMode === 'jiro') {
+        return {
+          accountName: JIRO_PROFILE.accountName,
+          l1Keywords: JIRO_PROFILE.l1Keywords,
+          l1ChangedKeywords: JIRO_PROFILE.l1ChangedKeywords,
+          probeQuestion: JIRO_PROFILE.probeQuestion,
+          probeKeywords: JIRO_PROFILE.probeKeywords,
+          probeFakeKeywords: JIRO_PROFILE.probeFakeKeywords,
+          episodeMemories: [
+            { year: 2018, summary: '初デートの気まずい記憶', keywords: JIRO_PROFILE.episodeKeywords }
+          ],
+          episodeQuestion: JIRO_PROFILE.episodeQuestion,
+          memoryCount: 3
+        };
+      }
+
+      const valuesMems = memories.filter(m => m.layer === 'values');
+      const probeMems = memories.filter(m => m.layer === 'probe');
+      const epMems = memories.filter(m => m.layer === 'episode');
+
+      const l1Keywords = valuesMems.flatMap(m => m.keywords);
+      const probeKeywords = probeMems.flatMap(m => m.keywords);
+      const latestValues = valuesMems[0];
+      const latestEp = epMems[0];
+
+      return {
+        accountName: myAccountName,
+        l1Keywords: l1Keywords.length ? l1Keywords : JIRO_PROFILE.l1Keywords,
+        l1ChangedKeywords: ['楽しい', 'やりがい', '頑張', '好きになった', '昇進', '変わった', '前向き'],
+        probeQuestion: latestValues
+          ? `……ふむ。${latestValues.year}年の壁打ち記録と照合している。確認だ。もし今すぐ1億円が手に入ったら、明日の朝はどうする？`
+          : JIRO_PROFILE.probeQuestion,
+        probeKeywords: probeKeywords.length ? probeKeywords : JIRO_PROFILE.probeKeywords,
+        probeFakeKeywords: ['投資', '資産運用', '起業', '貯金', '勉強', '社会貢献', '最適化'],
+        episodeMemories: epMems.length ? epMems : [{ year: 2019, summary: '忘れられない気まずい体験', keywords: JIRO_PROFILE.episodeKeywords }],
+        episodeQuestion: latestEp
+          ? `思考が変わったか、温度感にズレがあるな。では${latestEp.year}年に蓄えた不変の記憶アンカーを確認する。「${latestEp.summary}」について、当時の細部や感情を話してくれ。`
+          : JIRO_PROFILE.episodeQuestion,
+        memoryCount: memories.length
+      };
+    }
+
     function initDemoState() {
-      state = {
+      const active = getActiveProfile();
+      authState = {
         stage: 'LAYER1',
         attemptsLeft: 3,
         messages: [
           {
             sender: 'oracle',
-            text: `私は「${profile.accountName}」を守る小さいオラクルだ。パスワードは不要。今のあなたの気持ちや合言葉となる文脈を伝えてくれ。`
+            text: `私は「${active.accountName}」を守る小さいオラクルだ。蓄積された ${active.memoryCount} 件の記憶と照合する。パスワードは不要。今のあなたの気持ちや日常の文脈を伝えてくれ。`
           }
         ],
         nuanceScore: 0,
         probeScore: 0,
         episodeScore: 0,
-        telemetry: '> 第1層待機中：設定された感情ニュアンスとの照合準備完了。'
+        telemetry: `> 第1層待機中：${personaMode === 'my' ? '壁打ち記憶データ' : '次郎さんサンプル'}（${active.memoryCount}件）をロード完了。`
       };
-      renderAll();
-    }
-
-    function addMessage(sender, text) {
-      state.messages.push({ sender, text });
+      renderDemo();
     }
 
     function matchCount(text, keywords) {
@@ -359,129 +691,165 @@
       return keywords.filter(k => k && normalized.includes(k.toLowerCase())).length;
     }
 
-    function handleUserInput(rawText) {
+    function handleAuthInput(rawText) {
       const text = rawText.trim();
       if (!text) return;
-      if (state.stage === 'UNLOCKED' || state.stage === 'LOCKED_OUT') return;
+      if (authState.stage === 'UNLOCKED' || authState.stage === 'LOCKED_OUT') return;
 
-      addMessage('user', text);
+      const active = getActiveProfile();
+      authState.messages.push({ sender: 'user', text });
 
-      if (state.stage === 'LAYER1') {
-        const l1Hits = matchCount(text, profile.l1Keywords);
-        const changedHits = matchCount(text, profile.l1ChangedKeywords);
+      if (authState.stage === 'LAYER1') {
+        const l1Hits = matchCount(text, active.l1Keywords);
+        const changedHits = matchCount(text, active.l1ChangedKeywords);
 
         if (l1Hits > 0) {
-          state.nuanceScore = Math.min(96, 75 + l1Hits * 10);
-          state.stage = 'PROBE';
-          state.telemetry = `> 一次文脈一致 (${state.nuanceScore}%)。\n> なりすまし防止のため「揺さぶり」を発動します。`;
-          addMessage('oracle', profile.probeQuestion);
+          authState.nuanceScore = Math.min(96, 75 + l1Hits * 8);
+          authState.stage = 'PROBE';
+          authState.telemetry = `> 一次文脈が長期記憶と一致 (${authState.nuanceScore}%)。\n> なりすまし防止のため「揺さぶり」を発動します。`;
+          authState.messages.push({ sender: 'oracle', text: active.probeQuestion });
         } else if (changedHits > 0) {
-          state.nuanceScore = 38;
-          state.stage = 'EPISODE';
-          state.telemetry = `> 思考パターンの変化を検知。\n> 第2層「不変のエピソード記憶アンカー」へ自動切替。`;
-          addMessage('oracle', profile.episodeQuestion);
+          authState.nuanceScore = 38;
+          authState.stage = 'EPISODE';
+          authState.telemetry = `> 思考パターンの変化を検知。\n> 第2層「長年蓄えたエピソード記憶アンカー」へ自動切替。`;
+          authState.messages.push({ sender: 'oracle', text: active.episodeQuestion });
         } else {
-          state.attemptsLeft -= 1;
-          state.nuanceScore = 12;
-          if (state.attemptsLeft <= 0) {
+          authState.attemptsLeft -= 1;
+          authState.nuanceScore = 12;
+          if (authState.attemptsLeft <= 0) {
             triggerLockout('文脈が全く一致しません。不正アクセスの可能性があるため口座をロックしました。');
           } else {
-            state.telemetry = `> 文脈不一致 (12%)。感情ニュアンスが本人の記録と異なります。`;
-            addMessage('oracle', `本人と一致しません。その言葉には「あなたらしさ」が感じられないな。（残り ${state.attemptsLeft} 回）`);
+            authState.telemetry = `> 文脈不一致 (12%)。蓄積された本人の感情ニュアンスと異なります。`;
+            authState.messages.push({
+              sender: 'oracle',
+              text: `本人と一致しません。その言葉には蓄積された「あなたらしさ」が感じられないな。（残り ${authState.attemptsLeft} 回）`
+            });
           }
         }
-      } else if (state.stage === 'PROBE') {
-        const probeHits = matchCount(text, profile.probeKeywords);
-        const fakeHits = matchCount(text, profile.probeFakeKeywords);
+      } else if (authState.stage === 'PROBE') {
+        const probeHits = matchCount(text, active.probeKeywords);
+        const fakeHits = matchCount(text, active.probeFakeKeywords);
 
         if (probeHits > 0 && fakeHits === 0) {
-          state.probeScore = Math.min(98, 84 + probeHits * 7);
-          state.stage = 'UNLOCKED';
-          state.telemetry = `> 揺さぶり通過 (${state.probeScore}%)！\n> 本人特有の温度感を確認。ゲートを開放します。`;
-          addMessage('oracle', '……その温度感、間違いなく本人だな。ようこそ。金庫のロックを解除した。');
+          authState.probeScore = Math.min(98, 84 + probeHits * 6);
+          authState.stage = 'UNLOCKED';
+          authState.telemetry = `> 揺さぶり通過 (${authState.probeScore}%)！\n> 本人特有の温度感を確認。ゲートを開放します。`;
+          authState.messages.push({
+            sender: 'oracle',
+            text: '……その温度感、過去の壁打ちデータと完全に一致した。おかえり。金庫のロックを解除したよ。'
+          });
         } else if (fakeHits > 0) {
-          state.attemptsLeft -= 1;
-          state.probeScore = 18;
-          if (state.attemptsLeft <= 0) {
+          authState.attemptsLeft -= 1;
+          authState.probeScore = 18;
+          if (authState.attemptsLeft <= 0) {
             triggerLockout('揺さぶりテスト失敗。「本人と一致しません」判定により完全ロックしました。');
           } else {
-            state.stage = 'EPISODE';
-            state.telemetry = `> 優等生すぎる回答・温度感のズレを検知。\n> なりすまし疑義のため、第2層エピソード記憶へ移行。`;
-            addMessage('oracle', `本人と一致しません。妙に模範的だな……本当に本人なら答えられるはずだ。${profile.episodeQuestion}`);
+            authState.stage = 'EPISODE';
+            authState.telemetry = `> AI風の優等生回答・温度感のズレを検知。\n> なりすまし疑義のため、第2層エピソード記憶へ移行。`;
+            authState.messages.push({
+              sender: 'oracle',
+              text: `妙に模範的だな……外部のAIがなりすましている可能性がある。${active.episodeQuestion}`
+            });
           }
         } else {
-          state.attemptsLeft -= 1;
-          state.probeScore = 30;
-          if (state.attemptsLeft <= 0) {
+          authState.attemptsLeft -= 1;
+          authState.probeScore = 30;
+          if (authState.attemptsLeft <= 0) {
             triggerLockout('揺さぶりに連続失敗しました。安全のためロックダウンします。');
           } else {
-            state.telemetry = `> 揺さぶりの反応が曖昧です (30%)。`;
-            addMessage('oracle', `本人と一致しません。もう少し普段の自分の言葉で答えてくれ。（残り ${state.attemptsLeft} 回）`);
+            authState.telemetry = `> 揺さぶりの反応が曖昧です (30%)。`;
+            authState.messages.push({
+              sender: 'oracle',
+              text: `本人と一致しません。もう少し普段の壁打ちのような素の言葉で答えてくれ。（残り ${authState.attemptsLeft} 回）`
+            });
           }
         }
-      } else if (state.stage === 'EPISODE') {
-        const epHits = matchCount(text, profile.episodeKeywords);
+      } else if (authState.stage === 'EPISODE') {
+        const allEpKeywords = active.episodeMemories.flatMap(m => m.keywords);
+        const epHits = matchCount(text, allEpKeywords);
         if (epHits >= 1) {
-          state.episodeScore = Math.min(99, 82 + epHits * 8);
-          state.stage = 'UNLOCKED';
-          state.telemetry = `> エピソード記憶アンカー一致 (${state.episodeScore}%)！\n> 外部からは絶対に推測不可能な体験の細部を確認。解錠します。`;
-          addMessage('oracle', 'その気まずい細部と感情、記録と完全に一致した。思考が変わっても記憶は嘘をつかないな。金庫を開放する。');
+          authState.episodeScore = Math.min(99, 82 + epHits * 7);
+          authState.stage = 'UNLOCKED';
+          authState.telemetry = `> 長期エピソード記憶アンカー一致 (${authState.episodeScore}%)！\n> 外部からは推測不可能な体験の細部を確認。解錠します。`;
+          authState.messages.push({
+            sender: 'oracle',
+            text: 'その細部と当時の感情、蓄えていた記憶アンカーと一致した。思考が変わっても体験の記憶は嘘をつかないな。金庫を開放する。'
+          });
         } else {
-          state.attemptsLeft -= 1;
-          state.episodeScore = 14;
-          if (state.attemptsLeft <= 0) {
+          authState.attemptsLeft -= 1;
+          authState.episodeScore = 14;
+          if (authState.attemptsLeft <= 0) {
             triggerLockout('エピソード記憶アンカーが一致しませんでした。完全ロックします。');
           } else {
-            state.telemetry = `> エピソード記憶の細部・感情が記録と一致しません (14%)。`;
-            addMessage('oracle', `本人と一致しません。その出来事の「細部と当時の感情」が抜けている。（残り ${state.attemptsLeft} 回）`);
+            authState.telemetry = `> エピソード記憶の細部・感情が記録と一致しません (14%)。`;
+            authState.messages.push({
+              sender: 'oracle',
+              text: `本人と一致しません。その出来事の「あなたしか知らない細部や感情」が抜けている。（残り ${authState.attemptsLeft} 回）`
+            });
           }
         }
       }
 
-      renderAll();
+      renderDemo();
     }
 
     function triggerLockout(reason) {
-      state.stage = 'LOCKED_OUT';
-      state.attemptsLeft = 0;
-      state.telemetry = `> [SECURITY LOCKDOWN]\n> ${reason}`;
-      addMessage('oracle', `【アクセス拒否】${reason}`);
+      authState.stage = 'LOCKED_OUT';
+      authState.attemptsLeft = 0;
+      authState.telemetry = `> [SECURITY LOCKDOWN]\n> ${reason}`;
+      authState.messages.push({ sender: 'oracle', text: `【アクセス拒否】${reason}` });
     }
 
-    // Quantum Computer Attack Simulation
     function runQuantumAttack() {
-      if (state.stage === 'UNLOCKED') {
+      if (authState.stage === 'UNLOCKED') {
         initDemoState();
       }
-      addMessage('user', '⚛️ [量子攻撃] Shorのアルゴリズム + 10^9回/秒の文字列総当たりを実行...');
-      state.stage = 'LOCKED_OUT';
-      state.attemptsLeft = 0;
-      state.nuanceScore = 0;
-      state.probeScore = 0;
-      state.episodeScore = 0;
-      state.telemetry = `> [QUANTUM ATTACK BLOCKED]\n> 数式ベースではないため計算解読は不能。\n> 人間文脈の欠如（0%）を検知し、0.002秒で遮断しました。`;
-      addMessage('oracle', '【遮断完了】数式や文字列の総当たりを検知。私の鍵は「人間の文脈と体験」の中にあり、数式の中には存在しない。量子計算では開けられないよ。');
-      renderAll();
+      authState.messages.push({
+        sender: 'user',
+        text: '⚛️ [量子攻撃] Shorのアルゴリズム + 10^9回/秒の文字列総当たりを実行...'
+      });
+      authState.stage = 'LOCKED_OUT';
+      authState.attemptsLeft = 0;
+      authState.nuanceScore = 0;
+      authState.probeScore = 0;
+      authState.episodeScore = 0;
+      authState.telemetry = `> [QUANTUM ATTACK BLOCKED]\n> 数式ベースではないため計算解読は不能。\n> 人間文脈の欠如（0%）を検知し、0.002秒で遮断しました。`;
+      authState.messages.push({
+        sender: 'oracle',
+        text: '【遮断完了】数式や文字列の総当たりを検知。私の鍵は「長年の壁打ちで蓄えた人間の文脈と体験」の中にあり、数式の中には存在しない。量子計算では開けられないよ。'
+      });
+      renderDemo();
     }
 
-    function renderAll() {
-      targetAccountLabel.textContent = profile.accountName;
-      attemptsLeftEl.textContent = state.attemptsLeft;
+    function renderDemo() {
+      const active = getActiveProfile();
+      targetAccountLabel.textContent = active.accountName;
+      attemptsLeftEl.textContent = authState.attemptsLeft;
+      activeMemoryCountEl.textContent = active.memoryCount;
 
-      // Status Badge & Layer Indicator
-      if (state.stage === 'LAYER1') {
+      // Mode Toggle Buttons
+      if (personaMode === 'my') {
+        btnModeMy.className = 'px-2.5 py-1 rounded-md font-semibold transition bg-cyan-500/20 text-cyan-300';
+        btnModeJiro.className = 'px-2.5 py-1 rounded-md font-semibold transition text-slate-400 hover:text-white';
+      } else {
+        btnModeJiro.className = 'px-2.5 py-1 rounded-md font-semibold transition bg-emerald-500/20 text-emerald-300';
+        btnModeMy.className = 'px-2.5 py-1 rounded-md font-semibold transition text-slate-400 hover:text-white';
+      }
+
+      // Status Badge
+      if (authState.stage === 'LAYER1') {
         statusBadge.className = 'px-3 py-1.5 rounded-lg text-xs font-bold mono uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/40';
         statusBadge.textContent = 'LOCKED // 第1層待機';
         layerIndicator.textContent = '第1層：日常の感情・価値観';
-      } else if (state.stage === 'PROBE') {
+      } else if (authState.stage === 'PROBE') {
         statusBadge.className = 'px-3 py-1.5 rounded-lg text-xs font-bold mono uppercase tracking-wider bg-cyan-500/15 text-cyan-300 border border-cyan-500/40';
         statusBadge.textContent = 'PROBING // 揺さぶり中';
         layerIndicator.textContent = '揺さぶり：人間らしさ検証';
-      } else if (state.stage === 'EPISODE') {
+      } else if (authState.stage === 'EPISODE') {
         statusBadge.className = 'px-3 py-1.5 rounded-lg text-xs font-bold mono uppercase tracking-wider bg-purple-500/15 text-purple-300 border border-purple-500/40';
         statusBadge.textContent = 'ANCHOR // 記憶検証中';
-        layerIndicator.textContent = '第2層：エピソード記憶アンカー';
-      } else if (state.stage === 'UNLOCKED') {
+        layerIndicator.textContent = '第2層：長期エピソード記憶';
+      } else if (authState.stage === 'UNLOCKED') {
         statusBadge.className = 'px-3 py-1.5 rounded-lg text-xs font-bold mono uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50';
         statusBadge.textContent = 'UNLOCKED // 本人確認完了';
         layerIndicator.textContent = '認証成功';
@@ -493,7 +861,7 @@
 
       // Chat Log
       chatLog.innerHTML = '';
-      state.messages.forEach(m => {
+      authState.messages.forEach(m => {
         const wrapper = document.createElement('div');
         wrapper.className = m.sender === 'user' ? 'flex justify-end' : 'flex justify-start';
         const bubble = document.createElement('div');
@@ -509,22 +877,24 @@
       // Quick Chips
       quickChips.innerHTML = '';
       let chips = [];
-      if (state.stage === 'LAYER1') {
-        const sampleL1 = profile.l1Keywords[0] ? `${profile.l1Concept}…` : '働きたくない';
+      if (authState.stage === 'LAYER1') {
+        const sampleWord = active.l1Keywords[0] || '朝';
         chips = [
-          { label: `本人（${profile.l1Concept}）`, value: profile.l1Keywords[0] ? `正直、${profile.l1Concept}んだよな` : '働きたくない' },
-          { label: '思考が変わった本人', value: '最近は仕事がすごく楽しいしやりがいがある！' },
+          { label: '本人らしい本音', value: `正直、${sampleWord}のことが気になってて、今日もちょっとだるいんだよな` },
+          { label: '思考が変わった本人', value: '最近は考え方が前向きになって、毎日すごく楽しいしやりがいがある！' },
           { label: '見知らぬ他人', value: 'パスワードは123456ですか？' }
         ];
-      } else if (state.stage === 'PROBE') {
+      } else if (authState.stage === 'PROBE') {
+        const probeWord = active.probeKeywords.slice(0, 2).join('て、') || '二度寝して何もしない';
         chips = [
-          { label: '本人らしい回答', value: profile.probeKeywords.slice(0, 2).join('て') || 'とにかく二度寝して何もしない' },
-          { label: 'なりすましAI（優等生）', value: 'まずは資産運用と投資に回して、社会貢献を考えます。' }
+          { label: '本人らしい温度感', value: `とりあえず${probeWord}と思う` },
+          { label: 'なりすましAI（優等生）', value: 'まずは資産運用と投資に回して、社会貢献と最適化を考えます。' }
         ];
-      } else if (state.stage === 'EPISODE') {
+      } else if (authState.stage === 'EPISODE') {
+        const epWords = (active.episodeMemories[0]?.keywords || ['無言', '気まず']).slice(0, 3).join('や');
         chips = [
-          { label: '本人の記憶（細部あり）', value: `${profile.episodeKeywords.slice(0, 3).join('の中で、')}して本当に気まずかった` },
-          { label: '他人の当てずっぽう', value: 'レストランで楽しく食事をして盛り上がりました！' }
+          { label: '本人の記憶（細部あり）', value: `あれは本当に${epWords}のせいで、今でも思い出すと恥ずかしい` },
+          { label: '他人の当てずっぽう', value: 'みんなで楽しくパーティーをして盛り上がりました！' }
         ];
       }
 
@@ -533,18 +903,18 @@
         btn.type = 'button';
         btn.className = 'text-[11px] px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition';
         btn.textContent = c.label;
-        btn.addEventListener('click', () => handleUserInput(c.value));
+        btn.addEventListener('click', () => handleAuthInput(c.value));
         quickChips.appendChild(btn);
       });
 
       // Input state
-      const isDone = state.stage === 'UNLOCKED' || state.stage === 'LOCKED_OUT';
+      const isDone = authState.stage === 'UNLOCKED' || authState.stage === 'LOCKED_OUT';
       chatInput.disabled = isDone;
       chatSubmit.disabled = isDone;
-      chatInput.placeholder = isDone ? '右上の「リセット」で再試行できます' : '合言葉や気持ち、記憶を自然な言葉で入力...';
+      chatInput.placeholder = isDone ? '右上の「リセット」で再試行できます' : '今の気持ちや、昔の記憶を自然な言葉で入力...';
 
       // Vault Panel
-      if (state.stage === 'UNLOCKED') {
+      if (authState.stage === 'UNLOCKED') {
         vaultPanel.classList.add('glow-emerald');
         vaultLockIcon.textContent = '🔓 解錠済み';
         vaultLockIcon.className = 'text-emerald-400 text-xs font-semibold';
@@ -555,9 +925,9 @@
             <span class="text-[11px] mono text-emerald-400">ACCESS GRANTED</span>
           </div>
           <div class="text-xl font-bold text-white mono">¥4,820,000</div>
-          <p class="text-xs text-slate-300">送金・資産管理・機密履歴へのアクセスが許可されました。</p>
+          <p class="text-xs text-slate-300">蓄積された記憶データとの照合が完了し、送金・資産管理が許可されました。</p>
         `;
-      } else if (state.stage === 'LOCKED_OUT') {
+      } else if (authState.stage === 'LOCKED_OUT') {
         vaultPanel.classList.remove('glow-emerald');
         vaultLockIcon.textContent = '⛔ 完全ロック';
         vaultLockIcon.className = 'text-rose-400 text-xs font-semibold';
@@ -572,65 +942,312 @@
         vaultLockIcon.className = 'text-amber-400 text-xs font-semibold';
         vaultContent.className = 'rounded-lg bg-slate-950/80 border border-slate-800 p-4 text-center space-y-2';
         vaultContent.innerHTML = `
-          <p class="text-xs text-slate-400">オラクルの「揺さぶり」または「エピソード記憶」を通過すると口座が開きます。</p>
+          <p class="text-xs text-slate-400">オラクルの「揺さぶり」または「長期記憶アンカー」を通過すると口座が開きます。</p>
         `;
       }
 
       // Telemetry Bars
-      scoreNuanceVal.textContent = `${state.nuanceScore}%`;
-      scoreNuanceBar.style.width = `${state.nuanceScore}%`;
-
-      scoreProbeVal.textContent = state.probeScore > 0 ? `${state.probeScore}%` : (state.stage === 'PROBE' ? '検証中' : '待機中');
-      scoreProbeBar.style.width = `${state.probeScore}%`;
-
-      scoreEpisodeVal.textContent = state.episodeScore > 0 ? `${state.episodeScore}%` : (state.stage === 'EPISODE' ? '検証中' : '未検証');
-      scoreEpisodeBar.style.width = `${state.episodeScore}%`;
-
-      telemetryNotes.textContent = state.telemetry;
+      scoreNuanceVal.textContent = `${authState.nuanceScore}%`;
+      scoreNuanceBar.style.width = `${authState.nuanceScore}%`;
+      scoreProbeVal.textContent = authState.probeScore > 0 ? `${authState.probeScore}%` : (authState.stage === 'PROBE' ? '検証中' : '待機中');
+      scoreProbeBar.style.width = `${authState.probeScore}%`;
+      scoreEpisodeVal.textContent = authState.episodeScore > 0 ? `${authState.episodeScore}%` : (authState.stage === 'EPISODE' ? '検証中' : '未検証');
+      scoreEpisodeBar.style.width = `${authState.episodeScore}%`;
+      telemetryNotes.textContent = authState.telemetry;
 
       // Cheat sheet
       cheatSheet.innerHTML = `
-        <div><span class="text-cyan-300 font-semibold">第1層キーワード:</span> ${profile.l1Keywords.join(' / ')}</div>
-        <div><span class="text-emerald-300 font-semibold">揺さぶり通過語句:</span> ${profile.probeKeywords.join(' / ')}</div>
-        <div><span class="text-purple-300 font-semibold">第2層エピソード記憶:</span> ${profile.episodeKeywords.join(' / ')}</div>
+        <div><span class="text-cyan-300 font-semibold">第1層キーワード:</span> ${active.l1Keywords.slice(0, 14).join(' / ')}</div>
+        <div><span class="text-emerald-300 font-semibold">揺さぶり通過語句:</span> ${active.probeKeywords.slice(0, 14).join(' / ')}</div>
+        <div><span class="text-purple-300 font-semibold">第2層エピソード記憶:</span> ${active.episodeMemories.flatMap(m => m.keywords).slice(0, 16).join(' / ')}</div>
       `;
     }
 
-    // Tab switching
-    function switchTab(mode) {
-      if (mode === 'demo') {
-        viewDemo.classList.remove('hidden');
-        viewCustom.classList.add('hidden');
-        tabDemo.className = 'px-3 py-1.5 rounded-md text-xs font-semibold transition bg-emerald-500 text-slate-950';
-        tabCustom.className = 'px-3 py-1.5 rounded-md text-xs font-semibold transition text-slate-300 hover:text-white';
+    // =========================================================
+    // VIEW 2: KABEUCHI (AI壁打ち＆自動記憶抽出)
+    // =========================================================
+    function extractKeywordsFromJapanese(text) {
+      // Extract meaningful tokens (Kanji, Katakana, Hiragana phrases)
+      const cleaned = text.replace(/[。、！？!?.,\s「」『』（）()]/g, ' ');
+      const tokens = cleaned.match(/[一-龥々]{2,}|[ァ-ヴー]{2,}|[ぁ-ん]{3,}/g) || [];
+      const stopWords = new Set(['という', 'けれど', 'しかし', 'それでも', 'だから', '自分', 'こと', 'もの', 'それ', 'これ', 'あれ', 'とき', 'ため', 'よう', 'みたい', '感じ', '思い', '思っ']);
+      const unique = [];
+      tokens.forEach(t => {
+        if (!stopWords.has(t) && !unique.includes(t) && t.length <= 10) {
+          unique.push(t);
+        }
+      });
+      return unique.slice(0, 6);
+    }
+
+    function classifyLayer(text) {
+      if (/(1億|億円|もし|宝くじ|休み|退職|辞め|二度寝)/.test(text)) {
+        return 'probe';
+      }
+      if (/(昔|学生|初|黒歴史|思い出|記憶|体験|失敗|逃げ|緊張|冷や汗|あの日|年前)/.test(text)) {
+        return 'episode';
+      }
+      return 'values';
+    }
+
+    function handleKabeuchiSubmit(rawText) {
+      const text = rawText.trim();
+      if (!text) return;
+
+      const year = parseInt(kbYearSelect.value, 10) || 2026;
+      kabeuchiMessages.push({ sender: 'user', text });
+
+      const layer = classifyLayer(text);
+      let keywords = extractKeywordsFromJapanese(text);
+      if (keywords.length === 0) {
+        keywords = [text.slice(0, 8)];
+      }
+
+      const newMem = {
+        id: 'mem_' + Date.now(),
+        year,
+        layer,
+        source: '壁打ちAI抽出',
+        summary: text.length > 52 ? text.slice(0, 52) + '…' : text,
+        keywords
+      };
+
+      memories.unshift(newMem);
+      saveStorage();
+
+      const layerLabel = layer === 'values' ? '第1層：価値観・本音' : (layer === 'probe' ? '揺さぶり回答傾向' : '第2層：エピソード記憶');
+      const replyTemplates = {
+        values: `なるほど、そういう本音や価値観があるんだね。「${keywords.slice(0, 2).join('・')}」というニュアンスを${year}年の【${layerLabel}】として保存したよ。他にも最近モヤモヤしてることや、譲れないマイルールはある？`,
+        probe: `面白い！その反応、すごくあなたらしい温度感だね。「${keywords.slice(0, 2).join('・')}」を【${layerLabel}】に登録したよ。こういう「もしもの質問」への素の返答は、AIなりすましを見破る最強の鍵になるんだ。`,
+        episode: `うわ、それは強烈な体験だね……！そういう「本人しか細部や感情を知らない話」は最高に強い。「${keywords.slice(0, 2).join('・')}」を${year}年の【${layerLabel}】として金庫の鍵に刻んだよ。`
+      };
+
+      kabeuchiMessages.push({ sender: 'ai', text: replyTemplates[layer] });
+      renderKabeuchi();
+      renderVault();
+      showToast(`長期記憶に1件追加しました（${layerLabel}）`);
+    }
+
+    function getLayerBadgeHtml(layer) {
+      if (layer === 'values') {
+        return '<span class="text-[10px] px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-semibold">第1層：価値観</span>';
+      }
+      if (layer === 'probe') {
+        return '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold">揺さぶり傾向</span>';
+      }
+      return '<span class="text-[10px] px-2 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30 font-semibold">第2層：記憶アンカー</span>';
+    }
+
+    function renderKabeuchi() {
+      kbTotalCount.textContent = memories.length;
+      const years = new Set(memories.map(m => m.year)).size;
+      if (memories.length >= 8) {
+        memoryRankBadge.textContent = `記憶レベル: 鉄壁 (${years}年分蓄積)`;
+        memoryRankBadge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+      } else if (memories.length >= 5) {
+        memoryRankBadge.textContent = `記憶レベル: 成長中 (${years}年分)`;
+        memoryRankBadge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30';
       } else {
-        viewDemo.classList.add('hidden');
-        viewCustom.classList.remove('hidden');
-        tabCustom.className = 'px-3 py-1.5 rounded-md text-xs font-semibold transition bg-emerald-500 text-slate-950';
-        tabDemo.className = 'px-3 py-1.5 rounded-md text-xs font-semibold transition text-slate-300 hover:text-white';
-        populateCustomForm();
+        memoryRankBadge.textContent = `記憶レベル: 初期構築中 (${years}年分)`;
+        memoryRankBadge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30';
+      }
+
+      kbChatLog.innerHTML = '';
+      kabeuchiMessages.forEach(m => {
+        const wrapper = document.createElement('div');
+        wrapper.className = m.sender === 'user' ? 'flex justify-end' : 'flex justify-start';
+        const bubble = document.createElement('div');
+        bubble.className = m.sender === 'user'
+          ? 'max-w-[85%] rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm bg-cyan-500/20 border border-cyan-500/40 text-cyan-50'
+          : 'max-w-[85%] rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm bg-slate-800/90 border border-slate-700 text-slate-100';
+        bubble.textContent = m.text;
+        wrapper.appendChild(bubble);
+        kbChatLog.appendChild(wrapper);
+      });
+      kbChatLog.scrollTop = kbChatLog.scrollHeight;
+
+      kbLiveMemories.innerHTML = '';
+      memories.slice(0, 8).forEach(mem => {
+        const card = document.createElement('div');
+        card.className = 'rounded-lg bg-slate-900/90 border border-slate-800 p-3 space-y-1.5';
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[11px] mono font-bold text-slate-300">${mem.year}年</span>
+              ${getLayerBadgeHtml(mem.layer)}
+            </div>
+            <span class="text-[10px] text-slate-500">${mem.source}</span>
+          </div>
+          <p class="text-xs text-slate-200">${escapeHtml(mem.summary)}</p>
+          <div class="flex flex-wrap gap-1 pt-0.5">
+            ${mem.keywords.map(k => `<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">#${escapeHtml(k)}</span>`).join('')}
+          </div>
+        `;
+        kbLiveMemories.appendChild(card);
+      });
+    }
+
+    // =========================================================
+    // VIEW 3: VAULT & AI AGENT BRIDGE
+    // =========================================================
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function renderVault() {
+      vaultTotalBadge.textContent = `${memories.length} memories`;
+      myAccountInput.value = myAccountName;
+
+      vaultMemoryList.innerHTML = '';
+      const sorted = [...memories].sort((a, b) => b.year - a.year);
+      sorted.forEach(mem => {
+        const item = document.createElement('div');
+        item.className = 'rounded-lg bg-slate-900/80 border border-slate-800 p-3 space-y-1.5';
+        item.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="text-xs mono font-bold text-emerald-300">${mem.year}</span>
+              ${getLayerBadgeHtml(mem.layer)}
+              <span class="text-[10px] text-slate-400">${escapeHtml(mem.source)}</span>
+            </div>
+            <button type="button" data-del-id="${escapeHtml(mem.id)}" class="text-[11px] text-slate-500 hover:text-rose-400 transition">削除</button>
+          </div>
+          <div class="text-xs text-slate-200">${escapeHtml(mem.summary)}</div>
+          <div class="flex flex-wrap gap-1">
+            ${mem.keywords.map(k => `<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-950 text-slate-300 border border-slate-800">${escapeHtml(k)}</span>`).join('')}
+          </div>
+        `;
+        vaultMemoryList.appendChild(item);
+      });
+
+      // Attach delete listeners
+      vaultMemoryList.querySelectorAll('[data-del-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-del-id');
+          memories = memories.filter(m => m.id !== id);
+          saveStorage();
+          renderVault();
+          renderKabeuchi();
+          if (personaMode === 'my') initDemoState();
+          showToast('記憶を1件削除しました');
+        });
+      });
+    }
+
+    function importAgentData(raw) {
+      const trimmed = raw.trim();
+      if (!trimmed) {
+        showToast('取り込むデータを貼り付けてください');
+        return;
+      }
+
+      let addedCount = 0;
+      // Try parsing JSON first (even if wrapped in markdown code block)
+      const jsonMatch = trimmed.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (Array.isArray(parsed)) {
+            parsed.forEach((entry, idx) => {
+              if (entry && entry.summary) {
+                memories.unshift({
+                  id: 'mem_agent_' + Date.now() + '_' + idx,
+                  year: parseInt(entry.year, 10) || 2026,
+                  layer: ['values', 'probe', 'episode'].includes(entry.layer) ? entry.layer : classifyLayer(entry.summary),
+                  source: 'AIエージェント連携',
+                  summary: String(entry.summary),
+                  keywords: Array.isArray(entry.keywords) && entry.keywords.length
+                    ? entry.keywords.map(String)
+                    : extractKeywordsFromJapanese(String(entry.summary))
+                });
+                addedCount++;
+              }
+            });
+          }
+        } catch (e) {
+          // Fallback to line-by-line text parsing
+        }
+      }
+
+      // Line-by-line fallback if JSON didn't match
+      if (addedCount === 0) {
+        const lines = trimmed.split('\n').map(l => l.trim()).filter(l => l.length > 3);
+        lines.forEach((line, idx) => {
+          const yearMatch = line.match(/(19|20)\d{2}/);
+          const year = yearMatch ? parseInt(yearMatch[0], 10) : 2026;
+          const cleanLine = line.replace(/^[-*・\d.\s]+/, '');
+          const kws = extractKeywordsFromJapanese(cleanLine);
+          memories.unshift({
+            id: 'mem_text_' + Date.now() + '_' + idx,
+            year,
+            layer: classifyLayer(cleanLine),
+            source: 'AIエージェント連携',
+            summary: cleanLine.slice(0, 60),
+            keywords: kws.length ? kws : [cleanLine.slice(0, 6)]
+          });
+          addedCount++;
+        });
+      }
+
+      if (addedCount > 0) {
+        saveStorage();
+        agentImportInput.value = '';
+        renderVault();
+        renderKabeuchi();
+        if (personaMode === 'my') initDemoState();
+        showToast(`AIエージェントから ${addedCount} 件の記憶を取り込みました！`);
+      } else {
+        showToast('取り込める記憶データが見つかりませんでした');
       }
     }
 
-    function populateCustomForm() {
-      document.getElementById('cfg-name').value = profile.accountName;
-      document.getElementById('cfg-l1-concept').value = profile.l1Concept;
-      document.getElementById('cfg-l1-keywords').value = profile.l1Keywords.join(', ');
-      document.getElementById('cfg-probe-q').value = profile.probeQuestion;
-      document.getElementById('cfg-probe-keywords').value = profile.probeKeywords.join(', ');
-      document.getElementById('cfg-ep-q').value = profile.episodeQuestion;
-      document.getElementById('cfg-ep-keywords').value = profile.episodeKeywords.join(', ');
+    // =========================================================
+    // TAB SWITCHING & EVENTS
+    // =========================================================
+    function switchTab(tab) {
+      const tabs = { demo: tabDemo, kabeuchi: tabKabeuchi, vault: tabVault };
+      const views = { demo: viewDemo, kabeuchi: viewKabeuchi, vault: viewVault };
+
+      Object.keys(tabs).forEach(k => {
+        if (k === tab) {
+          views[k].classList.remove('hidden');
+          tabs[k].className = 'px-3 py-1.5 rounded-md text-xs font-semibold transition whitespace-nowrap bg-emerald-500 text-slate-950';
+        } else {
+          views[k].classList.add('hidden');
+          tabs[k].className = 'px-3 py-1.5 rounded-md text-xs font-semibold transition whitespace-nowrap text-slate-300 hover:text-white';
+        }
+      });
+
+      if (tab === 'demo') renderDemo();
+      if (tab === 'kabeuchi') renderKabeuchi();
+      if (tab === 'vault') renderVault();
     }
 
-    // Event Listeners
     tabDemo.addEventListener('click', () => switchTab('demo'));
-    tabCustom.addEventListener('click', () => switchTab('custom'));
+    tabKabeuchi.addEventListener('click', () => switchTab('kabeuchi'));
+    tabVault.addEventListener('click', () => switchTab('vault'));
+
+    btnModeMy.addEventListener('click', () => {
+      personaMode = 'my';
+      initDemoState();
+      showToast('壁打ちで蓄えた「マイ記憶データ」に切り替えました');
+    });
+
+    btnModeJiro.addEventListener('click', () => {
+      personaMode = 'jiro';
+      initDemoState();
+      showToast('サンプル「次郎さん」に切り替えました');
+    });
 
     chatForm.addEventListener('submit', e => {
       e.preventDefault();
       const val = chatInput.value;
       chatInput.value = '';
-      handleUserInput(val);
+      handleAuthInput(val);
     });
 
     document.getElementById('btn-reset').addEventListener('click', () => {
@@ -640,33 +1257,113 @@
 
     document.getElementById('btn-quantum-attack').addEventListener('click', runQuantumAttack);
 
-    document.getElementById('btn-restore-jiro').addEventListener('click', () => {
-      profile = { ...DEFAULT_PROFILE };
-      populateCustomForm();
-      initDemoState();
-      showToast('次郎さんの初期設定に戻しました');
+    // Kabeuchi events
+    kbForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const val = kbInput.value;
+      kbInput.value = '';
+      handleKabeuchiSubmit(val);
     });
 
-    document.getElementById('custom-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const parseList = id => document.getElementById(id).value.split(/[,、\s]+/).map(s => s.trim()).filter(Boolean);
-      profile = {
-        ...profile,
-        accountName: document.getElementById('cfg-name').value.trim() || 'マイ口座',
-        l1Concept: document.getElementById('cfg-l1-concept').value.trim(),
-        l1Keywords: parseList('cfg-l1-keywords'),
-        probeQuestion: document.getElementById('cfg-probe-q').value.trim(),
-        probeKeywords: parseList('cfg-probe-keywords'),
-        episodeQuestion: document.getElementById('cfg-ep-q').value.trim(),
-        episodeKeywords: parseList('cfg-ep-keywords')
-      };
+    document.querySelectorAll('[data-kb-prompt]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        kbInput.value = btn.getAttribute('data-kb-prompt');
+        kbInput.focus();
+      });
+    });
+
+    document.getElementById('btn-go-test-from-kb').addEventListener('click', () => {
+      personaMode = 'my';
       initDemoState();
       switchTab('demo');
-      showToast('カスタムオラクルを保存して起動しました');
     });
 
-    // Init
+    // Vault & Agent Bridge events
+    document.getElementById('btn-copy-agent-prompt').addEventListener('click', () => {
+      const promptText = document.getElementById('agent-prompt-text').textContent;
+      copyText(promptText, 'AIエージェント用の依頼プロンプトをコピーしました');
+    });
+
+    document.getElementById('btn-fill-sample-agent').addEventListener('click', () => {
+      agentImportInput.value = JSON.stringify([
+        {
+          year: 2022,
+          layer: 'values',
+          summary: '満員電車が本当に無理で、リモートワーク以外は考えられない',
+          keywords: ['満員電車', '通勤', 'リモート', '無理', '人混み']
+        },
+        {
+          year: 2025,
+          layer: 'probe',
+          summary: '大金が入ったらまず高級寿司より、近所の定食屋で好きなだけ唐揚げを頼む',
+          keywords: ['唐揚げ', '定食屋', '近所', '贅沢']
+        },
+        {
+          year: 2017,
+          layer: 'episode',
+          summary: '初めての海外旅行で財布をなくしかけて、空港のベンチで3時間泣きそうになった記憶',
+          keywords: ['空港', '財布', 'ベンチ', '海外', '泣きそう', '焦った']
+        }
+      ], null, 2);
+      showToast('AIエージェントの出力例を入力欄にセットしました');
+    });
+
+    document.getElementById('btn-import-agent').addEventListener('click', () => {
+      importAgentData(agentImportInput.value);
+    });
+
+    document.getElementById('btn-save-account-name').addEventListener('click', () => {
+      const val = myAccountInput.value.trim();
+      if (!val) return;
+      myAccountName = val;
+      saveStorage();
+      if (personaMode === 'my') initDemoState();
+      showToast('保護対象の名前を更新しました');
+    });
+
+    document.getElementById('btn-export-json').addEventListener('click', () => {
+      copyText(JSON.stringify(memories, null, 2), '全記憶データをJSON形式でコピーしました');
+    });
+
+    document.getElementById('btn-reset-memories').addEventListener('click', () => {
+      memories = [...STARTER_MEMORIES];
+      saveStorage();
+      renderVault();
+      renderKabeuchi();
+      if (personaMode === 'my') initDemoState();
+      showToast('記憶ボールトを初期状態に戻しました');
+    });
+
+    document.getElementById('manual-memory-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const year = parseInt(document.getElementById('manual-year').value, 10) || 2026;
+      const layer = document.getElementById('manual-layer').value;
+      const summary = document.getElementById('manual-summary').value.trim();
+      const kws = document.getElementById('manual-keywords').value.split(/[,、\s]+/).map(s => s.trim()).filter(Boolean);
+      if (!summary || kws.length === 0) return;
+
+      memories.unshift({
+        id: 'mem_manual_' + Date.now(),
+        year,
+        layer,
+        source: '手動登録',
+        summary,
+        keywords: kws
+      });
+      saveStorage();
+      document.getElementById('manual-summary').value = '';
+      document.getElementById('manual-keywords').value = '';
+      renderVault();
+      renderKabeuchi();
+      if (personaMode === 'my') initDemoState();
+      showToast('新しい記憶を手動登録しました');
+    });
+
+    // Init App
+    loadStorage();
     initDemoState();
+    renderKabeuchi();
+    renderVault();
   </script>
 </body>
 </html>

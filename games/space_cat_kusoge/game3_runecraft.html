@@ -322,14 +322,37 @@
 <script src="assets/spacecat.js"></script>
 <script>
 (function() {
+  function getStage3Hint() {
+    const next = RECIPES.find(r => !state.discoveredRecipes.includes(r.id));
+    if (!next) {
+      return { text: '【クリア済】全10種コンプリートにゃ！ ポータルへ戻ってご褒美を受け取るにゃ！', mood: 'smile' };
+    }
+    const owned = { ...state.inventory };
+    state.slots.filter(Boolean).forEach(k => { owned[k] = (owned[k] || 0) + 1; });
+    const missing = next.ingredients.filter(id => !(owned[id] > 0));
+    const ingNames = next.ingredients.map(id => CARDS[id] ? CARDS[id].name : id).join(' ＋ ');
+    if (missing.length === 0) {
+      return { text: `【ヒント ${state.discoveredRecipes.length + 1}/10】今は「${ingNames}」をセットして発明できるにゃ！`, mood: 'smile' };
+    }
+    const needCats = [...new Set(missing.map(id => {
+      const cat = CARDS[id]?.category;
+      if (cat === 'basic') return '初級パック(50)';
+      if (cat === 'motion') return '動体パック(180)';
+      if (cat === 'advanced') return '上級パック(500)';
+      return '秘術パック(1200)';
+    }))].join('・');
+    return { text: `【ヒント ${state.discoveredRecipes.length + 1}/10】次は「${ingNames}」を狙うにゃ！ 店（${needCats}）でカードを集めるにゃ！`, mood: 'normal' };
+  }
+
   const cat = SpaceCat.createFloatingWidget(
-    'ぐうたら発明で楽して稼ぐにゃ！ 全10種類の発明を目指すにゃ！',
+    '全10種の発明でクリアにゃ！ 迷ったらボクをタップすると次のレシピを教えるにゃ！',
     [
-      { text: '行き詰まったら右上の「ヒント」ボタンを押すにゃ！', mood: 'normal' },
-      { text: '自動収入が増えたらショップで高級パックを買うにゃ！', mood: 'smile' },
+      { text: '自動収入が増えたら放置してコインを貯めるのがコツだにゃ！', mood: 'smile' },
       { text: '変な組み合わせばっかり試すなニャ！', mood: 'angry' }
-    ]
+    ],
+    getStage3Hint
   );
+
   const origCombine = window.combineCards;
   window.combineCards = function() {
     const prevLen = state.discoveredRecipes.length;
@@ -339,11 +362,10 @@
     } else if (state.discoveredRecipes.length > prevLen) {
       cat.say(`新発明おめでとうにゃ！（${state.discoveredRecipes.length} / ${RECIPES.length}）`, 'smile');
     } else {
-      cat.say('失敗だにゃ… 組み合わせを見直すにゃ！', 'angry');
+      cat.say('失敗だにゃ… ボクをタップして次のヒントを見るにゃ！', 'angry');
     }
   };
 })();
 </script>
-
 </body>
 </html>

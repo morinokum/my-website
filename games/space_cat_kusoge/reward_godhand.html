@@ -239,14 +239,21 @@
 <script src="assets/spacecat.js"></script>
 <script>
 (function() {
+  function getRewardHint() {
+    if (currentLevelIndex === 0) return { text: '【STAGE 1ヒント】青丸は右の壁に沿って進むにゃ！ 邪魔な壁をタップで壊してゴールへ導くにゃ！', mood: 'normal' };
+    if (currentLevelIndex === 1) return { text: '【STAGE 2ヒント】赤丸の敵にぶつからないよう、壁を作ってルートを迂回させるにゃ！', mood: 'normal' };
+    return { text: '【STAGE 3ヒント】濃い赤のゴーストは壁をすり抜けて追ってくるにゃ！ 急いで最短ルートを開通させるにゃ！', mood: 'angry' };
+  }
+
   const cat = SpaceCat.createFloatingWidget(
     'ご褒美ゲームへようこそにゃ！ 壁を作って青丸をゴールへ導くにゃ！',
     [
       { text: '青丸は「右の壁」に沿って進む法則があるにゃ！', mood: 'normal' },
-      { text: 'マナの使いすぎに注意するにゃ！', mood: 'angry' },
-      { text: '全3ステージクリア目指してファイトにゃ！', mood: 'smile' }
-    ]
+      { text: 'マナの使いすぎに注意するにゃ！', mood: 'angry' }
+    ],
+    getRewardHint
   );
+
   const origClear = window.handleLevelClear;
   window.handleLevelClear = function() {
     origClear.apply(this, arguments);
@@ -260,6 +267,5 @@
   };
 })();
 </script>
-
 </body>
 </html>

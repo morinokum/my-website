@@ -237,14 +237,28 @@ window.onload = () => { game.init(); };
 <script src="assets/spacecat.js"></script>
 <script>
 (function() {
+  function getStage2Hint() {
+    if (state.boss.currentHp <= 0) {
+      return { text: '【クリア済】ポータルへ戻ってスペース猫に報告するにゃ！', mood: 'smile' };
+    }
+    if (state.lineage.legacyPoints >= 1000) {
+      return { text: '【最終ヒント】1000LP貯まったにゃ！「✨ 異世界召喚の陣」から「??? (賢者のまご)」を呼べば一撃で終わるにゃ！', mood: 'smile' };
+    }
+    if (state.lineage.generation >= 3 || state.lineage.legacyPoints >= 300) {
+      return { text: '【ヒント2/3】「??? (賢者のまご)」が見えてきたにゃ！ 「探索」でLPを1000まで貯めるにゃ！（※実は「普通の暮らしを送る」でも即クリアできるにゃ）', mood: 'normal' };
+    }
+    return { text: '【ヒント1/3】HP5億は無理ゲーにゃ！ 「探索」でLPを貯めて3代目＆1000LPを目指すか、一番下の「普通の暮らしを送る」を押すにゃ！', mood: 'angry' };
+  }
+
   const cat = SpaceCat.createFloatingWidget(
-    'HP5億の巨獣とか正気じゃないにゃ…！ 何代かけても倒すにゃ！',
+    'HP5億の巨獣とか正気じゃないにゃ…！ 詰まったらボクをタップしてヒントを見るにゃ！',
     [
-      { text: 'まずは修練と探索でLPを貯めるにゃ！', mood: 'normal' },
-      { text: '実は「戦わない」という選択肢もあるらしいにゃ…？', mood: 'smile' },
-      { text: '3代目以降か300LP以上でヤバい召喚が解放されるかもにゃ！', mood: 'angry' }
-    ]
+      { text: '「修練」より「探索」と「探索網の開拓」を上げるとLPが爆速で貯まるにゃ！', mood: 'normal' },
+      { text: '実は「戦わない」という選択肢もあるらしいにゃ…（小声）', mood: 'smile' }
+    ],
+    getStage2Hint
   );
+
   const origDeath = game.heroDeath;
   game.heroDeath = function() {
     origDeath.apply(this, arguments);
@@ -262,6 +276,5 @@ window.onload = () => { game.init(); };
   };
 })();
 </script>
-
 </body>
 </html>

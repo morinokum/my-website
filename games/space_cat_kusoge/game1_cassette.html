@@ -422,20 +422,43 @@
 <script src="assets/spacecat.js"></script>
 <script>
 (function() {
+  function getStage1Hint() {
+    if (gameState.flags.aura_saved) {
+      return { text: '【クリア済】右のメニューかポータルへ戻って報告するにゃ！', mood: 'smile' };
+    }
+    if (!gameState.inventory.includes('cassette_alpha')) {
+      return { text: '【ヒント1/6】サイバーベイで「👁 調べる → 廃棄端末 Terminal-01」を調べてALPHAを取るにゃ！', mood: 'normal' };
+    }
+    if (!gameState.inventory.includes('freq_code')) {
+      return { text: '【ヒント2/6】「🚀 移動 → レトロバー」へ行って、「👁 調べる → 旧式ジュークボックス」を調べるにゃ！', mood: 'normal' };
+    }
+    if (!gameState.inventory.includes('cassette_beta')) {
+      return { text: '【ヒント3/6】「🚀 移動 → ルーン研究所」へ行って、「👁 調べる → 磁気金庫」を調べるにゃ！', mood: 'normal' };
+    }
+    if (!gameState.terminal.solvedLevel1) {
+      return { text: '【ヒント4/6】上の「TERMINAL HACK」タブを開いて、入力欄に「1989」と打ってRUNを押すにゃ！', mood: 'angry' };
+    }
+    if (!gameState.inventory.includes('master_tape_1989')) {
+      return { text: '【ヒント5/6】「RUNE CASSETTE DECK」タブでALPHAとBETAをセットして合成するにゃ！', mood: 'normal' };
+    }
+    return { text: '【ヒント6/6】「🚀 移動 → 軌道ドック最上階」へ行って「AURAコア固定装置」を調べればクリアだにゃ！', mood: 'smile' };
+  }
+
   const cat = SpaceCat.createFloatingWidget(
-    'ネオ・キョウトへようこそにゃ！ カセットを集めてAURAを復旧させるにゃ！',
+    'ネオ・キョウトへようこそにゃ！ 迷ったらボクをタップすると今の攻略ヒントを教えるにゃ！',
     [
-      { text: 'バーの「レイラ」に話しかけるとヒントがもらえるにゃ！', mood: 'normal' },
-      { text: 'ジュークボックスもちゃんと調べるにゃ！', mood: 'normal' },
-      { text: 'ハッキング画面で「SCAN」を打ってみるにゃ！', mood: 'angry' }
-    ]
+      { text: 'バーの「レイラ」に話しかけるとパスワードのヒントが聞けるにゃ！', mood: 'normal' },
+      { text: 'クソゲーとか言うなニャ！ 立派なレトロADVだにゃ！', mood: 'angry' }
+    ],
+    getStage1Hint
   );
+
   const origExec = window.executeTargetAction;
   window.executeTargetAction = function(targetId, cmdType) {
     origExec.apply(this, arguments);
-    if (targetId === 'term_01' && gameState.flags.term_01_inspected) cat.say('おっ、カセット[ALPHA]を見つけたにゃ！', 'smile');
-    else if (targetId === 'jukebox' && gameState.flags.jukebox_inspected) cat.say('1989-HZの周波数コードゲットだにゃ！', 'smile');
-    else if (targetId === 'rune_safe' && gameState.flags.lab_unlocked) cat.say('カセット[BETA]回収！ デッキで合成するにゃ！', 'smile');
+    if (targetId === 'term_01' && gameState.flags.term_01_inspected) cat.say('おっ、カセット[ALPHA]を見つけたにゃ！ 次はレトロバーにゃ！', 'smile');
+    else if (targetId === 'jukebox' && gameState.flags.jukebox_inspected) cat.say('1989-HZゲットにゃ！ 次はルーン研究所の金庫にゃ！', 'smile');
+    else if (targetId === 'rune_safe' && gameState.flags.lab_unlocked) cat.say('カセット[BETA]回収！ 端末で1989を解除して合成するにゃ！', 'smile');
     else if ((targetId === 'aura_core_pod' || targetId === 'master_terminal') && gameState.flags.aura_saved) {
       cat.say('やったにゃ！！ ネオ・キョウトに音楽が戻ったにゃ！', 'smile', 10000);
     }
@@ -443,11 +466,10 @@
   const origSynth = window.synthesizeCassettes;
   window.synthesizeCassettes = function() {
     origSynth.apply(this, arguments);
-    if (gameState.flags.master_tape_created) cat.say('マスターカセット完成にゃ！ 軌道ドックへ急ぐにゃ！', 'smile');
+    if (gameState.flags.master_tape_created) cat.say('マスターカセット完成にゃ！ 軌道ドック最上階へ行くにゃ！', 'smile');
     else cat.say('ありゃ、材料が足りないか組み合わせが違うにゃ！', 'angry');
   };
 })();
 </script>
-
 </body>
 </html>

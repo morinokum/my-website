@@ -712,5 +712,12 @@
     "category": "ゲーム（スマホ向け）",
     "url": "https://morinokum.github.io/my-website/games/space_cat_kusoge.html",
     "added": "2026-11-26"
+  },
+  {
+    "id": "game:space_cat_kusoge2",
+    "title": "スペース猫のクソゲー攻略2",
+    "category": "ゲーム（スマホ向け）",
+    "url": "https://morinokum.github.io/my-website/games/space_cat_kusoge2.html",
+    "added": "2026-11-27"
   }
 ]

@@ -719,5 +719,12 @@
     "category": "ゲーム（スマホ向け）",
     "url": "https://morinokum.github.io/my-website/games/space_cat_kusoge2.html",
     "added": "2026-11-27"
+  },
+  {
+    "id": "app:space_cat_yt_manager",
+    "title": "スペース猫のYouTubeチャンネル整理帳 — 登録チャンネルをカテゴリ・タグ・★推し度で整理",
+    "category": "アプリ（PC向け）",
+    "url": "https://morinokum.github.io/my-website/apps/space_cat_yt_manager.html",
+    "added": "2026-11-28"
   }
 ]
